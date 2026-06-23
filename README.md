@@ -5,7 +5,7 @@
 <img src="https://img.shields.io/badge/License-GPL_v3-blue?style=for-the-badge"/>
 <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey?style=for-the-badge"/>
 
-# 🎌 AnitrWeb — Premium Anime İzleme Platformu - Henüz Yayınlanmadı
+# 🎌 AnitrWeb — Premium Anime İzleme Platformu - V 1.0.1
 
 > **Türkçe altyazılı anime izlemenin en gelişmiş, en şık yolu.**  
 > Go tabanlı backend + Vanilla JS frontend ile yapılmış, kendi kendine barındırılabilen (self-hosted) bir anime streaming uygulaması.
@@ -160,10 +160,86 @@
 
 ---
 
-## 🏗️ Mimari
+## 🚀 Kurulum
 
+### Gereksinimler
+- **Go 1.23+** (derlemek için)
+- **Git** (indirmek için)
 
+---
 
+### Yöntem 1: install.sh ile (Linux/macOS)
+```bash
+curl -fsSL https://raw.githubusercontent.com/prayjofir/anitr-cli/main/install.sh | bash
+```
+
+---
+
+### Yöntem 2: Kaynaktan Derleme
+
+#### Adım 1: Repoyu Klonla
+```bash
+git clone https://github.com/prayjofir/anitr-cli.git
+cd anitr-cli
+```
+
+#### Adım 2: Derle
+```bash
+# Tüm platformlar için
+make build-all
+
+# Sadece mevcut platform için
+make build
+```
+
+#### Adım 3: Kur
+```bash
+# Linux
+make install-linux
+
+# Windows
+make install-windows
+
+# macOS
+make install-macos
+```
+
+---
+
+### Yöntem 3: Doğrudan Go ile Çalıştır
+```bash
+go run .
+```
+
+---
+
+## ▶️ Çalıştırma
+
+### Varsayılan Port (8081)
+```bash
+anitr-cli
+```
+
+### Özel Port ile
+```bash
+# Linux/macOS
+PORT=3000 anitr-cli
+
+# Windows (PowerShell)
+$env:PORT = "3000"; .\anitr-cli.exe
+```
+
+Uygulama başladığında tarayıcınızda `localhost` adresine gidin.
+
+---
+
+## 🐳 Docker ile Çalıştırma
+```bash
+docker build -t anitr-cli .
+docker run -p 8081:8081 anitr-cli
+```
+
+---
 
 
 ## 📷 Hata Düzeltme Aşamasından Ekran Görüntüleri
@@ -297,7 +373,16 @@ Bu proje, **[prayjofir/anitr-cli](https://github.com/prayjofir/anitr-cli)** proj
 
 ---
 
-## 📜 Lisans
+## 👥 Katkıda Bulunanlar
+
+| Kullanıcı | Katkı |
+|-----------|-------|
+| **[prayjofir](https://github.com/prayjofir)** | Orijinal proje sahibi, temel altyapı ve scraping motoru |
+| **[FOXYorj](https://github.com/FOXYorj)** | AnitrWeb geliştirmesi |
+
+---
+
+## �� Lisans
 
 Bu proje **GNU General Public License v3.0** altında lisanslanmıştır.
 
