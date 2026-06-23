@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anitr - Anime Platformu</title>
+    <meta name="description" content="Anitr Web - Ücretsiz anime izleme platformu. Binlerce anime, altyazılı ve dublajlı.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
+    <link rel="stylesheet" href="style.css?v=3.8.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+<canvas id="starsCanvas"></canvas>
+<canvas id="confettiCanvas"></canvas>
+<div id="ambientBackground" class="ambient-bg"></div>
+<div id="toast" class="toast hidden"></div>
+
+<!-- Lightbox -->
+<div id="lightbox" class="lightbox hidden" onclick="closeLightbox()">
+    <img id="lightboxImg" src="" alt="Poster" onclick="event.stopPropagation()">
+    <button class="lightbox-close" onclick="event.stopPropagation();closeLightbox()"><i class="fa-solid fa-xmark"></i></button>
+</div>
+
+<div id="app">
+    <!-- Navbar -->
+    <nav class="navbar">
+        <!-- Left: Logo -->
+        <div class="nav-left">
+            <div class="logo" onclick="loadHome()" style="cursor:pointer">
+                <i class="fa-solid fa-play"></i> Anitr<span>Web</span>
+            </div>
+            <div id="activeUsersBadge" onclick="showActiveUsers()" class="active-users-badge" title="Aktif Kullanıcıları Gör">
+                <div class="active-dot"></div>
+                <span id="activeUsersCount">1</span>&nbsp;Aktif
+            </div>
+        </div>
+
+        <!-- Center: Search -->
+        <div class="nav-center">
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Anime ara..." autocomplete="off">
+                <button id="searchBtn"><i class="fa-solid fa-search"></i></button>
+                <div id="searchSuggestions" class="suggestions hidden"></div>
+            </div>
+        </div>
+
+        <!-- Right: Actions -->
+        <div class="nav-right">
+            <div class="nav-group">
+                <button class="nav-btn" id="animeListBtn" title="Tüm Animeler" onclick="showAnimeListView()">
+                    <i class="fa-solid fa-list-ul"></i>
+                </button>
+                <button class="nav-btn" id="randomBtn" title="Rastgele Anime" onclick="loadRandom()">
+                    <i class="fa-solid fa-shuffle"></i>
+                </button>
+                <button class="nav-btn" id="scheduleBtn" title="Yayın Takvimi" onclick="showScheduleView()">
+                    <i class="fa-solid fa-calendar-days"></i>
+                </button>
+            </div>
+            <div class="nav-divider"></div>
+            <div class="nav-group">
+                <button class="nav-btn" id="watchlistBtn" title="İzleme Listesi" onclick="showWatchlist()">
+                    <i class="fa-solid fa-bookmark"></i>
+                </button>
+                <button class="nav-btn" id="historyBtn" title="Geçmiş" onclick="showHistory()">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </button>
+                <button class="nav-btn" id="favoritesBtn" title="Favoriler" onclick="showFavorites()">
+                    <i class="fa-solid fa-heart"></i>
+                </button>
+                <button class="nav-btn" id="statsBtn" title="İstatistikler" onclick="showStats()">
+                    <i class="fa-solid fa-chart-bar"></i>
+                </button>
+            </div>
+            <div class="nav-divider"></div>
+            <div class="nav-group">
+                <button class="nav-btn" id="roomsBtnNav" title="Online Odalar" onclick="showOnlineRooms()">
+                    <i class="fa-solid fa-door-open"></i>
+                </button>
+                <button class="nav-btn" id="friendsBtnNav" title="Arkadaşlar" onclick="showFriendsModal()">
+                    <i class="fa-solid fa-user-group"></i>
+                </button>
+                <button class="nav-btn" id="malBtnNav" title="MyAnimeList" onclick="showMALView()">
+                    <i class="fa-solid fa-book-open"></i>
+                </button>
+                <button class="nav-btn" id="downloadsBtn" title="İndirilenler" onclick="showDownloadsModal()">
+                    <i class="fa-solid fa-download"></i>
+                </button>
+            </div>
+            <div class="nav-divider"></div>
+            <div class="nav-group">
+                <button class="nav-btn profile-btn" id="profileBtnNav" title="Profil" onclick="showProfileModal()">
+                    <i class="fa-solid fa-user"></i>
+                </button>
+                <button class="nav-btn" id="settingsBtn" title="Ayarlar" onclick="openSettings()">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+
+    <div id="loader" class="hidden"><div class="spinner"></div></div>
+
+    <!-- ══ AUTH MODAL ══ -->
+    <div id="authModal" class="modal hidden">
+        <div class="modal-content settings-modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 id="authTitle"><i class="fa-solid fa-user"></i> Giriş Yap</h3>
+                <button onclick="closeAuthModal()" class="close-btn" id="authCloseBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="settings-body">
+                <div class="setting-item" style="display:block; margin-bottom: 1rem;">
+                    <label style="display:block; margin-bottom: 0.5rem; color: var(--text2);">Kullanıcı Adı</label>
+                    <input type="text" id="authUsername" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text);" placeholder="Kullanıcı adınız">
+                </div>
+                <div class="setting-item" style="display:block; margin-bottom: 1.5rem;">
+                    <label style="display:block; margin-bottom: 0.5rem; color: var(--text2);">Şifre</label>
+                    <input type="password" id="authPassword" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text);" placeholder="Şifreniz">
+                </div>
+                <button class="btn-primary" style="width: 100%; margin-bottom: 1rem;" id="authSubmitBtn" onclick="handleAuthSubmit()">Giriş Yap</button>
+                <div style="text-align: center; color: var(--text3); font-size: 0.9rem;">
+                    <span id="authToggleText">Hesabın yok mu? </span>
+                    <a href="#" style="color: var(--accent); text-decoration: none;" id="authToggleLink" onclick="toggleAuthMode()">Kayıt Ol</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ TRAILER MODAL ══ -->
+    <div id="trailerModal" class="modal hidden" style="z-index: 10000;">
+        <div class="modal-content" style="max-width: 800px; padding:0; background: transparent; box-shadow: none;">
+            <div style="text-align: right; margin-bottom: 10px;">
+                <button onclick="closeTrailerModal()" style="background:var(--surface2); color:white; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; background: black;">
+                <iframe id="trailerIframe" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ HOME VIEW ══ -->
+    <main id="homeView">
+
+        <!-- Netflix Hero Banner -->
+        <div id="cinematicHero" class="nf-hero">
+            <div id="cinematicHeroBg" class="nf-hero-bg"></div>
+            <div class="nf-hero-overlay"></div>
+            <button class="nf-hero-nav nf-nav-prev" onclick="prevCinematicHero()"><i class="fa-solid fa-chevron-left"></i></button>
+            <button class="nf-hero-nav nf-nav-next" onclick="nextCinematicHero()"><i class="fa-solid fa-chevron-right"></i></button>
+            <div class="nf-hero-content">
+                <div class="nf-hero-badge" id="cinematicBadge">🔥 Trend</div>
+                <h1 id="cinematicTitle">Yükleniyor...</h1>
+                <div class="nf-hero-meta" id="cinematicMeta"></div>
+                <p id="cinematicDesc"></p>
+                <div class="nf-hero-actions" id="cinematicActions">
+                    <button class="btn-primary" onclick="loadRandom()"><i class="fa-solid fa-shuffle"></i> Şansına Güven</button>
+                </div>
+            </div>
+            <div class="nf-hero-dots" id="cinematicDots"></div>
+        </div>
+
+        <!-- Continue Watching Row -->
+        <div id="continueWatching" class="nf-section hidden">
+            <h2 class="nf-section-title"><i class="fa-solid fa-circle-play"></i> Kaldığın Yerden Devam Et</h2>
+            <div class="nf-row-wrapper">
+                <button class="nf-row-btn nf-btn-prev" onclick="scrollCarousel(this, -1)"><i class="fa-solid fa-chevron-left"></i></button>
+                <div id="cwContainer" class="nf-row"></div>
+                <button class="nf-row-btn nf-btn-next" onclick="scrollCarousel(this, 1)"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+
+        <!-- Main Rows (Categories) -->
+        <div id="mainContent" class="nf-content"></div>
+
+    </main>
+
+    <!-- ══ ANIME LIST VIEW ══ -->
+    <main id="animeListView" class="hidden">
+        <h2 class="section-title"><i class="fa-solid fa-list-ul"></i> Tüm Animeler</h2>
+        <!-- Filters -->
+        <div class="filters">
+            <select id="seasonFilter" class="filter-select">
+                <option value="">Tüm Sezonlar</option>
+            </select>
+            <select id="yearFilter" class="filter-select">
+                <option value="">Tüm Yıllar</option>
+            </select>
+            <select id="genreFilter" class="filter-select">
+                <option value="">Tüm Türler</option>
+            </select>
+            <button class="btn-primary" onclick="applyFilters()" style="padding:0.5rem 1rem">Filtrele</button>
+        </div>
+        <div id="animeListGrid" class="anime-grid"></div>
+        <div class="pagination" id="animeListPagination"></div>
+    </main>
+
+    <!-- ══ MYANIMELIST VIEW ══ -->
+    <main id="malView" class="hidden" style="padding: 2rem;">
+        <div class="mal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem; flex-wrap:wrap; gap:1rem;">
+            <h2 class="section-title" style="margin-bottom:0;"><i class="fa-solid fa-book-open"></i> MyAnimeList Listesi</h2>
+            <div id="malAuthStatus" style="font-weight:600; color:var(--accent);"></div>
+        </div>
+
+        <!-- Sekme Butonları -->
+        <div style="display:flex; gap:0.75rem; margin-bottom:1.5rem; flex-wrap:wrap;" id="malTabs">
+            <button class="btn-primary mal-tab-btn active" id="tabWatching" onclick="switchMALTab('watching')">
+                <i class="fa-solid fa-play"></i> İzleniyor
+            </button>
+            <button class="btn-secondary mal-tab-btn" id="tabCompleted" onclick="switchMALTab('completed')">
+                <i class="fa-solid fa-check"></i> Tamamlandı
+            </button>
+            <button class="btn-secondary mal-tab-btn" id="tabPlantowatch" onclick="switchMALTab('plantowatch')">
+                <i class="fa-solid fa-list"></i> Planlandı
+            </button>
+        </div>
+
+        <div id="malContent" class="hidden">
+            <div id="malListGrid" class="anime-grid"></div>
+        </div>
+        <div id="malNoUser" style="text-align:center; padding:3rem; display:none;">
+            <i class="fa-solid fa-user-slash" style="font-size:3rem; color:var(--text3); margin-bottom:1rem;"></i>
+            <p style="color:var(--text3); margin-bottom:1rem;">MyAnimeList hesabın bağlı değil.</p>
+            <button class="btn-primary" onclick="openSettings()"><i class="fa-solid fa-gear"></i> Ayarlardan Bağla</button>
+        </div>
+    </main>
+
+    <!-- ══ SCHEDULE VIEW ══ -->
+    <main id="scheduleView" class="hidden">
+        <h2 class="section-title"><i class="fa-solid fa-calendar-days"></i> Haftalık Yayın Takvimi</h2>
+        <div id="scheduleContainer">
+            <div style="text-align:center; padding: 3rem;"><div class="spinner"></div></div>
+        </div>
+    </main>
+
+    <!-- ══ HISTORY VIEW ══ -->
+    <main id="historyView" class="hidden" style="padding: 2rem;">
+        <h2 class="section-title"><i class="fa-solid fa-clock-rotate-left"></i> İzleme Geçmişi</h2>
+        <div id="historyContent">
+            <!-- Geçmiş verileri buraya eklenecek -->
+        </div>
+    </main>
+
+    <!-- ══ WATCH VIEW ══ -->
+    <main id="watchView" class="hidden">
+        <div id="watchAmbient" class="watch-ambient"></div>
+        <div class="watch-layout">
+            <div class="watch-main">
+                <div class="video-container-page">
+                    <video id="animePlayer" class="plyr" controls playsinline></video>
+                </div>
+                <div class="watch-details">
+                    <h1 id="watchTitle" class="watch-title">Yükleniyor...</h1>
+                    <div class="watch-meta">
+                        <span id="watchAnimeTitle" class="meta-badge accent"></span>
+                        <span id="watchSource" class="meta-badge"></span>
+                        <select id="watchSoundSelect" class="btn-secondary" style="outline:none; cursor:pointer;" onchange="changeWatchSound(this.value)">
+                            <option value="">Varsayılan Ses</option>
+                            <option value="original">Orijinal (Japonca)</option>
+                            <option value="trdub">Türkçe Dublaj</option>
+                            <option value="endub">İngilizce Dublaj</option>
+                            <option value="trsub">Türkçe Altyazı</option>
+                        </select>
+                        <button class="btn-secondary" id="watchSavePosBtn" onclick="saveManualPosition()">
+                            <i class="fa-regular fa-floppy-disk"></i> Konumu Kaydet
+                        </button>
+                        <button class="btn-secondary" id="watchFavBtn" onclick="toggleFavoriteFromWatch()">
+                            <i class="fa-regular fa-heart"></i> Favori
+                        </button>
+                        <button class="btn-secondary" id="watchWatchlistBtn" onclick="toggleWatchlistFromWatch()">
+                            <i class="fa-regular fa-bookmark"></i> Liste
+                        </button>
+                        <button class="btn-secondary" id="watchNoteBtn" onclick="openNoteModal()">
+                            <i class="fa-regular fa-note-sticky"></i> Not
+                        </button>
+                        <button class="btn-secondary" id="w2gCreateBtn" onclick="openW2GModal('create')">
+                            <i class="fa-solid fa-users-line"></i> Oda Kur
+                        </button>
+                        <button class="btn-secondary" id="w2gJoinBtn" onclick="openW2GModal('join')">
+                            <i class="fa-solid fa-right-to-bracket"></i> Odaya Katıl
+                        </button>
+                        <button class="btn-primary" id="downloadAnimeBtn" onclick="openDownloadModal()">
+                            <i class="fa-solid fa-download"></i> Bölümü İndir
+                        </button>
+                        <span id="w2gStatus" class="meta-badge accent" style="margin-left: 0.5rem; display: none;"></span>
+                    </div>
+                    <!-- Manual resume button/area -->
+                    <div id="manualResumeArea" class="watch-synopsis-box hidden" style="margin-bottom: 1rem;">
+                        <h3 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-clock-rotate-left"></i> Kaydedilmiş Konum</h3>
+                        <p style="margin-bottom: 0.5rem; color: var(--text2); font-size: 0.9rem;" id="manualResumeText">Kaydedilmiş konum: 0:00</p>
+                        <button class="btn-primary" id="manualResumeBtn" onclick="resumeFromManualPosition()">
+                            <i class="fa-solid fa-play"></i> Buradan Devam Et
+                        </button>
+                        <button class="btn-secondary" id="clearManualPosBtn" onclick="clearManualPosition()" style="margin-left: 0.5rem;">
+                            <i class="fa-regular fa-trash-can"></i> Kaldır
+                        </button>
+                    </div>
+                    <div class="watch-synopsis-box">
+                        <h3>Açıklama</h3>
+                        <p id="watchSynopsis" class="watch-synopsis">Yükleniyor...</p>
+                    </div>
+                    <!-- AI Analysis Section -->
+                    <div id="aiAnalysisSection" style="margin-top:1.5rem; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:1.5rem;">
+                        <h3 style="margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-robot"></i> Yapay Zeka Analizi</h3>
+                        <div style="display:flex; gap:0.75rem; margin-bottom:1rem; flex-wrap:wrap;">
+                            <button class="btn-secondary" onclick="askAI('summary')">
+                                <i class="fa-solid fa-file-lines"></i> Bölüm Özeti
+                            </button>
+                            <button class="btn-secondary" onclick="askAI('characters')">
+                                <i class="fa-solid fa-users"></i> Karakterler
+                            </button>
+                            <button class="btn-secondary" onclick="askAI('custom')">
+                                <i class="fa-solid fa-message"></i> Özel Soru
+                            </button>
+                        </div>
+                        <div id="aiCustomQuestionContainer" style="display:none; margin-bottom:1rem;">
+                            <input type="text" id="aiCustomQuestionInput" placeholder="Sorunuzu yazın..." style="width:100%; padding:0.75rem; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-family:inherit; margin-bottom:0.5rem;">
+                            <button class="btn-primary" onclick="submitAICustomQuestion()">
+                                <i class="fa-solid fa-paper-plane"></i> Sor
+                            </button>
+                        </div>
+                        <div id="aiAnalysisResults"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="watch-right">
+                <div class="watch-sidebar">
+                    <div class="sidebar-header">
+                        <h3><i class="fa-solid fa-list"></i> Bölümler</h3>
+                        <input type="text" id="episodeFilterInput" class="episode-filter-input" placeholder="Bölüm ara..." oninput="filterEpisodeList(this.value)">
+                        <select id="watchSeasonSelect" class="season-select hidden"></select>
+                    </div>
+                    <div id="watchEpisodesList" class="sidebar-episodes"></div>
+                </div>
+                <!-- Watch2Gether Chat -->
+                <div id="w2gChatContainer" class="w2g-chat hidden">
+                    <div class="sidebar-header">
+                        <h3><i class="fa-solid fa-comments"></i> Sohbet</h3>
+                        <button class="close-btn" onclick="leaveW2GRoom()"><i class="fa-solid fa-right-from-bracket"></i></button>
+                    </div>
+                    <div id="w2gMessages" class="w2g-messages"></div>
+                    <div class="w2g-input-wrap">
+                        <input type="text" id="w2gMessageInput" class="w2g-input" placeholder="Mesajınızı yazın..." onkeypress="if(event.key==='Enter')sendW2GMessage()">
+                        <button class="btn-primary" onclick="sendW2GMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ══ DRAWER ══ -->
+    <div id="drawer" class="drawer hidden">
+        <div class="drawer-header">
+            <h3 id="drawerTitle">Panel</h3>
+            <button onclick="closeDrawer()" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="drawerContent" class="drawer-content"></div>
+    </div>
+    <div id="drawerOverlay" class="drawer-overlay hidden" onclick="closeDrawer()"></div>
+
+    <!-- ══ SETTINGS MODAL ══ -->
+    <div id="settingsModal" class="modal hidden">
+        <div class="modal-content settings-modal">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-gear"></i> Ayarlar</h3>
+                <button onclick="closeSettings()" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="settings-body">
+                <div class="setting-item">
+                    <div>
+                        <h4>Hesabım</h4>
+                        <p>Kullanıcı girişi ve profil</p>
+                    </div>
+                    <button class="btn-secondary" onclick="showAuthModal(true); closeSettings()"><i class="fa-solid fa-user"></i> Profil</button>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Tema Değiştir</h4>
+                        <p>Karanlık / Aydınlık mod</p>
+                    </div>
+                    <button class="btn-secondary" id="themeBtn" onclick="toggleTheme()"><i class="fa-solid fa-moon"></i> Değiştir</button>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Menü (Navbar) Tipi</h4>
+                        <p>Sabit veya yandan açılır</p>
+                    </div>
+                    <select id="settingNavbarLayout" onchange="saveSettings()">
+                        <option value="top">Sabit (Üstte)</option>
+                        <option value="left">Gizli (Soldan açılır)</option>
+                        <option value="right">Gizli (Sağdan açılır)</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Proje Hakkında</h4>
+                        <p>Sürüm ve geliştirici notları</p>
+                    </div>
+                    <button class="btn-secondary" onclick="showAboutProject(); closeSettings()"><i class="fa-solid fa-circle-info"></i> Bilgi</button>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Varsayılan Ses</h4>
+                        <p>Dublaj veya Altyazı tercihi</p>
+                    </div>
+                    <select id="settingAudio" onchange="saveSettings()">
+                        <option value="sub">Altyazı</option>
+                        <option value="dub">Dublaj</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Altyazı Boyutu</h4>
+                        <p>Video altyazılarının büyüklüğü</p>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="range" id="settingSubSize" min="14" max="48" value="20" onchange="saveSettings()" style="width:120px">
+                        <span id="subSizeVal">20px</span>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <span>Otomatik Sonraki Bölüm</span>
+                    <label class="switch">
+                        <input type="checkbox" id="settingAutoNext" onchange="saveSettings()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <!-- MAL Settings -->
+                <div class="setting-item" style="display:flex; flex-direction:column; align-items:flex-start; gap:0.5rem; margin-top:1rem; border-top:1px solid var(--border); padding-top:1rem;">
+                    <span style="font-weight:600; color:var(--accent);">MyAnimeList Bağlantısı</span>
+                    <label style="font-size:0.8rem; color:var(--text3);">MyAnimeList Kullanıcı Adı (Herkese Açık Liste)</label>
+                    <input type="text" id="malUsernameInput" placeholder="Kullanıcı Adı" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--surface2); color:var(--text);">
+                    <button class="btn-secondary" onclick="saveMALUsername()" style="font-size:0.8rem; padding:0.4rem 1rem;">Kaydet</button>
+                </div>
+
+                <!-- AI Settings -->
+                <div class="setting-item" style="display:flex; flex-direction:column; align-items:flex-start; gap:0.5rem; margin-top:1rem; border-top:1px solid var(--border); padding-top:1rem;">
+                    <span style="font-weight:600; color:var(--accent);">Yapay Zeka Ayarları</span>
+                    
+                    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                        <div>
+                            <h4>Yapay Zekayı Aç/Kapat</h4>
+                            <p style="font-size:0.8rem; color:var(--text3); margin:0;">Tüm yapay zeka özelliklerini etkinleştir veya devre dışı bırak</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="settingAIEnabled" onchange="saveSettings()" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    
+                    <label style="font-size:0.8rem; color:var(--text3);">Yapay Zeka Sağlayıcısı</label>
+                    <select id="settingAIProvider" onchange="saveSettings()" style="width:100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.5rem 1rem; border-radius: 8px; font-family: inherit;">
+                        <option value="openai">OpenAI (ChatGPT)</option>
+                        <option value="gemini">Google Gemini</option>
+                        <option value="openrouter">OpenRouter</option>
+                    </select>
+                    
+                    <label style="font-size:0.8rem; color:var(--text3);">API Anahtarı</label>
+                    <input type="password" id="settingAIApiKey" placeholder="API Anahtarınızı Girin" onchange="saveSettings()" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--surface2); color:var(--text);">
+                    
+                    <label style="font-size:0.8rem; color:var(--text3);">Özel Prompt (İsteğe Bağlı)</label>
+                    <textarea id="settingAIPrompt" placeholder="Yapay zekanın kullanacağı özel prompt şablonunu yazın..." onchange="saveSettings()" style="width:100%; height:100px; background: var(--surface2); color: var(--text); border:1px solid var(--border); border-radius: 8px; padding:0.75rem; font-family: inherit; font-size:0.9rem; resize:vertical;"></textarea>
+                </div>
+
+
+                <div class="setting-item">
+                    <div>
+                        <h4>Banner Animasyonu</h4>
+                        <p>Ana sayfa banner otomatik geçiş</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="settingBannerAuto" onchange="saveSettings()" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Varsayılan Kaynak</h4>
+                        <p>Anime arama ve izleme için varsayılan kaynak</p>
+                    </div>
+                    <select id="settingDefaultSource" onchange="saveSettings()" style="background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.5rem 1rem; border-radius: 8px; font-family: inherit;">
+                        <option value="AnimeciX">AnimeciX</option>
+                        <option value="Anizium">Anizium</option>
+                        <option value="Anizium Free">Anizium Free</option>
+                        <option value="OpenAnime" disabled>OpenAnime (devre dışı)</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Mobil Görünüm</h4>
+                        <p>Mobil cihazlar için alt menü görünümü</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="settingMobileView" onchange="saveSettings()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Altyazı Büyüklüğü</h4>
+                        <p>Oynatıcıdaki altyazıların boyutunu seçin</p>
+                    </div>
+                    <select id="settingSubtitleSize" onchange="saveSettings()" style="background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.5rem 1rem; border-radius: 8px; font-family: inherit;">
+                        <option value="small">Küçük</option>
+                        <option value="normal" selected>Normal</option>
+                        <option value="large">Büyük</option>
+                        <option value="xlarge">Çok Büyük</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Klavye Kısayolları</h4>
+                        <p>Ctrl+F: Ara • Ctrl+H: Geçmiş • ESC: Kapat</p>
+                    </div>
+                    <span class="meta-badge" style="padding:0.4rem 0.8rem">Aktif</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ WATCH2GETHER MODAL ══ -->
+    <div id="w2gModal" class="modal hidden">
+        <div class="modal-content settings-modal">
+            <div class="modal-header">
+                <h3 id="w2gModalTitle"><i class="fa-solid fa-users-line"></i> Oda Kur</h3>
+                <button onclick="closeW2GModal()" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="settings-body">
+                <div class="setting-item">
+                    <div>
+                        <h4>Kullanıcı Adınız</h4>
+                        <p>Sohbette görünecek isim</p>
+                    </div>
+                    <input type="text" id="w2gUsername" placeholder="Kullanıcı adınızı girin" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--surface2); color:var(--text);">
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Oda Adı</h4>
+                        <p>Odanızın ismi</p>
+                    </div>
+                    <input type="text" id="w2gRoomName" placeholder="Oda adı" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--surface2); color:var(--text);">
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Şifre</h4>
+                        <p>Odaya girmek için şifre</p>
+                    </div>
+                    <input type="password" id="w2gPassword" placeholder="Şifre" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--surface2); color:var(--text);">
+                </div>
+                <button id="w2gActionBtn" class="btn-primary" style="width:100%" onclick="handleW2GAction()">
+                    <i class="fa-solid fa-check"></i> Odayı Kur
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ NOTE MODAL ══ -->
+    <div id="noteModal" class="modal hidden">
+        <div class="modal-content settings-modal">
+            <div class="modal-header">
+                <h3><i class="fa-regular fa-note-sticky"></i> Bölüm Notu</h3>
+                <button onclick="closeNoteModal()" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="settings-body">
+                <p style="color:var(--text3);font-size:0.9rem;margin-bottom:0.5rem">Bu bölüme kişisel notunuzu ekleyin:</p>
+                <textarea id="noteTextarea" style="width:100%;height:120px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:0.75rem;font-family:inherit;font-size:0.95rem;resize:vertical" placeholder="Notunuzu buraya yazın..."></textarea>
+                <button class="btn-primary" style="margin-top:1rem;width:100%" onclick="saveNote()"><i class="fa-solid fa-floppy-disk"></i> Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ STATS MODAL ══ -->
+    <div id="statsModal" class="modal hidden">
+        <div class="modal-content settings-modal">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-chart-bar"></i> İzleme İstatistikleri</h3>
+                <button onclick="closeStats()" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="statsBody" class="settings-body"></div>
+        </div>
+    </div>
+    
+    <!-- ══ DETAILED PROFILE MODAL ══ -->
+    <div id="profileModal" class="modal hidden">
+        <div class="modal-content" style="width:90%; max-width:700px; max-height:90vh; overflow-y:auto; padding:0;">
+            <div class="profile-banner-wrapper" id="profileBannerWrapper">
+                <img id="profileBanner" src="" alt="Profile Banner" style="width:100%; height:180px; object-fit:cover;">
+                <label for="profileBannerInput" class="profile-banner-upload-btn"><i class="fa-solid fa-camera"></i></label>
+                <input type="file" id="profileBannerInput" accept="image/*" style="display:none;">
+            </div>
+            <div style="padding:2rem; padding-top:0; position:relative;">
+                <div class="profile-avatar-section" style="display:flex; align-items:flex-end; gap:1rem; transform: translateY(-50px); margin-bottom:-30px 0;">
+                    <div class="profile-avatar-wrapper" id="profileAvatarWrapper">
+                        <img id="profileAvatar" src="https://api.dicebear.com/8.x/avataaars/svg?seed=anitr" alt="Avatar" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:4px solid var(--surface);">
+                        <label for="profileAvatarInput" class="profile-avatar-upload-btn"><i class="fa-solid fa-camera"></i></label>
+                        <input type="file" id="profileAvatarInput" accept="image/*" style="display:none;">
+                    </div>
+                    <div style="flex:1;">
+                        <input type="text" id="profileUsername" style="font-size:1.5rem; font-weight:bold; background:transparent; border:none; color:var(--text); width:100%; outline:none;">
+                    </div>
+                    <select id="profileNameColor" style="background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:0.5rem; border-radius:8px;">
+                        <option value="#FF6B6B">Kırmızı</option>
+                        <option value="#4ECDC4">Mavi Yeşil</option>
+                        <option value="#FFE66D">Sarı</option>
+                        <option value="#95E1D3">Yeşil</option>
+                        <option value="#F38181">Pembe</option>
+                        <option value="#A8E6CF">Açık Yeşil</option>
+                        <option value="#FFD3B6">Portakal</option>
+                        <option value="#FFAAA5">Koyu Pembe</option>
+                        <option value="#88D8B0">Teal</option>
+                        <option value="#FF8B94">Koyu Kırmızı</option>
+                        <option value="#B19CD9">Mor</option>
+                        <option value="#87CEEB">Açık Mavi</option>
+                        <option value="#FFDAB9">Şeftali</option>
+                        <option value="#C9B1FF">Lavanta</option>
+                        <option value="#FFC0CB">Pembe</option>
+                        <option value="#DDA0DD">Eflatun</option>
+                    </select>
+                </div>
+
+                <div style="margin-top:1rem;">
+                    <h4 style="margin-bottom:0.5rem;"><i class="fa-solid fa-quote-left" style="margin-right:0.5rem;"></i>Bio</h4>
+                    <textarea id="profileBio" placeholder="Kendini tanıt..." style="width:100%; height:100px; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.75rem; font-family:inherit; font-size:0.95rem; resize:vertical;"></textarea>
+                </div>
+
+                <div style="margin-top:1rem; display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                    <div>
+                        <h4 style="margin-bottom:0.5rem;"><i class="fa-brands fa-discord" style="color:#5865F2; margin-right:0.5rem;"></i>Discord</h4>
+                        <input type="text" id="profileDiscord" placeholder="Kullanıcı Adı" style="width:100%; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0.75rem; font-family:inherit; font-size:0.95rem; outline:none;">
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom:0.5rem;"><i class="fa-solid fa-star" style="color:#f59e0b; margin-right:0.5rem;"></i>Favori Tür</h4>
+                        <select id="profileFavGenre" style="width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:0.75rem; border-radius:8px; outline:none;">
+                            <option value="">Seçilmedi</option>
+                            <option value="Aksiyon">Aksiyon</option>
+                            <option value="Komedi">Komedi</option>
+                            <option value="Romantik">Romantik</option>
+                            <option value="Fantastik">Fantastik</option>
+                            <option value="Bilim Kurgu">Bilim Kurgu</option>
+                            <option value="Dram">Dram</option>
+                            <option value="Korku">Korku</option>
+                            <option value="Gizem">Gizem</option>
+                            <option value="Spor">Spor</option>
+                            <option value="Slice of Life">Slice of Life</option>
+                            <option value="Mecha">Mecha</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="margin-top:1.5rem; border-top:1px solid var(--border); padding-top:1.5rem;">
+                    <h4 style="margin-bottom:0.75rem;"><i class="fa-solid fa-eye" style="margin-right:0.5rem;"></i>Görünürlük Ayarları</h4>
+                    <div class="setting-item" style="justify-content:space-between; margin-bottom:0.75rem;">
+                        <div>
+                            <h4>İzlediğim Animeler</h4>
+                            <p style="font-size:0.8rem; color:var(--text3); margin:0;">İzlediğin animeleri diğer kullanıcılar görebilsin</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="profileShowWatchedAnime" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item" style="justify-content:space-between; margin-bottom:0.75rem;">
+                        <div>
+                            <h4>Anlık İzleme</h4>
+                            <p style="font-size:0.8rem; color:var(--text3); margin:0;">Şu an ne izlediğini göster</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="profileShowCurrentWatching" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div style="margin-top:1.5rem; border-top:1px solid var(--border); padding-top:1.5rem;">
+                    <h4 style="margin-bottom:0.75rem;"><i class="fa-solid fa-film" style="margin-right:0.5rem;"></i>Anlık Olarak Ne İzliyorum</h4>
+                    <div id="profileCurrentWatching" class="profile-current-watching"></div>
+                </div>
+                
+                <button class="btn-primary" style="width:100%; margin-top:1.5rem;" onclick="saveProfile()">
+                    <i class="fa-solid fa-floppy-disk"></i> Profili Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ DOWNLOAD MODAL ══ -->
+    <div id="downloadModal" class="modal hidden">
+        <div class="modal-content settings-modal">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-download"></i> Bölümü İndir</h3>
+                <button onclick="closeDownloadModal()" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="settings-body">
+                <h4 style="margin-bottom:1rem;">Kalite Seç</h4>
+                <div id="downloadQualityList" style="display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1.5rem;"></div>
+                <button class="btn-primary" style="width:100%;" id="startDownloadBtn" onclick="startDownload()">
+                    <i class="fa-solid fa-download"></i> İndirmeye Başla
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ DOWNLOADS MODAL ══ -->
+    <div id="downloadsModal" class="modal hidden">
+        <div class="modal-content" style="width:90%;max-width:800px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-download"></i> İndirilenler</h3>
+                <button onclick="closeDownloadsModal()" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="downloadsContainer" class="settings-body"></div>
+        </div>
+    </div>
+
+    <!-- ══ MOBILE BOTTOM BAR ══ -->
+    <nav class="mobile-bottom-bar hidden">
+        <button class="mobile-nav-btn active" onclick="loadHome()">
+            <i class="fa-solid fa-house"></i>
+            <span>Ana Sayfa</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="document.getElementById('searchInput').focus(); window.scrollTo(0,0);">
+            <i class="fa-solid fa-search"></i>
+            <span>Ara</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="showWatchlist()">
+            <i class="fa-solid fa-bookmark"></i>
+            <span>Liste</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="showFavorites()">
+            <i class="fa-solid fa-heart"></i>
+            <span>Favoriler</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="showFriendsModal()">
+            <i class="fa-solid fa-user-group"></i>
+            <span>Arkadaşlar</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="openSettings()">
+            <i class="fa-solid fa-gear"></i>
+            <span>Ayarlar</span>
+        </button>
+    </nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.1/vanilla-tilt.min.js"></script>
+<script src="app.js?v=2.0.0"></script>
+<!-- ══ FRIENDS MODAL ══ -->
+<div id="friendsModal" class="modal hidden">
+    <div class="modal-content" style="max-width: 500px; padding: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.5rem;"><i class="fa-solid fa-user-group" style="color:var(--accent);"></i> Arkadaşlar</h2>
+            <button onclick="closeFriendsModal()" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        
+        <div style="margin-bottom: 2rem;">
+            <h3 style="font-size: 1.1rem; color: var(--text2); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Benim Arkadaşlarım</h3>
+            <div id="friendsMyList" style="max-height: 200px; overflow-y: auto;">
+                <!-- Arkadaşlarım buraya yüklenecek -->
+            </div>
+        </div>
+
+        <div>
+            <h3 style="font-size: 1.1rem; color: var(--text2); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Sunucudaki Kullanıcılar</h3>
+            <div id="friendsServerList" style="max-height: 250px; overflow-y: auto;">
+                <!-- Sunucudaki diğer kullanıcılar buraya yüklenecek -->
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

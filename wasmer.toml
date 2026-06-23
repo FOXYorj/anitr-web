@@ -1,0 +1,16 @@
+[package]
+name = "anitr"
+version = "0.1.0"
+description = "Anitr Web App"
+license = "MIT"
+repository = ""
+
+[command]
+main = "anitr"
+
+[[server]]
+name = "web"
+app-id = "anitr"
+env = { PORT = "8080" }
+port = 8080
+protocol = "http"

@@ -1,0 +1,16 @@
+.git
+.github
+*.log
+*.md
+*.json
+*.sh
+*.bat
+*.exe
+*.dll
+*.so
+*.dylib
+LICENSE
+Makefile
+test_*.go
+cmd/
+aur/

@@ -1,0 +1,47 @@
+# Go binary
+/bin
+/obj
+/*.exe
+/*.exe~
+/*.dll
+/*.so
+/*.dylib
+/*.dev
+
+**/*_test.go
+
+# Go workspace file
+/go.work
+/go.work.sum
+
+# Go build cache
+# This is for Go 1.11 and later, use go clean -cache to remove them
+/pkg/
+
+# IDE or editor directories
+/.idea
+/.vscode
+/.nvim
+/.sublime-project
+/.sublime-workspace
+
+# JetBrains IDE
+/.idea/
+
+# VS Code settings
+.vscode/
+
+# Mac OS Finder metadata
+.DS_Store
+
+# Windows image file thumbs
+Thumbs.db
+
+# Compiled binaries (go build çıktıları)
+/build
+anitr-cli
+anitr
+probe_subtitle
+
+# AI geliştirme bağlamı — kişisel, repoya girmemeli
+AI_STATE.md
