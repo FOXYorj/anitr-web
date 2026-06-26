@@ -54,51 +54,68 @@
             <div class="nav-group">
                 <button class="nav-btn" id="animeListBtn" title="Tüm Animeler" onclick="showAnimeListView()">
                     <i class="fa-solid fa-list-ul"></i>
+                    <span class="nav-btn-text">Tüm Animeler</span>
                 </button>
                 <button class="nav-btn" id="randomBtn" title="Rastgele Anime" onclick="loadRandom()">
                     <i class="fa-solid fa-shuffle"></i>
+                    <span class="nav-btn-text">Rastgele</span>
                 </button>
                 <button class="nav-btn" id="scheduleBtn" title="Yayın Takvimi" onclick="showScheduleView()">
                     <i class="fa-solid fa-calendar-days"></i>
+                    <span class="nav-btn-text">Yayın Takvimi</span>
                 </button>
             </div>
             <div class="nav-divider"></div>
             <div class="nav-group">
                 <button class="nav-btn" id="watchlistBtn" title="İzleme Listesi" onclick="showWatchlist()">
                     <i class="fa-solid fa-bookmark"></i>
+                    <span class="nav-btn-text">İzleme Listesi</span>
                 </button>
                 <button class="nav-btn" id="historyBtn" title="Geçmiş" onclick="showHistory()">
                     <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span class="nav-btn-text">Geçmiş</span>
                 </button>
                 <button class="nav-btn" id="favoritesBtn" title="Favoriler" onclick="showFavorites()">
                     <i class="fa-solid fa-heart"></i>
+                    <span class="nav-btn-text">Favoriler</span>
                 </button>
                 <button class="nav-btn" id="statsBtn" title="İstatistikler" onclick="showStats()">
                     <i class="fa-solid fa-chart-bar"></i>
+                    <span class="nav-btn-text">İstatistikler</span>
                 </button>
             </div>
             <div class="nav-divider"></div>
             <div class="nav-group">
                 <button class="nav-btn" id="roomsBtnNav" title="Online Odalar" onclick="showOnlineRooms()">
                     <i class="fa-solid fa-door-open"></i>
+                    <span class="nav-btn-text">Online Odalar</span>
                 </button>
                 <button class="nav-btn" id="friendsBtnNav" title="Arkadaşlar" onclick="showFriendsModal()">
                     <i class="fa-solid fa-user-group"></i>
+                    <span class="nav-btn-text">Arkadaşlar</span>
                 </button>
                 <button class="nav-btn" id="malBtnNav" title="MyAnimeList" onclick="showMALView()">
                     <i class="fa-solid fa-book-open"></i>
+                    <span class="nav-btn-text">MyAnimeList</span>
                 </button>
                 <button class="nav-btn" id="downloadsBtn" title="İndirilenler" onclick="showDownloadsModal()">
                     <i class="fa-solid fa-download"></i>
+                    <span class="nav-btn-text">İndirilenler</span>
                 </button>
             </div>
             <div class="nav-divider"></div>
             <div class="nav-group">
+                <button class="nav-btn" id="achievementsBtnNav" title="Başarı Rozetleri" onclick="openAchievementsModal()">
+                    <i class="fa-solid fa-trophy"></i>
+                    <span class="nav-btn-text">Rozetler</span>
+                </button>
                 <button class="nav-btn profile-btn" id="profileBtnNav" title="Profil" onclick="showProfileModal()">
                     <i class="fa-solid fa-user"></i>
+                    <span class="nav-btn-text">Profil</span>
                 </button>
                 <button class="nav-btn" id="settingsBtn" title="Ayarlar" onclick="openSettings()">
                     <i class="fa-solid fa-gear"></i>
+                    <span class="nav-btn-text">Ayarlar</span>
                 </button>
             </div>
         </div>
@@ -106,6 +123,33 @@
 
 
     <div id="loader" class="hidden"><div class="spinner"></div></div>
+
+    <!-- ══ ACHIEVEMENT POPUP NOTIFICATION ══ -->
+    <div id="achievementPopup" class="achievement-popup hidden">
+        <div class="achievement-popup-inner">
+            <div class="achievement-icon">
+                <i id="achievementPopupIcon" class="fa-solid fa-trophy"></i>
+            </div>
+            <div class="achievement-info">
+                <div class="achievement-unlocked-text">Başarı Kazanıldı!</div>
+                <h3 id="achievementPopupTitle" class="achievement-title">Başlık</h3>
+                <p id="achievementPopupDesc" class="achievement-desc">Açıklama</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ ACHIEVEMENTS MODAL ══ -->
+    <div id="achievementsModal" class="modal hidden">
+        <div class="modal-content settings-modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-trophy"></i> Başarı Rozetleri</h3>
+                <button onclick="closeAchievementsModal()" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="settings-body" id="achievementsContainer">
+                <!-- Achievements will be rendered here -->
+            </div>
+        </div>
+    </div>
 
     <!-- ══ AUTH MODAL ══ -->
     <div id="authModal" class="modal hidden">
@@ -185,16 +229,26 @@
         <h2 class="section-title"><i class="fa-solid fa-list-ul"></i> Tüm Animeler</h2>
         <!-- Filters -->
         <div class="filters">
-            <select id="seasonFilter" class="filter-select">
-                <option value="">Tüm Sezonlar</option>
+            <select id="genreFilter" class="filter-select">
+                <option value="">Tüm Türler</option>
             </select>
             <select id="yearFilter" class="filter-select">
                 <option value="">Tüm Yıllar</option>
             </select>
-            <select id="genreFilter" class="filter-select">
-                <option value="">Tüm Türler</option>
+            <select id="statusFilter" class="filter-select">
+                <option value="">Tüm Durumlar</option>
+                <option value="ongoing">Devam Eden</option>
+                <option value="completed">Tamamlanan</option>
+            </select>
+            <select id="sortFilter" class="filter-select">
+                <option value="">Sıralama</option>
+                <option value="popular">Popülerlik</option>
+                <option value="rating">Puan</option>
+                <option value="name">İsim (A-Z)</option>
+                <option value="year">Yıl (Yeni-Eski)</option>
             </select>
             <button class="btn-primary" onclick="applyFilters()" style="padding:0.5rem 1rem">Filtrele</button>
+            <button class="btn-secondary" onclick="clearFilters()" style="padding:0.5rem 1rem">Sıfırla</button>
         </div>
         <div id="animeListGrid" class="anime-grid"></div>
         <div class="pagination" id="animeListPagination"></div>
@@ -392,6 +446,7 @@
                     </div>
                     <select id="settingNavbarLayout" onchange="saveSettings()">
                         <option value="top">Sabit (Üstte)</option>
+                        <option value="top-hidden">Gizli (Yukarıdan İner)</option>
                         <option value="left">Gizli (Soldan açılır)</option>
                         <option value="right">Gizli (Sağdan açılır)</option>
                     </select>
@@ -422,6 +477,51 @@
                         <input type="range" id="settingSubSize" min="14" max="48" value="20" onchange="saveSettings()" style="width:120px">
                         <span id="subSizeVal">20px</span>
                     </div>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Altyazı Rengi</h4>
+                        <p>Altyazıların metin rengi</p>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="color" id="settingSubColor" value="#ffffff" onchange="saveSettings()">
+                        <span id="subColorVal">#ffffff</span>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Altyazı Arka Planı</h4>
+                        <p>Altyazıların arka plan rengi ve opaklığı</p>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="color" id="settingSubBgColor" value="#000000" onchange="saveSettings()">
+                        <input type="range" id="settingSubBgOpacity" min="0" max="100" value="70" onchange="saveSettings()" style="width:80px">
+                        <span id="subBgOpacityVal">%70</span>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Altyazı Fontu</h4>
+                        <p>Altyazıların yazı tipi</p>
+                    </div>
+                    <select id="settingSubFont" onchange="saveSettings()">
+                        <option value="Arial">Arial</option>
+                        <option value="Inter">Inter (Varsayılan)</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Altyazı Konumu</h4>
+                        <p>Altyazıların videodaki konumu</p>
+                    </div>
+                    <select id="settingSubPosition" onchange="saveSettings()">
+                        <option value="bottom">Alt (Varsayılan)</option>
+                        <option value="bottom-center">Alt-Orta</option>
+                        <option value="top">Üst</option>
+                    </select>
                 </div>
                 <div class="setting-item">
                     <span>Otomatik Sonraki Bölüm</span>

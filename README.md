@@ -168,41 +168,29 @@
 
 ---
 
-### Yöntem 1: install.sh ile (Linux/macOS)
-```bash
-curl -fsSL https://raw.githubusercontent.com/prayjofir/anitr-cli/main/install.sh | bash
-```
-
----
-
-### Yöntem 2: Kaynaktan Derleme
+### Yöntem 1: Kaynaktan Derleme
 
 #### Adım 1: Repoyu Klonla
 ```bash
-git clone https://github.com/prayjofir/anitr-cli.git
-cd anitr-cli
+git clone https://github.com/FOXYorj/anitr-web.git
+cd anitr-web
 ```
 
-#### Adım 2: Derle
+#### Adım 2: Derle ve Çalıştır
+Uygulamayı derlemek için Go kurulu olmalıdır:
 ```bash
-# Tüm platformlar için
-make build-all
-
-# Sadece mevcut platform için
-make build
+go build -o anitr_web.exe main.go
 ```
-
-#### Adım 3: Kur
+Çalıştırmak için:
 ```bash
-# Linux
-make install-linux
-
 # Windows
-make install-windows
+.\anitr_web.exe
 
-# macOS
-make install-macos
+# Linux / macOS (build -o anitr_web ile derledikten sonra)
+./anitr_web
 ```
+
+**Not:** Web arayüzüne erişmek için tarayıcınızda `http://localhost:8081` adresine gidebilirsiniz. Gerekirse `-port` parametresi ile farklı bir port belirtebilirsiniz.
 
 ---
 

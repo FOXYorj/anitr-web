@@ -29,6 +29,8 @@ const drawerContent = document.getElementById('drawerContent');
 const settingsModal = document.getElementById('settingsModal');
 const noteModal     = document.getElementById('noteModal');
 const statsModal    = document.getElementById('statsModal');
+const achievementPopup = document.getElementById('achievementPopup');
+const achievementsModal = document.getElementById('achievementsModal');
 
 // ── State ─────────────────────────────────────────────────
 // Varsayılan kaynak ayarlardan alınacak
@@ -66,6 +68,54 @@ let malUser = "";
 
 // ── Popular Anime Pagination ──────────────────────────────
 let popularPage = 2; // Ana sayfa sayfa 1'i çekti, buton 2'den başlar
+
+// ── Helper Functions ───────────────────────────────────────
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : { r: 0, g: 0, b: 0 };
+}
+
+function getSubtitleSettings() {
+    const saved = localStorage.getItem('anitr_subtitle_settings');
+    return saved ? JSON.parse(saved) : {
+        fontSize: 20,
+        backgroundOpacity: 0.7,
+        fontFamily: 'Inter, sans-serif',
+        textColor: '#ffffff',
+        backgroundColor: '#000000',
+        position: 'bottom'
+    };
+}
+
+function applySubtitleSettings(settings) {
+    // Plyr captions stilini ayarla
+    const style = document.createElement('style');
+    style.id = 'custom-subtitle-styles';
+    const existingStyle = document.getElementById('custom-subtitle-styles');
+    if (existingStyle) existingStyle.remove();
+    
+    const bgRgb = hexToRgb(settings.backgroundColor);
+    const bgColor = `rgba(${bgRgb.r}, ${bgRgb.g}, ${bgRgb.b}, ${settings.backgroundOpacity})`;
+    
+    style.textContent = `
+        .plyr__captions .plyr__caption {
+            font-size: ${settings.fontSize}px !important;
+            font-family: ${settings.fontFamily} !important;
+            color: ${settings.textColor} !important;
+            background-color: ${bgColor} !important;
+            padding: 0.3em 0.6em !important;
+            border-radius: 0.3em !important;
+        }
+        .plyr__caption {
+            ${settings.position === 'top' ? 'top: 10% !important; bottom: auto !important;' : ''}
+        }
+    `;
+    document.head.appendChild(style);
+}
 
 // ── Auth & Sync System ────────────────────────────────────
 let currentUser = localStorage.getItem('anitr_currentUser') || '';
@@ -307,6 +357,78 @@ const ls = {
   set: (k, v)   => { ls.setRaw(k, v); if(k !== 'anitr_settings') triggerSync(); }
 };
 
+// ── ACHIEVEMENTS SYSTEM (Başarı Rozetleri) ────────────────
+const ACHIEVEMENTS = [
+  { id: 'first_login', title: 'Yeni Başlayan', desc: 'İlk kez kayıt oldun!', icon: 'fa-user-plus', check: () => true },
+  { id: 'first_anime', title: 'İlk Adım', desc: 'İlk animeyi izlemeye başladın!', icon: 'fa-play', check: () => getHistory().length >= 1 },
+  { id: '5_anime', title: 'İzlemeye Devam', desc: '5 farklı anime izledin!', icon: 'fa-fire', check: () => getHistory().length >= 5 },
+  { id: '10_anime', title: 'Anime Sever', desc: '10 farklı anime izledin! Harika!', icon: 'fa-star', check: () => getHistory().length >= 10 },
+  { id: '25_anime', title: 'Gerçek Fan', desc: '25 farklı anime izledin! Teşekkürler!', icon: 'fa-crown', check: () => getHistory().length >= 25 },
+  { id: 'first_favorite', title: 'Beğeni Kutusu', desc: 'İlk favorini ekledin!', icon: 'fa-heart', check: () => getFavorites().length >= 1 },
+  { id: '5_favorites', title: 'Favori Koleksiyoncusu', desc: '5 favori anime ekledin!', icon: 'fa-heart-pulse', check: () => getFavorites().length >= 5 },
+  { id: 'first_watchlist', title: 'Planlayıcı', desc: 'İlk animesini izleme listene ekledin!', icon: 'fa-bookmark', check: () => getWatchlist().length >= 1 },
+];
+
+function getUnlockedAchievements() { return ls.get('anitr_achievements', []); }
+function setUnlockedAchievements(achievements) { ls.set('anitr_achievements', achievements); }
+
+function unlockAchievement(achievementId) {
+    const unlocked = getUnlockedAchievements();
+    if (unlocked.includes(achievementId)) return;
+    const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
+    if (!achievement) return;
+    unlocked.push(achievementId);
+    setUnlockedAchievements(unlocked);
+    showAchievementPopup(achievement);
+}
+
+function checkAllAchievements() {
+    const unlocked = getUnlockedAchievements();
+    for (const achievement of ACHIEVEMENTS) {
+        if (!unlocked.includes(achievement.id) && achievement.check()) {
+            unlockAchievement(achievement.id);
+        }
+    }
+}
+
+function showAchievementPopup(achievement) {
+    document.getElementById('achievementPopupIcon').className = `fa-solid ${achievement.icon}`;
+    document.getElementById('achievementPopupTitle').textContent = achievement.title;
+    document.getElementById('achievementPopupDesc').textContent = achievement.desc;
+    achievementPopup.classList.remove('hidden');
+    setTimeout(() => { achievementPopup.classList.add('hidden'); }, 5000);
+}
+
+function renderAchievements() {
+    const unlocked = getUnlockedAchievements();
+    const container = document.getElementById('achievementsContainer');
+    container.innerHTML = `
+        <div class="achievements-grid">
+            ${ACHIEVEMENTS.map(a => {
+                const isUnlocked = unlocked.includes(a.id);
+                return `
+                    <div class="achievement-card ${isUnlocked ? 'unlocked' : 'locked'}">
+                        <div class="achievement-card-icon">
+                            <i class="fa-solid ${isUnlocked ? a.icon : 'fa-lock'}"></i>
+                        </div>
+                        <div class="achievement-card-title">${a.title}</div>
+                        <div class="achievement-card-desc">${isUnlocked ? a.desc : '???'}</div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function openAchievementsModal() {
+    renderAchievements();
+    achievementsModal.classList.remove('hidden');
+}
+
+function closeAchievementsModal() {
+    achievementsModal.classList.add('hidden');
+}
+
 // ── Auth UI Logic ─────────────────────────────────────────
 function showAuthModal(cancellable = true) {
     document.getElementById('authModal').classList.remove('hidden');
@@ -438,6 +560,12 @@ async function handleAuthSubmit() {
             updateNavbarProfile();
             closeAuthModal();
             await loadFromServer(currentUser);
+            
+            // Unlock achievement if registering
+            if (!isAuthModeLogin) {
+                unlockAchievement('first_login');
+            }
+            
             if(document.getElementById('homeView').classList.contains('hidden') && document.getElementById('watchView').classList.contains('hidden')) {
                 loadHome();
             } else {
@@ -489,8 +617,7 @@ const appSettings = {
     autoNext: true,
     bannerAuto: true,
     mobileView: false,
-    defaultSource: 'AnimeciX',
-    subtitleSize: 'normal'
+    defaultSource: 'AnimeciX'
 };
 Object.assign(appSettings, ls.get('anitr_settings', {}));
 
@@ -579,23 +706,38 @@ let profile = {
 function saveSettings() {
     const prevSource = currentSource;
     
-    appSettings.audio          = document.getElementById('settingAudio').value;
-    appSettings.autoNext       = document.getElementById('settingAutoNext').checked;
-    appSettings.bannerAuto     = document.getElementById('settingBannerAuto').checked;
-    appSettings.mobileView     = document.getElementById('settingMobileView') ? document.getElementById('settingMobileView').checked : false;
-    appSettings.defaultSource  = normalizeSourceName(document.getElementById('settingDefaultSource') ? document.getElementById('settingDefaultSource').value : 'AnimeciX');
-    appSettings.subSize        = parseInt(document.getElementById('settingSubSize').value) || 20;
-    appSettings.navbarLayout   = document.getElementById('settingNavbarLayout') ? document.getElementById('settingNavbarLayout').value : 'top';
-    appSettings.aiEnabled      = document.getElementById('settingAIEnabled') ? document.getElementById('settingAIEnabled').checked : true;
-    appSettings.aiProvider     = document.getElementById('settingAIProvider') ? document.getElementById('settingAIProvider').value : 'openai';
-    appSettings.aiApiKey       = document.getElementById('settingAIApiKey') ? document.getElementById('settingAIApiKey').value : '';
-    appSettings.aiPrompt       = document.getElementById('settingAIPrompt') ? document.getElementById('settingAIPrompt').value : '';
+    appSettings.audio             = document.getElementById('settingAudio').value;
+    appSettings.autoNext          = document.getElementById('settingAutoNext').checked;
+    appSettings.bannerAuto        = document.getElementById('settingBannerAuto').checked;
+    appSettings.mobileView        = document.getElementById('settingMobileView') ? document.getElementById('settingMobileView').checked : false;
+    appSettings.defaultSource     = normalizeSourceName(document.getElementById('settingDefaultSource') ? document.getElementById('settingDefaultSource').value : 'AnimeciX');
+    appSettings.navbarLayout      = document.getElementById('settingNavbarLayout') ? document.getElementById('settingNavbarLayout').value : 'top';
+    appSettings.aiEnabled         = document.getElementById('settingAIEnabled') ? document.getElementById('settingAIEnabled').checked : true;
+    appSettings.aiProvider        = document.getElementById('settingAIProvider') ? document.getElementById('settingAIProvider').value : 'openai';
+    appSettings.aiApiKey          = document.getElementById('settingAIApiKey') ? document.getElementById('settingAIApiKey').value : '';
+    appSettings.aiPrompt          = document.getElementById('settingAIPrompt') ? document.getElementById('settingAIPrompt').value : '';
+    
+    // Save subtitle settings to existing localStorage key
+    const subtitleSettings = {
+        fontSize: parseInt(document.getElementById('settingSubSize').value) || 20,
+        textColor: document.getElementById('settingSubColor').value || '#ffffff',
+        backgroundColor: document.getElementById('settingSubBgColor').value || '#000000',
+        backgroundOpacity: (parseInt(document.getElementById('settingSubBgOpacity').value) || 70) / 100,
+        fontFamily: (document.getElementById('settingSubFont').value || 'Inter') + ', sans-serif',
+        position: document.getElementById('settingSubPosition').value || 'bottom'
+    };
+    localStorage.setItem('anitr_subtitle_settings', JSON.stringify(subtitleSettings));
     
     ls.set('anitr_settings', appSettings);
     
     // Uygula
-    document.getElementById('subSizeVal').textContent = appSettings.subSize + 'px';
-    document.documentElement.style.setProperty('--sub-size', appSettings.subSize + 'px');
+    document.getElementById('subSizeVal').textContent = subtitleSettings.fontSize + 'px';
+    document.getElementById('subColorVal').textContent = subtitleSettings.textColor;
+    document.getElementById('subBgOpacityVal').textContent = `%${Math.round(subtitleSettings.backgroundOpacity * 100)}`;
+    document.documentElement.style.setProperty('--sub-size', subtitleSettings.fontSize + 'px');
+    
+    // Apply subtitle styles to Plyr
+    applySubtitleSettings(subtitleSettings);
     
     // Kaynak değişti mi kontrol et
     if (prevSource !== appSettings.defaultSource) {
@@ -639,12 +781,52 @@ function loadSettingsUI() {
     document.getElementById('settingAutoNext').checked  = appSettings.autoNext !== false;
     document.getElementById('settingBannerAuto').checked = appSettings.bannerAuto !== false;
     
+    // Load subtitle settings from existing localStorage key
+    const subtitleSettings = (function getSubtitleSettings() {
+        const saved = localStorage.getItem('anitr_subtitle_settings');
+        return saved ? JSON.parse(saved) : {
+            fontSize: 20,
+            backgroundOpacity: 0.7,
+            fontFamily: 'Inter, sans-serif',
+            textColor: '#ffffff',
+            backgroundColor: '#000000',
+            position: 'bottom'
+        };
+    })();
+    
     const subSizeInput = document.getElementById('settingSubSize');
     if (subSizeInput) {
-        subSizeInput.value = appSettings.subSize || 20;
-        document.getElementById('subSizeVal').textContent = (appSettings.subSize || 20) + 'px';
-        document.documentElement.style.setProperty('--sub-size', (appSettings.subSize || 20) + 'px');
+        subSizeInput.value = subtitleSettings.fontSize;
+        document.getElementById('subSizeVal').textContent = subtitleSettings.fontSize + 'px';
+        document.documentElement.style.setProperty('--sub-size', subtitleSettings.fontSize + 'px');
     }
+    const subColorInput = document.getElementById('settingSubColor');
+    if (subColorInput) {
+        subColorInput.value = subtitleSettings.textColor;
+        document.getElementById('subColorVal').textContent = subtitleSettings.textColor;
+    }
+    const subBgColorInput = document.getElementById('settingSubBgColor');
+    if (subBgColorInput) {
+        subBgColorInput.value = subtitleSettings.backgroundColor;
+    }
+    const subBgOpacityInput = document.getElementById('settingSubBgOpacity');
+    if (subBgOpacityInput) {
+        subBgOpacityInput.value = Math.round(subtitleSettings.backgroundOpacity * 100);
+        document.getElementById('subBgOpacityVal').textContent = `%${Math.round(subtitleSettings.backgroundOpacity * 100)}`;
+    }
+    const subFontInput = document.getElementById('settingSubFont');
+    if (subFontInput) {
+        // Extract just the font name (without ', sans-serif')
+        const fontName = subtitleSettings.fontFamily.split(',')[0].trim();
+        subFontInput.value = fontName;
+    }
+    const subPositionInput = document.getElementById('settingSubPosition');
+    if (subPositionInput) {
+        subPositionInput.value = subtitleSettings.position;
+    }
+    
+    // Apply subtitle styles initially
+    applySubtitleSettings(subtitleSettings);
 
     const sourceSelect = document.getElementById('settingDefaultSource');
     if (sourceSelect) {
@@ -1516,6 +1698,7 @@ function toggleWatchlistItem(anime) {
     saveWatchlist(list);
     updateDetailWLBtn(anime.id);
     updateWatchlistButton();
+    checkAllAchievements();
 }
 
 function toggleWatchlistFromWatch() {
@@ -1636,13 +1819,71 @@ function saveNote() {
 }
 
 // ── Anime List Logic ─────────────────────────────────────
+let allAnimeList = []; // Store all fetched animes for filtering
+
 async function showAnimeListView() {
     showAnimeListViewContainer();
     const grid = document.getElementById('animeListGrid');
     grid.innerHTML = '';
     animeListPage = 1;
     hasMoreAnime = true;
+    allAnimeList = []; // Reset the list
+    
+    // Initialize filter dropdowns
+    initializeFilters();
+    
     await loadMoreAnime();
+}
+
+function initializeFilters() {
+    // Populate year filter
+    const yearSelect = document.getElementById('yearFilter');
+    yearSelect.innerHTML = '<option value="">Tüm Yıllar</option>';
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear; y >= 1990; y--) {
+        yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
+    }
+    
+    // Populate genre filter (sample genres, you can expand later)
+    const genreSelect = document.getElementById('genreFilter');
+    const genres = [
+        'Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy',
+        'Sci-Fi', 'Slice of Life', 'Sports', 'Mystery', 'Horror', 'Supernatural',
+        'Romance', 'Ecchi', 'Mecha', 'Music', 'Psychological', 'Thriller'
+    ];
+    genreSelect.innerHTML = '<option value="">Tüm Türler</option>';
+    genres.forEach(g => {
+        genreSelect.innerHTML += `<option value="${g}">${g}</option>`;
+    });
+}
+
+let currentFilters = {
+    genre: '',
+    year: '',
+    status: '',
+    sort: ''
+};
+
+function applyFilters() {
+    currentFilters = {
+        genre: document.getElementById('genreFilter')?.value || '',
+        year: document.getElementById('yearFilter')?.value || '',
+        status: document.getElementById('statusFilter')?.value || '',
+        sort: document.getElementById('sortFilter')?.value || ''
+    };
+    const grid = document.getElementById('animeListGrid');
+    grid.innerHTML = '';
+    renderAnimeListItems(filterAndSortAnimeList(allAnimeList));
+}
+
+function clearFilters() {
+    document.getElementById('genreFilter').value = '';
+    document.getElementById('yearFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('sortFilter').value = '';
+    currentFilters = {
+        genre: '', year: '', status: '', sort: '' };
+    applyFilters();
 }
 
 async function loadMoreAnime() {
@@ -1653,13 +1894,18 @@ async function loadMoreAnime() {
     loader.classList.remove('hidden');
 
     try {
-        const data = await fetchAPI(`/discover?page=${animeListPage}&source=${encodeURIComponent(currentSource)}`);
+        let url = `/discover?page=${animeListPage}&source=${encodeURIComponent(currentSource)}`;
+        
+        const data = await fetchAPI(url);
         
         if (data && Array.isArray(data) && data.length > 0) {
-            renderAnimeListItems(data);
+            allAnimeList = [...allAnimeList, ...data]; // Add to the full list
             animeListPage++;
-            // Eğer gelen veri azsa daha fazla yoktur diye varsayalım (basit bir mantık)
             if (data.length < 10) hasMoreAnime = false;
+            
+            // Render filtered and sorted list
+            const filteredData = filterAndSortAnimeList(allAnimeList);
+            renderAnimeListItems(filteredData, true); // Clear existing grid
         } else {
             hasMoreAnime = false;
         }
@@ -1672,8 +1918,63 @@ async function loadMoreAnime() {
     }
 }
 
-function renderAnimeListItems(data) {
+function filterAndSortAnimeList(animeList) {
+    let filtered = [...animeList];
+    
+    // Filter by genre (check in title/synopsis, since we don't have genre data from API yet)
+    if (currentFilters.genre) {
+        const genreLower = currentFilters.genre.toLowerCase();
+        filtered = filtered.filter(a => {
+            const title = (a.Title || a.title || '').toLowerCase();
+            const synopsis = (a.Synopsis || a.synopsis || '').toLowerCase();
+            return title.includes(genreLower) || synopsis.includes(genreLower);
+        });
+    }
+    
+    // Filter by year (check in title/synopsis)
+    if (currentFilters.year) {
+        filtered = filtered.filter(a => {
+            const title = (a.Title || a.title || '');
+            const synopsis = (a.Synopsis || a.synopsis || '');
+            return title.includes(currentFilters.year) || synopsis.includes(currentFilters.year);
+        });
+    }
+    
+    // Sort
+    if (currentFilters.sort) {
+        switch (currentFilters.sort) {
+            case 'name':
+                filtered.sort((a, b) => {
+                    const titleA = (a.Title || a.title || '').toLowerCase();
+                    const titleB = (b.Title || b.title || '').toLowerCase();
+                    return titleA.localeCompare(titleB);
+                });
+                break;
+            case 'year':
+                filtered.sort((a, b) => {
+                    // Try to extract year from title
+                    const yearA = extractYear(a.Title || a.title || '');
+                    const yearB = extractYear(b.Title || b.title || '');
+                    return yearB - yearA;
+                });
+                break;
+        }
+    }
+    
+    return filtered;
+}
+
+function extractYear(title) {
+    const match = title.match(/(199\d|20[0-2]\d)/);
+    return match ? parseInt(match[0]) : 0;
+}
+
+function renderAnimeListItems(data, clearGrid = false) {
     const grid = document.getElementById('animeListGrid');
+    
+    if (clearGrid) {
+        grid.innerHTML = '';
+    }
     
     data.forEach(a => {
         const title    = (a.Title    || a.title    || 'Bilinmiyor');
@@ -1731,6 +2032,10 @@ window.showStats         = showStats;
 window.openSettings      = openSettings;
 window.toggleTheme       = toggleTheme;
 window.handleSearch      = handleSearch;
+window.applyFilters      = applyFilters;
+window.clearFilters      = clearFilters;
+window.openAchievementsModal = openAchievementsModal;
+window.closeAchievementsModal = closeAchievementsModal;
 
 // ── Watchlist / History Views ──────────────────────────────
 function showWatchlist() {
@@ -1961,6 +2266,7 @@ function addToHistory(anime) {
     h.unshift(anime);
     if (h.length > 30) h = h.slice(0, 30);
     saveHistory(h);
+    checkAllAchievements();
 }
 
 function toggleFavorite(anime) {
@@ -1975,6 +2281,7 @@ function toggleFavorite(anime) {
     }
     saveFavorites(favs);
     updateFavBtn();
+    checkAllAchievements();
 }
 
 function toggleFavoriteFromWatch() {
@@ -2538,36 +2845,9 @@ function openPlayer(watch, resumeAt) {
     animePlayer = document.getElementById('animePlayer');
 
     // Altyazı Ayarlarını Kaydet
-    function getSubtitleSettings() {
-        const saved = localStorage.getItem('anitr_subtitle_settings');
-        return saved ? JSON.parse(saved) : {
-            fontSize: 16,
-            backgroundOpacity: 0.8,
-            fontFamily: 'Arial, sans-serif',
-            textColor: '#ffffff'
-        };
-    }
     function saveSubtitleSettings(settings) {
         localStorage.setItem('anitr_subtitle_settings', JSON.stringify(settings));
         applySubtitleSettings(settings);
-    }
-    function applySubtitleSettings(settings) {
-        // Plyr captions stilini ayarla
-        const style = document.createElement('style');
-        style.id = 'custom-subtitle-styles';
-        const existingStyle = document.getElementById('custom-subtitle-styles');
-        if (existingStyle) existingStyle.remove();
-        style.textContent = `
-            .plyr__captions .plyr__caption {
-                font-size: ${settings.fontSize}px !important;
-                font-family: ${settings.fontFamily} !important;
-                color: ${settings.textColor} !important;
-                background-color: rgba(0, 0, 0, ${settings.backgroundOpacity}) !important;
-                padding: 0.3em 0.6em !important;
-                border-radius: 0.3em !important;
-            }
-        `;
-        document.head.appendChild(style);
     }
     // Altyazı Ayarları Panelini Oluştur
     function setupSubtitleSettings() {
@@ -2584,6 +2864,16 @@ function openPlayer(watch, resumeAt) {
                     oninput="updateSubtitleSetting('fontSize', this.value)">
             </div>
             <div class="subtitle-setting-item">
+                <label>Yazı Rengi:</label>
+                <input type="color" id="subtitleTextColor" value="${settings.textColor}" 
+                    oninput="updateSubtitleSetting('textColor', this.value)">
+            </div>
+            <div class="subtitle-setting-item">
+                <label>Arka Plan Rengi:</label>
+                <input type="color" id="subtitleBackgroundColor" value="${settings.backgroundColor}" 
+                    oninput="updateSubtitleSetting('backgroundColor', this.value)">
+            </div>
+            <div class="subtitle-setting-item">
                 <label>Arka Plan Şeffaflığı: <span id="bgOpacityValue">${Math.round(settings.backgroundOpacity * 100)}%</span></label>
                 <input type="range" id="subtitleBgOpacity" min="0" max="100" value="${Math.round(settings.backgroundOpacity * 100)}" 
                     oninput="updateSubtitleSetting('backgroundOpacity', this.value / 100)">
@@ -2591,6 +2881,7 @@ function openPlayer(watch, resumeAt) {
             <div class="subtitle-setting-item">
                 <label>Yazı Tipi:</label>
                 <select id="subtitleFontFamily" onchange="updateSubtitleSetting('fontFamily', this.value)">
+                    <option value="Inter, sans-serif" ${settings.fontFamily.includes('Inter') ? 'selected' : ''}>Inter</option>
                     <option value="Arial, sans-serif" ${settings.fontFamily.includes('Arial') ? 'selected' : ''}>Arial</option>
                     <option value="Verdana, sans-serif" ${settings.fontFamily.includes('Verdana') ? 'selected' : ''}>Verdana</option>
                     <option value="Georgia, serif" ${settings.fontFamily.includes('Georgia') ? 'selected' : ''}>Georgia</option>
@@ -2599,9 +2890,12 @@ function openPlayer(watch, resumeAt) {
                 </select>
             </div>
             <div class="subtitle-setting-item">
-                <label>Yazı Rengi:</label>
-                <input type="color" id="subtitleTextColor" value="${settings.textColor}" 
-                    oninput="updateSubtitleSetting('textColor', this.value)">
+                <label>Altyazı Konumu:</label>
+                <select id="subtitlePosition" onchange="updateSubtitleSetting('position', this.value)">
+                    <option value="bottom" ${settings.position === 'bottom' ? 'selected' : ''}>Alt</option>
+                    <option value="bottom-center" ${settings.position === 'bottom-center' ? 'selected' : ''}>Alt-Orta</option>
+                    <option value="top" ${settings.position === 'top' ? 'selected' : ''}>Üst</option>
+                </select>
             </div>
         `;
         
@@ -2636,6 +2930,10 @@ function openPlayer(watch, resumeAt) {
             settings.fontFamily = value;
         } else if (key === 'textColor') {
             settings.textColor = value;
+        } else if (key === 'backgroundColor') {
+            settings.backgroundColor = value;
+        } else if (key === 'position') {
+            settings.position = value;
         }
         saveSubtitleSettings(settings);
     }

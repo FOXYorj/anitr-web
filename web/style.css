@@ -142,6 +142,132 @@ a:hover { filter: drop-shadow(0 0 8px var(--accent-glow)); }
 }
 
 /* ══════════════════════════════════════════════════════════
+   ACHIEVEMENTS (Başarı Rozetleri)
+══════════════════════════════════════════════════════════ */
+.achievement-popup {
+  position: fixed;
+  right: 2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10000;
+}
+.achievement-popup-inner {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 40px var(--accent-glow);
+  animation: achievementSlideIn 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.achievement-icon {
+  width: 70px;
+  height: 70px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: white;
+  box-shadow: 0 4px 20px var(--accent-glow);
+  flex-shrink: 0;
+}
+.achievement-unlocked-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+}
+.achievement-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+}
+.achievement-desc {
+  font-size: 0.9rem;
+  color: var(--text2);
+  margin: 0;
+  margin-top: 0.25rem;
+}
+@keyframes achievementSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Achievements in modal */
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+.achievement-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  text-align: center;
+  transition: all var(--transition);
+}
+.achievement-card.unlocked {
+  border-color: var(--accent);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+.achievement-card.locked {
+  opacity: 0.5;
+  filter: grayscale(0.8);
+}
+.achievement-card-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 0.75rem;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  color: white;
+}
+.achievement-card.locked .achievement-card-icon {
+  background: var(--surface2);
+  color: var(--text3);
+}
+.achievement-card-title {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+.achievement-card-desc {
+  font-size: 0.8rem;
+  color: var(--text3);
+}
+.achievement-card-progress {
+  margin-top: 0.75rem;
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.achievement-card-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  border-radius: 99px;
+  transition: width 0.5s ease;
+}
+.achievement-card-progress-text {
+  font-size: 0.75rem;
+  color: var(--text3);
+  margin-top: 0.25rem;
+}
+
+/* ══════════════════════════════════════════════════════════
    NAVBAR  — flush top bar
 ══════════════════════════════════════════════════════════ */
 .navbar {
@@ -156,17 +282,19 @@ a:hover { filter: drop-shadow(0 0 8px var(--accent-glow)); }
   gap: 1rem;
   padding: 0 1.5rem;
   height: var(--nav-height);
-  background: rgba(5, 5, 5, 0.55);
-  backdrop-filter: blur(28px) saturate(160%);
-  -webkit-backdrop-filter: blur(28px) saturate(160%);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  box-shadow: 0 2px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+  background: transparent;
+  border-bottom: none;
+  box-shadow: none;
   transition: background 0.4s, box-shadow 0.4s;
+  pointer-events: none; /* Let clicks pass through empty areas */
+}
+.navbar > * {
+  pointer-events: auto; /* Re-enable clicks for navbar items */
 }
 [data-theme="light"] .navbar {
-  background: rgba(255,255,255,0.75);
-  border-bottom: 1px solid rgba(0,0,0,0.08);
-  box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+  background: transparent;
+  border-bottom: none;
+  box-shadow: none;
 }
 
 /* Nav Left */
@@ -335,7 +463,8 @@ a:hover { filter: drop-shadow(0 0 8px var(--accent-glow)); }
   background: transparent;
   border: none;
   color: rgba(255,255,255,0.6);
-  width: 38px; height: 38px;
+  width: 38px;
+  height: 38px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -343,6 +472,9 @@ a:hover { filter: drop-shadow(0 0 8px var(--accent-glow)); }
   font-size: 0.95rem;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+}
+.nav-btn-text {
+  display: none;
 }
 .nav-btn:hover {
   background: rgba(255,255,255,0.1);
@@ -1630,7 +1762,7 @@ main:not(#homeView) {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.7);
-  z-index: 800;
+  z-index: 2000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2482,22 +2614,26 @@ body[data-nav-layout="right"] .navbar {
   top: 0;
   bottom: 0;
   height: 100vh;
-  width: 260px;
+  width: 280px;
+  display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  padding: 2rem 1.5rem;
+  align-items: stretch;
+  padding: 1.5rem 1.25rem;
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   border-bottom: none !important;
   box-shadow: 0 0 60px rgba(0,0,0,0.5) !important;
+  z-index: 1000;
 }
 
 body[data-nav-layout="left"] .navbar {
   left: 0;
+  right: auto;
   transform: translateX(-100%);
   border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
 body[data-nav-layout="right"] .navbar {
+  left: auto;
   right: 0;
   transform: translateX(100%);
   border-left: 1px solid rgba(255, 255, 255, 0.06) !important;
@@ -2511,7 +2647,7 @@ body[data-nav-layout="right"]::before {
   position: fixed;
   top: 0;
   bottom: 0;
-  width: 20px;
+  width: 30px;
   z-index: 999;
 }
 body[data-nav-layout="left"]::before { left: 0; }
@@ -2535,30 +2671,105 @@ body[data-nav-layout="right"] .navbar:hover {
   transform: translateX(0);
 }
 
-/* Sidebar içerik düzeni */
-body[data-nav-layout="left"] .navbar > *,
-body[data-nav-layout="right"] .navbar > * {
-  width: 100%;
+/* ══════════════════════════════════════════════════════════
+   ✨ GÖRSEL ÖZELLİK 7 — TOP-HIDDEN NAVBAR (Yukarıda Gizlenen)
+══════════════════════════════════════════════════════════ */
+body[data-nav-layout="top-hidden"] .navbar {
+  transform: translateY(calc(-100% + 15px));
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), background 0.35s;
+  background: transparent;
+  pointer-events: none;
+}
+body[data-nav-layout="top-hidden"] .navbar > * {
+  pointer-events: auto;
+}
+
+body[data-nav-layout="top-hidden"] .navbar::after {
+  content: '';
+  position: absolute;
+  bottom: -40px;
+  left: 0;
+  right: 0;
+  height: 40px;
+  pointer-events: auto;
+}
+
+body[data-nav-layout="top-hidden"] .navbar:hover {
+  transform: translateY(0);
+  background: rgba(5, 5, 5, 0.55);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  box-shadow: 0 2px 40px rgba(0,0,0,0.35);
+}
+[data-theme="light"] body[data-nav-layout="top-hidden"] .navbar:hover {
+  background: rgba(255,255,255,0.75);
+}
+
+body[data-nav-layout="top-hidden"] .navbar:hover::after {
+  height: 40px; /* Don't cover whole screen when open */
+}
+
+/* Sidebar içerik düzeni (Left/Right) */
+body[data-nav-layout="left"] .navbar .nav-left,
+body[data-nav-layout="right"] .navbar .nav-left {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
   margin-bottom: 1.5rem;
 }
+
+body[data-nav-layout="left"] .navbar .nav-center,
+body[data-nav-layout="right"] .navbar .nav-center {
+  margin-bottom: 1.5rem;
+}
+
 body[data-nav-layout="left"] .search-container,
 body[data-nav-layout="right"] .search-container {
   max-width: 100%;
 }
-body[data-nav-layout="left"] .nav-actions,
-body[data-nav-layout="right"] .nav-actions {
+
+body[data-nav-layout="left"] .navbar .nav-right,
+body[data-nav-layout="right"] .navbar .nav-right {
+  display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  gap: 0.75rem;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 0.25rem;
 }
+
+body[data-nav-layout="left"] .navbar .nav-group,
+body[data-nav-layout="right"] .navbar .nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+body[data-nav-layout="left"] .navbar .nav-divider,
+body[data-nav-layout="right"] .navbar .nav-divider {
+  width: 100%;
+  height: 1px;
+  margin: 0.5rem 0;
+}
+
 body[data-nav-layout="left"] .nav-btn,
 body[data-nav-layout="right"] .nav-btn {
   justify-content: flex-start;
-  padding: 0.8rem 1rem;
+  padding: 0.7rem 1rem;
   width: 100%;
+  height: auto;
   border-radius: var(--radius-sm);
   background: rgba(255,255,255,0.03);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+body[data-nav-layout="left"] .nav-btn .nav-btn-text,
+body[data-nav-layout="right"] .nav-btn .nav-btn-text {
+  display: inline;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 body[data-nav-layout="left"] .nav-btn:hover,
 body[data-nav-layout="right"] .nav-btn:hover {
@@ -2571,6 +2782,21 @@ body[data-nav-layout="right"] .profile-btn {
   margin-top: auto;
   width: 100%;
   justify-content: center;
+}
+
+/* Prevent content from hiding behind sidebar navbar */
+body[data-nav-layout="left"] main:not(#homeView),
+body[data-nav-layout="right"] main:not(#homeView) {
+  padding-top: 2rem !important;
+}
+body[data-nav-layout="left"] #mainContent,
+body[data-nav-layout="right"] #mainContent {
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+body[data-nav-layout="left"] #homeView,
+body[data-nav-layout="right"] #homeView {
+  padding-top: 0 !important;
 }
 
 /* Sayfa içeriğini kaydırma gerekirse (isteğe bağlı, şimdilik hover overlay olduğu için kaydırmıyoruz) */
