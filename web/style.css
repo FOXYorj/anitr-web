@@ -286,10 +286,6 @@ a:hover { filter: drop-shadow(0 0 8px var(--accent-glow)); }
   border-bottom: none;
   box-shadow: none;
   transition: background 0.4s, box-shadow 0.4s;
-  pointer-events: none; /* Let clicks pass through empty areas */
-}
-.navbar > * {
-  pointer-events: auto; /* Re-enable clicks for navbar items */
 }
 [data-theme="light"] .navbar {
   background: transparent;
@@ -2678,10 +2674,6 @@ body[data-nav-layout="top-hidden"] .navbar {
   transform: translateY(calc(-100% + 15px));
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), background 0.35s;
   background: transparent;
-  pointer-events: none;
-}
-body[data-nav-layout="top-hidden"] .navbar > * {
-  pointer-events: auto;
 }
 
 body[data-nav-layout="top-hidden"] .navbar::after {
@@ -2691,7 +2683,6 @@ body[data-nav-layout="top-hidden"] .navbar::after {
   left: 0;
   right: 0;
   height: 40px;
-  pointer-events: auto;
 }
 
 body[data-nav-layout="top-hidden"] .navbar:hover {
