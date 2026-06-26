@@ -2971,3 +2971,61 @@ body[data-nav-layout="right"] #homeView {
 .plyr__menu__container [role="menuitemradio"][aria-checked="true"]::before {
   background: var(--accent) !important;
 }
+
+/* ══════════════════════════════════════════════════════════
+   ✨ GÖRSEL ÖZELLİK 8 — 3D SCROLL FOOTER
+══════════════════════════════════════════════════════════ */
+.scroll-3d-footer {
+  height: 60vh;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1200px; /* Essential for 3D effect */
+  background: radial-gradient(circle at center, var(--surface) 0%, var(--bg) 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 4rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.scroll-3d-footer::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><path d="M0 0h40v40H0z" fill="none"/><path d="M0 39.5h40" stroke="rgba(255,255,255,0.03)" stroke-width="1"/><path d="M39.5 0v40" stroke="rgba(255,255,255,0.03)" stroke-width="1"/></svg>');
+  transform: rotateX(60deg) translateY(-100px) translateZ(-200px);
+  transform-origin: top;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.scroll-3d-content {
+  text-align: center;
+  transform-style: preserve-3d;
+  will-change: transform;
+  /* initial state managed by JS */
+}
+
+.scroll-3d-content h2 {
+  font-size: 3.5rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  background: linear-gradient(to right, #fff, var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 10px 40px rgba(229, 9, 20, 0.5);
+  letter-spacing: -1px;
+}
+
+.scroll-3d-content p {
+  font-size: 1.2rem;
+  color: var(--text2);
+  margin-bottom: 2rem;
+}
+
+.scroll-3d-content .btn-primary {
+  padding: 1rem 2.5rem;
+  font-size: 1.1rem;
+  box-shadow: 0 10px 30px rgba(229, 9, 20, 0.3);
+}

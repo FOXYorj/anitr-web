@@ -4525,3 +4525,30 @@ async function removeFriend(friendName) {
         showToast('❌ Çıkarılamadı: ' + err.message);
     }
 }
+
+/* ============================================================
+   ✨ GÖRSEL ÖZELLİK 8 — 3D SCROLL FOOTER (Uzaklaşma Efekti)
+   ============================================================ */
+(function init3DScrollFooter() {
+    window.addEventListener('scroll', () => {
+        const footer = document.getElementById('scroll3dFooter');
+        const content = document.getElementById('scroll3dContent');
+        if (!footer || !content) return;
+
+        const rect = footer.getBoundingClientRect();
+        const windowHeight = window.innerHeight;
+
+        // If the footer is in the viewport
+        if (rect.top < windowHeight && rect.bottom > 0) {
+            let progress = 1 - (rect.top / windowHeight);
+            progress = Math.max(0, Math.min(1, progress));
+
+            // The deeper we scroll, the further back it goes (zooms out)
+            const translateZ = 200 - (progress * 600);
+            const rotateX = progress * 10; 
+            
+            content.style.transform = `translateZ(${translateZ}px) rotateX(${rotateX}deg)`;
+            content.style.opacity = Math.min(1, progress * 1.5);
+        }
+    });
+})();
