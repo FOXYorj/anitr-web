@@ -3264,49 +3264,40 @@ function openPlayer(watch, resumeAt) {
         // resumeAt > 10 ise video yüklendiğinde o saniyeye atla
         let _resumeApplied = false;
         const applyResume = () => {
+            if (resumeAt <= 10 || _resumeApplied) return;
             const dEl = document.getElementById('resumeDebugOverlay');
             if (dEl) dEl.innerHTML += `<br>applyResume(${resumeAt.toFixed(2)})`;
+            console.log('[RESUME] applyResume çağrıldı, resumeAt:', resumeAt);
 
-            if (resumeAt <= 10 || _resumeApplied) return;
-            console.log('[RESUME] applyResume çağrıldı, resumeAt:', resumeAt, 'readyState:', animePlayer.readyState, 'duration:', animePlayer.duration);
-            
-            const doSeek = () => {
-                try {
-                    animePlayer.currentTime = resumeAt;
-                    if (plyr && typeof plyr.currentTime === 'number') plyr.currentTime = resumeAt;
-                    console.log('[RESUME] Seek yapıldı → currentTime:', animePlayer.currentTime);
-                    // Seek başarılıysa bitir
-                    if (Math.abs(animePlayer.currentTime - resumeAt) < 3) {
-                        _resumeApplied = true;
-                    }
-                } catch(e) { console.warn('[RESUME] Seek hatası:', e); }
-            };
-            
-            // Hemen dene
-            doSeek();
-            
-            // Tekrar dene (HLS buffer yüklenmesini bekle)
-            let attempts = 0;
-            const seekInterval = setInterval(() => {
-                attempts++;
-                if (_resumeApplied || attempts > 30) {
-                    clearInterval(seekInterval);
-                    return;
+            try {
+                if (plyr && typeof plyr.currentTime === 'number') plyr.currentTime = resumeAt;
+                if (animePlayer) animePlayer.currentTime = resumeAt;
+                
+                // Kontrol et
+                const checkTime = plyr ? plyr.currentTime : animePlayer.currentTime;
+                if (Math.abs(checkTime - resumeAt) < 3) {
+                    _resumeApplied = true;
+                    if (dEl) dEl.innerHTML += ` ✅`;
                 }
-                doSeek();
-            }, 300);
+            } catch(e) { console.warn('[RESUME] Seek hatası:', e); }
         };
 
-        // Tüm olası yükleme eventlerine dinle
-        animePlayer.addEventListener('loadedmetadata', applyResume, { once: true });
-        animePlayer.addEventListener('canplay', applyResume, { once: true });
-        animePlayer.addEventListener('loadeddata', applyResume, { once: true });
+        // Tüm olası yükleme eventlerine dinle (Plyr ve HTML5 Video)
         if (plyr) {
             plyr.once('ready', applyResume);
+            plyr.once('canplay', applyResume);
             plyr.once('playing', applyResume);
         }
-        // Eğer video zaten yüklü ise hemen dene
-        if (animePlayer.readyState >= 2) applyResume();
+        if (animePlayer) {
+            animePlayer.addEventListener('loadedmetadata', applyResume, { once: true });
+            animePlayer.addEventListener('canplay', applyResume, { once: true });
+            animePlayer.addEventListener('playing', applyResume, { once: true });
+            // Eğer video zaten yüklü ise hemen dene
+            if (animePlayer.readyState >= 2) applyResume();
+        }
+
+        // Tüm olası yükleme eventlerine dinle
+        // Önceki loop'lu yapıyı ve eventleri temizledik, yukarıda hepsi eklendi.
 
         plyr.on('ended', () => {
             if (disableEndedEvent) {
