@@ -2666,6 +2666,16 @@ async function watchEpisode(id, slug, isMovie, ep, sIdx, eIdx, animeTitle, synop
     document.getElementById('watchSource').textContent      = currentSource;
     document.getElementById('watchSynopsis').textContent    = synopsis   || 'Açıklama yok.';
 
+    // Debug Overlay (Ekranda direkt görünür)
+    let debugEl = document.getElementById('resumeDebugOverlay');
+    if (!debugEl) {
+        debugEl = document.createElement('div');
+        debugEl.id = 'resumeDebugOverlay';
+        debugEl.style = 'position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.8); color:lime; font-family:monospace; padding:5px; z-index:9999; font-size:12px; pointer-events:none; border-radius:4px;';
+        document.querySelector('.player-container').appendChild(debugEl);
+    }
+    debugEl.innerHTML = `epKey: ${epKey}<br>getPosition(): ${getPosition(epKey)}`;
+
     // Set ambient background!
     if (imgUrl) {
         const ambientEl = document.getElementById('watchAmbient');
@@ -3033,6 +3043,13 @@ function openPlayer(watch, resumeAt) {
                 _lastSavedSec = tFloor;
                 // Milisaniye hassasiyetiyle kaydet
                 savePosition(currentEpisodeKey, t);
+                
+                // Debug UI Güncelle
+                const dEl = document.getElementById('resumeDebugOverlay');
+                if (dEl) {
+                    dEl.innerHTML = `epKey: ${currentEpisodeKey}<br>Saved: ${t.toFixed(2)}s<br>Pos in LS: ${localStorage.getItem('anitr_ts_'+currentEpisodeKey)}`;
+                }
+
                 // %95+ izlenmişse tamamlandı say ve pozisyonu sil
                 const dur = animePlayer.duration;
                 if (dur && dur > 0 && t / dur >= 0.95) {
@@ -3239,6 +3256,9 @@ function openPlayer(watch, resumeAt) {
         // resumeAt > 10 ise video yüklendiğinde o saniyeye atla
         let _resumeApplied = false;
         const applyResume = () => {
+            const dEl = document.getElementById('resumeDebugOverlay');
+            if (dEl) dEl.innerHTML += `<br>applyResume(${resumeAt.toFixed(2)})`;
+
             if (resumeAt <= 10 || _resumeApplied) return;
             console.log('[RESUME] applyResume çağrıldı, resumeAt:', resumeAt, 'readyState:', animePlayer.readyState, 'duration:', animePlayer.duration);
             
