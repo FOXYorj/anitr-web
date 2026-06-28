@@ -632,61 +632,73 @@ function saveWatched(v)   { ls.set('anitr_watched_' + currentSourceKey,   v); }
 function saveWatchlist(v) { ls.set('anitr_watchlist', v); }
 function saveNotes(v)     { ls.set('anitr_notes',     v); }
 
-// Kaynağa özel pozisyon yönetimi
+// ═══════════════════════════════════════════════════════
+//  RESUME PLAYBACK — Basit, Doğrudan localStorage
+//  Her bölüm için ayrı key: 'anitr_ts_<epKey>'
+// ═══════════════════════════════════════════════════════
+function savePosition(key, time) {
+    if (!key || time < 5) return;
+    const preciseTime = Math.round(time * 100) / 100;
+    // Doğrudan localStorage'a yaz (karmaşık prefix/source sistemi bypass)
+    localStorage.setItem('anitr_ts_' + key, String(preciseTime));
+
+    // History objesine de yaz (UI'da göstermek için)
+    try {
+        const hist = ls.getRaw(currentSourceHistoryKey, []);
+        for (let i = 0; i < hist.length; i++) {
+            const epKeyTemp = (hist[i].slug || hist[i].id) + '_s' + (hist[i].sIdx || 0) + '_e' + (hist[i].eIdx || 0);
+            if (epKeyTemp === key) {
+                hist[i].lastWatchedSec = preciseTime;
+                const m = Math.floor(preciseTime / 60);
+                const s = Math.floor(preciseTime % 60).toString().padStart(2, '0');
+                hist[i].lastWatchedMinute = `${m}:${s}`;
+                break;
+            }
+        }
+        ls.setRaw(currentSourceHistoryKey, hist);
+    } catch(e) {}
+
+    // Sunucuya debounced yaz
+    _debouncedPositionSync();
+}
+
+function getPosition(key) {
+    if (!key) return 0;
+    // Önce yeni basit sisteme bak
+    const direct = parseFloat(localStorage.getItem('anitr_ts_' + key));
+    if (!isNaN(direct) && direct > 0) return direct;
+    // Eski sisteme de bak (geriye dönük uyumluluk)
+    const pos = ls.getRaw(currentSourcePositionsKey, {});
+    return pos[key] || 0;
+}
+
 function getPositions() {
     return ls.get(currentSourcePositionsKey, {});
 }
 
-function savePosition(key, time) {
-    if (!key || time < 5) return;
-    // Milisaniye hassasiyeti: 2 ondalıklı kaydet
-    const preciseTime = Math.round(time * 100) / 100;
-    const pos = getPositions();
-    pos[key] = preciseTime;
-    const keys = Object.keys(pos);
-    if (keys.length > 500) delete pos[keys[0]];
-    // LocalStorage'a kaydet (hızlı erişim için)
-    ls.setRaw(currentSourcePositionsKey, pos);
-
-    // History (geçmiş) objesinin içine de saniyeyi yazalım
-    const hist = ls.getRaw(currentSourceHistoryKey, []);
-    let histModified = false;
-    for (let i = 0; i < hist.length; i++) {
-        const epKeyTemp = (hist[i].slug || hist[i].id) + '_s' + (hist[i].sIdx || 0) + '_e' + (hist[i].eIdx || 0);
-        if (epKeyTemp === key) {
-            hist[i].lastWatchedSec = preciseTime;
-            const m = Math.floor(preciseTime / 60);
-            const s = Math.floor(preciseTime % 60).toString().padStart(2, '0');
-            hist[i].lastWatchedMinute = `${m}:${s}`;
-            histModified = true;
-            break;
-        }
-    }
-    if (histModified) {
-        ls.setRaw(currentSourceHistoryKey, hist);
-    }
-
-    // Sunucu dosyasına da yaz (kalıcı kayıt - debounced)
-    _debouncedPositionSync();
-}
-
-// Bölüm tamamlandığında (ended veya %95+) pozisyonu temizle
 function clearPosition(key) {
     if (!key) return;
-    const pos = getPositions();
-    delete pos[key];
-    ls.setRaw(currentSourcePositionsKey, pos);
+    // Doğrudan sil
+    localStorage.removeItem('anitr_ts_' + key);
+    // Eski sistemden de sil
+    try {
+        const pos = ls.getRaw(currentSourcePositionsKey, {});
+        delete pos[key];
+        ls.setRaw(currentSourcePositionsKey, pos);
+    } catch(e) {}
     // History'den de kaldır
-    const hist = ls.getRaw(currentSourceHistoryKey, []);
-    for (let i = 0; i < hist.length; i++) {
-        const epKeyTemp = (hist[i].slug || hist[i].id) + '_s' + (hist[i].sIdx || 0) + '_e' + (hist[i].eIdx || 0);
-        if (epKeyTemp === key) {
-            delete hist[i].lastWatchedSec;
-            delete hist[i].lastWatchedMinute;
-            break;
+    try {
+        const hist = ls.getRaw(currentSourceHistoryKey, []);
+        for (let i = 0; i < hist.length; i++) {
+            const epKeyTemp = (hist[i].slug || hist[i].id) + '_s' + (hist[i].sIdx || 0) + '_e' + (hist[i].eIdx || 0);
+            if (epKeyTemp === key) {
+                delete hist[i].lastWatchedSec;
+                delete hist[i].lastWatchedMinute;
+                break;
+            }
         }
-    }
-    ls.setRaw(currentSourceHistoryKey, hist);
+        ls.setRaw(currentSourceHistoryKey, hist);
+    } catch(e) {}
     syncToServer();
 }
 
@@ -2675,6 +2687,7 @@ async function watchEpisode(id, slug, isMovie, ep, sIdx, eIdx, animeTitle, synop
     populateSidebarEpisodes(id, slug, isMovie, animeTitle, synopsis, imgUrl);
 
     const resumeTime = getPosition(epKey);
+    console.log('[RESUME] epKey:', epKey, '| resumeTime:', resumeTime, '| tüm pozisyonlar:', getPositions());
     if (resumeTime > 10) {
         showToast('⏩ ' + Math.floor(resumeTime / 60) + ':' + String(Math.floor(resumeTime % 60)).padStart(2, '0') + ' kaldığı yerden devam ediliyor...', 3000);
     }
@@ -3221,29 +3234,51 @@ function openPlayer(watch, resumeAt) {
             setupSubtitleSettings();
         });
 
+        console.log('[RESUME] finishSetup içinde resumeAt:', resumeAt);
+        
+        // resumeAt > 10 ise video yüklendiğinde o saniyeye atla
+        let _resumeApplied = false;
         const applyResume = () => {
-            if (resumeAt > 10) {
-                // Keep trying to seek for a bit until it takes effect
-                let attempts = 0;
-                const seekInterval = setInterval(() => {
-                    attempts++;
-                    try { animePlayer.currentTime = resumeAt; } catch (e) {}
-                    if (plyr && typeof plyr.currentTime === 'number') {
-                        try { plyr.currentTime = resumeAt; } catch (e) {}
+            if (resumeAt <= 10 || _resumeApplied) return;
+            console.log('[RESUME] applyResume çağrıldı, resumeAt:', resumeAt, 'readyState:', animePlayer.readyState, 'duration:', animePlayer.duration);
+            
+            const doSeek = () => {
+                try {
+                    animePlayer.currentTime = resumeAt;
+                    if (plyr && typeof plyr.currentTime === 'number') plyr.currentTime = resumeAt;
+                    console.log('[RESUME] Seek yapıldı → currentTime:', animePlayer.currentTime);
+                    // Seek başarılıysa bitir
+                    if (Math.abs(animePlayer.currentTime - resumeAt) < 3) {
+                        _resumeApplied = true;
                     }
-                    if (Math.abs(animePlayer.currentTime - resumeAt) < 2 || attempts > 10) {
-                        clearInterval(seekInterval);
-                    }
-                }, 200);
-            }
+                } catch(e) { console.warn('[RESUME] Seek hatası:', e); }
+            };
+            
+            // Hemen dene
+            doSeek();
+            
+            // Tekrar dene (HLS buffer yüklenmesini bekle)
+            let attempts = 0;
+            const seekInterval = setInterval(() => {
+                attempts++;
+                if (_resumeApplied || attempts > 30) {
+                    clearInterval(seekInterval);
+                    return;
+                }
+                doSeek();
+            }, 300);
         };
 
+        // Tüm olası yükleme eventlerine dinle
         animePlayer.addEventListener('loadedmetadata', applyResume, { once: true });
         animePlayer.addEventListener('canplay', applyResume, { once: true });
+        animePlayer.addEventListener('loadeddata', applyResume, { once: true });
         if (plyr) {
             plyr.once('ready', applyResume);
             plyr.once('playing', applyResume);
         }
+        // Eğer video zaten yüklü ise hemen dene
+        if (animePlayer.readyState >= 2) applyResume();
 
         plyr.on('ended', () => {
             if (disableEndedEvent) {
