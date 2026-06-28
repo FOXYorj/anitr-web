@@ -27,7 +27,7 @@
 | **Otomatik Sonraki Bölüm** | Bölüm bitince 5 saniye geri sayım ile sonraki bölüme geçiş |
 | **Türkçe Altyazı Desteği** | Altyazı boyutu ayarlanabilir |
 | **Dublaj / Altyazı Seçimi** | Sub ve Dub arasında anında geçiş |
-| **Plyr Video Oynatıcı** | Modern, tam özellikli HTML5 video oynatıcı |
+| **videojs Video Oynatıcı** | Modern, tam özellikli HTML5 video oynatıcı |
 | **Ambient Arka Plan** | Video esnasında dinamik renk uyumu |
 | **Klavye Kısayolları** | Space (oynat/durdur), Ok tuşları (±10s), F (tam ekran), M (sessiz) |
 
@@ -230,7 +230,7 @@ docker run -p 8081:8081 anitr-cli
 ---
 
 
-## 📷 Hata Düzeltme Aşamasından Ekran Görüntüleri
+## 📷Ekran Görüntüleri
 
 <img width="700" height="400" alt="Ekran görüntüsü 2026-06-23 011651" src="https://github.com/user-attachments/assets/20a32ee0-983b-4305-9fd0-94b30da01363" />
 
