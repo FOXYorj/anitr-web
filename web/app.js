@@ -41,8 +41,8 @@ const VALID_SOURCES = ['AnimeciX', 'Anizium', 'Anizium Free'];
 // Kaynak değiştiğinde kaldığı yerden devam et verilerini ayır
 let currentSourceHistoryKey = 'anitr_history_' + currentSourceKey;
 let currentSourcePositionsKey = 'anitr_positions_' + currentSourceKey;
-let hls               = null;
-let plyr              = null;
+let vjsPlayer         = null;  // Video.js player instance
+
 let currentEpisodes   = [];
 let currentAnime      = {};
 let currentSIdx       = 0;
@@ -1106,8 +1106,7 @@ function showHomeView() {
     watchView.classList.add('hidden');
     malView.classList.add('hidden');
     const sv = document.getElementById('scheduleView'); if (sv) sv.classList.add('hidden');
-    if (plyr)  { try { plyr.destroy(); } catch (e) {} plyr = null; }
-    if (hls)   { hls.destroy(); hls = null; }
+    if (vjsPlayer) { try { vjsPlayer.dispose(); } catch (e) {} vjsPlayer = null; }
     // Mobil alt barda aktif sekmeyi güncelle
     document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.mobile-nav-btn')[0].classList.add('active');
@@ -1120,8 +1119,7 @@ function showAnimeListViewContainer() {
     watchView.classList.add('hidden');
     malView.classList.add('hidden');
     const sv = document.getElementById('scheduleView'); if (sv) sv.classList.add('hidden');
-    if (plyr)  { try { plyr.destroy(); } catch (e) {} plyr = null; }
-    if (hls)   { hls.destroy(); hls = null; }
+    if (vjsPlayer) { try { vjsPlayer.dispose(); } catch (e) {} vjsPlayer = null; }
 }
 function showWatchView() {
     watchView.classList.remove('hidden');
@@ -1157,8 +1155,7 @@ function showScheduleView() {
     malView.classList.add('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     loadSchedule();
-    if (plyr) { try { plyr.destroy(); } catch (e) {} plyr = null; }
-    if (hls)  { hls.destroy(); hls = null; }
+    if (vjsPlayer) { try { vjsPlayer.dispose(); } catch (e) {} vjsPlayer = null; }
 }
 
 // ── Theme ─────────────────────────────────────────────────
@@ -2789,9 +2786,9 @@ function saveManualPosition() {
     try {
         console.log('=== saveManualPosition START ===');
         let currentTime = 0;
-        // First try plyr's current time
-        if (plyr && typeof plyr.currentTime === 'number') {
-            currentTime = plyr.currentTime;
+        // First try vjsPlayer's current time
+        if (vjsPlayer && typeof vjsPlayer.currentTime() === 'number') {
+            currentTime = vjsPlayer.currentTime();
         }
         // Fallback to animePlayer
         else if (typeof animePlayer !== 'undefined' && animePlayer && typeof animePlayer.currentTime === 'number') {
@@ -2834,15 +2831,15 @@ function resumeFromManualPosition() {
             showToast('❌ Kaydedilmiş konum yok');
             return;
         }
-        if (!plyr) {
+        if (!vjsPlayer) {
             showToast('❌ Oynatıcı henüz başlamadı');
             return;
         }
         // Block ended event temporarily
         disableEndedEvent = true;
         showToast(`⏩ ${formatTime(pos)} konumuna atlanıyor...`);
-        // Plyr's seek() method handles waiting for video to load
-        plyr.seek(pos);
+        // Video.js currentTime setter handles seeking
+        vjsPlayer.currentTime(pos);
         // Re-enable ended event after 1 second
         setTimeout(() => {
             disableEndedEvent = false;
@@ -2897,228 +2894,195 @@ function openPlayer(watch, resumeAt) {
     const opening   = watch.Opening   || null;
     const ending    = watch.Ending    || null;
 
-    if (plyr) { try { plyr.destroy(); } catch (e) {} plyr = null; }
-    if (hls)  { hls.destroy(); hls = null; }
-    if (window._globalPosInterval) clearInterval(window._globalPosInterval); // Temizle
+    // Temizlik
+    if (vjsPlayer) { try { vjsPlayer.dispose(); } catch(e) {} vjsPlayer = null; }
+    if (window._globalPosInterval) clearInterval(window._globalPosInterval);
 
+    // Video.js dispose() elementi siliyor, yeniden oluştur
     const container = document.querySelector('.video-container-page');
-    container.innerHTML = '<video id="animePlayer" class="plyr" controls playsinline crossorigin="anonymous"></video><div id="subtitleSettingsPanel" class="subtitle-settings-panel hidden"></div>';
-    // Assign to global animePlayer variable!
+    container.innerHTML = '<video id="animePlayer" class="video-js vjs-default-skin vjs-big-play-centered" controls playsinline crossorigin="anonymous" style="width:100%;height:100%;"></video><div id="subtitleSettingsPanel" class="subtitle-settings-panel hidden"></div>';
     animePlayer = document.getElementById('animePlayer');
-
-    // Altyazı Ayarlarını Kaydet
-    function saveSubtitleSettings(settings) {
-        localStorage.setItem('anitr_subtitle_settings', JSON.stringify(settings));
-        applySubtitleSettings(settings);
-    }
-    // Altyazı Ayarları Panelini Oluştur
-    function setupSubtitleSettings() {
-        const panel = document.getElementById('subtitleSettingsPanel');
-        const settings = getSubtitleSettings();
-        panel.innerHTML = `
-            <div class="subtitle-settings-header">
-                <h3><i class="fa-solid fa-closed-captioning"></i> Altyazı Ayarları</h3>
-                <button onclick="toggleSubtitleSettings()" class="close-subtitle-settings">&times;</button>
-            </div>
-            <div class="subtitle-setting-item">
-                <label>Yazı Boyutu: <span id="fontSizeValue">${settings.fontSize}px</span></label>
-                <input type="range" id="subtitleFontSize" min="10" max="40" value="${settings.fontSize}" 
-                    oninput="updateSubtitleSetting('fontSize', this.value)">
-            </div>
-            <div class="subtitle-setting-item">
-                <label>Yazı Rengi:</label>
-                <input type="color" id="subtitleTextColor" value="${settings.textColor}" 
-                    oninput="updateSubtitleSetting('textColor', this.value)">
-            </div>
-            <div class="subtitle-setting-item">
-                <label>Arka Plan Rengi:</label>
-                <input type="color" id="subtitleBackgroundColor" value="${settings.backgroundColor}" 
-                    oninput="updateSubtitleSetting('backgroundColor', this.value)">
-            </div>
-            <div class="subtitle-setting-item">
-                <label>Arka Plan Şeffaflığı: <span id="bgOpacityValue">${Math.round(settings.backgroundOpacity * 100)}%</span></label>
-                <input type="range" id="subtitleBgOpacity" min="0" max="100" value="${Math.round(settings.backgroundOpacity * 100)}" 
-                    oninput="updateSubtitleSetting('backgroundOpacity', this.value / 100)">
-            </div>
-            <div class="subtitle-setting-item">
-                <label>Yazı Tipi:</label>
-                <select id="subtitleFontFamily" onchange="updateSubtitleSetting('fontFamily', this.value)">
-                    <option value="Inter, sans-serif" ${settings.fontFamily.includes('Inter') ? 'selected' : ''}>Inter</option>
-                    <option value="Arial, sans-serif" ${settings.fontFamily.includes('Arial') ? 'selected' : ''}>Arial</option>
-                    <option value="Verdana, sans-serif" ${settings.fontFamily.includes('Verdana') ? 'selected' : ''}>Verdana</option>
-                    <option value="Georgia, serif" ${settings.fontFamily.includes('Georgia') ? 'selected' : ''}>Georgia</option>
-                    <option value="Times New Roman, serif" ${settings.fontFamily.includes('Times') ? 'selected' : ''}>Times New Roman</option>
-                    <option value="Courier New, monospace" ${settings.fontFamily.includes('Courier') ? 'selected' : ''}>Courier New</option>
-                </select>
-            </div>
-            <div class="subtitle-setting-item">
-                <label>Altyazı Konumu:</label>
-                <select id="subtitlePosition" onchange="updateSubtitleSetting('position', this.value)">
-                    <option value="bottom" ${settings.position === 'bottom' ? 'selected' : ''}>Alt</option>
-                    <option value="bottom-center" ${settings.position === 'bottom-center' ? 'selected' : ''}>Alt-Orta</option>
-                    <option value="top" ${settings.position === 'top' ? 'selected' : ''}>Üst</option>
-                </select>
-            </div>
-        `;
-        
-        // Ayar panelini açıp kapatacak buton ekle (plyr kontrollerine ekle)
-        const settingsBtn = document.querySelector('.plyr__control--settings');
-        if (settingsBtn) {
-            const customBtn = document.createElement('button');
-            customBtn.className = 'plyr__control';
-            customBtn.innerHTML = '<i class="fa-solid fa-text-height"></i>';
-            customBtn.setAttribute('aria-label', 'Altyazı Ayarları');
-            customBtn.onclick = toggleSubtitleSettings;
-            settingsBtn.parentNode.insertBefore(customBtn, settingsBtn.nextSibling);
-        }
-        applySubtitleSettings(settings);
-    }
-    function toggleSubtitleSettings() {
-        const panel = document.getElementById('subtitleSettingsPanel');
-        panel.classList.toggle('hidden');
-    }
-    window.toggleSubtitleSettings = toggleSubtitleSettings;
-    function updateSubtitleSetting(key, value) {
-        const settings = getSubtitleSettings();
-        if (key === 'fontSize') {
-            settings.fontSize = parseInt(value);
-            const fontSizeEl = document.getElementById('fontSizeValue');
-            if (fontSizeEl) fontSizeEl.textContent = value + 'px';
-        } else if (key === 'backgroundOpacity') {
-            settings.backgroundOpacity = parseFloat(value);
-            const bgOpacityEl = document.getElementById('bgOpacityValue');
-            if (bgOpacityEl) bgOpacityEl.textContent = Math.round(parseFloat(value) * 100) + '%';
-        } else if (key === 'fontFamily') {
-            settings.fontFamily = value;
-        } else if (key === 'textColor') {
-            settings.textColor = value;
-        } else if (key === 'backgroundColor') {
-            settings.backgroundColor = value;
-        } else if (key === 'position') {
-            settings.position = value;
-        }
-        saveSubtitleSettings(settings);
-    }
-    window.updateSubtitleSetting = updateSubtitleSetting;
-
-    // Altyazıları topla ve ekle
-    const tracks = [];
-    if (subtitles && subtitles.length > 0) {
-        subtitles.forEach(sub => {
-            const track = document.createElement('track');
-            track.kind = 'subtitles';
-            track.label = sub.Label || sub.Group.toUpperCase();
-            track.srclang = sub.Group;
-            track.src = '/api/proxy?url=' + encodeURIComponent(sub.Link);
-            if (sub.Group === 'tr') track.default = true;
-            animePlayer.appendChild(track);
-            tracks.push({ kind: 'captions', label: track.label, srclang: track.srclang, src: track.src, default: track.default });
-        });
-    } else if (trCaption) {
-        const track = document.createElement('track');
-        track.kind = 'subtitles';
-        track.label = 'Türkçe';
-        track.srclang = 'tr';
-        track.src = '/api/proxy?url=' + encodeURIComponent(trCaption);
-        track.default = true;
-        animePlayer.appendChild(track);
-        tracks.push({ kind: 'captions', label: 'Türkçe', srclang: 'tr', src: track.src, default: true });
-    }
 
     if (!urls.length) { showToast('❌ Oynatılabilir video bulunamadı.'); return; }
 
     const videoUrl = urls[0];
     const isM3u8   = videoUrl.includes('.m3u8');
+    const mimeType = isM3u8 ? 'application/x-mpegURL' : 'video/mp4';
 
-    // ══ RESUME PLAYBACK: Hassas Zaman Takibi (setInterval ile %100 Garanti) ══
-    let _lastSavedSec = -1;
-    if (window._globalPosInterval) clearInterval(window._globalPosInterval);
-    
-    window._globalPosInterval = setInterval(() => {
-        let t = 0;
-        let dur = 0;
-        
-        if (typeof plyr !== 'undefined' && plyr && typeof plyr.currentTime === 'number') {
-            t = plyr.currentTime;
-            dur = plyr.duration;
-        } else if (typeof animePlayer !== 'undefined' && animePlayer && typeof animePlayer.currentTime === 'number') {
-            t = animePlayer.currentTime;
-            dur = animePlayer.duration;
+    // Altyazı parçaları
+    const trackDefs = [];
+    if (subtitles && subtitles.length > 0) {
+        subtitles.forEach(sub => {
+            trackDefs.push({ kind: 'subtitles', label: sub.Label || sub.Group.toUpperCase(), srclang: sub.Group, src: '/api/proxy?url=' + encodeURIComponent(sub.Link), default: sub.Group === 'tr' });
+        });
+    } else if (trCaption) {
+        trackDefs.push({ kind: 'subtitles', label: 'Türkçe', srclang: 'tr', src: '/api/proxy?url=' + encodeURIComponent(trCaption), default: true });
+    }
+
+    // Video.js başlat
+    vjsPlayer = videojs('animePlayer', {
+        controls: true,
+        autoplay: false,
+        preload: 'auto',
+        fluid: true,
+        responsive: true,
+        playbackRates: [0.5, 0.75, 1, 1.25, 1.5, 2],
+        html5: {
+            vhs: {
+                overrideNative: true,
+                enableLowInitialPlaylist: false,
+                smoothQualityChange: true
+            },
+            nativeAudioTracks: false,
+            nativeVideoTracks: false,
+            nativeTextTracks: false
+        },
+        tracks: trackDefs
+    });
+
+    // Kaynak yükle
+    vjsPlayer.src({ src: videoUrl, type: mimeType });
+
+    // Çoklu kalite varsa menü oluştur
+    if (urls.length > 1 && labels.length === urls.length) {
+        setTimeout(() => _buildQualityMenu(vjsPlayer, urls, labels, mimeType), 800);
+    }
+
+    // Player hazır olunca
+    vjsPlayer.ready(function() {
+        const p = this;
+
+        // Türkçe altyazıyı varsayılan yap
+        const tTracks = p.textTracks();
+        for (let i = 0; i < tTracks.length; i++) {
+            if (tTracks[i].language === 'tr') tTracks[i].mode = 'showing';
         }
 
-        if (t <= 5) return;
+        // RESUME PLAYBACK - Video.js ile 1 satır, HLS.js ile çatışma yok!
+        if (resumeAt > 10) {
+            p.one('canplay', function() {
+                p.currentTime(resumeAt);
+                showToast('⏩ ' + Math.floor(resumeAt / 60) + ':' + String(Math.floor(resumeAt % 60)).padStart(2, '0') + "'den devam ediliyor", 3000);
+                const dEl = document.getElementById('resumeDebugOverlay');
+                if (dEl) dEl.innerHTML += '<br>VJS Resume: ' + resumeAt + 's ✅';
+            });
+        }
 
+        // Klavye kısayolları
+        const _keyHandler = (e) => {
+            if (watchView.classList.contains('hidden')) return;
+            const tag = document.activeElement && document.activeElement.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+            switch(e.code) {
+                case 'Space': e.preventDefault(); p.paused() ? p.play() : p.pause(); break;
+                case 'ArrowLeft': e.preventDefault(); p.currentTime(Math.max(0, p.currentTime() - 10)); break;
+                case 'ArrowRight': e.preventDefault(); p.currentTime(Math.min(p.duration() || Infinity, p.currentTime() + 10)); break;
+                case 'KeyF': e.preventDefault(); p.isFullscreen() ? p.exitFullscreen() : p.requestFullscreen(); break;
+                case 'KeyM': e.preventDefault(); p.muted(!p.muted()); break;
+            }
+        };
+        document.removeEventListener('keydown', window._anitrPlayerKeyboardHandler);
+        window._anitrPlayerKeyboardHandler = _keyHandler;
+        document.addEventListener('keydown', _keyHandler);
+
+        // Intro/Outro atlama butonları
+        _setupSkipButtons(p, opening, ending);
+
+        // Altyazı ayar paneli
+        _setupSubtitlePanel(p);
+
+        // Bölüm bitti
+        p.on('ended', () => {
+            if (disableEndedEvent) return;
+            clearPosition(currentEpisodeKey);
+            markWatched(currentEpisodeKey);
+            if (appSettings.autoNext) playNextEpisode();
+        });
+
+        updateManualResumeArea();
+    });
+
+    // Konum Takibi (setInterval — %100 güvenilir)
+    let _lastSavedSec = -1;
+    window._globalPosInterval = setInterval(() => {
+        if (!vjsPlayer || vjsPlayer.paused() || vjsPlayer.ended()) return;
+        const t = vjsPlayer.currentTime();
+        const dur = vjsPlayer.duration();
+        if (!t || t <= 5) return;
         const tFloor = Math.floor(t);
         if (tFloor !== _lastSavedSec) {
             _lastSavedSec = tFloor;
-            // Milisaniye hassasiyetiyle kaydet
             savePosition(currentEpisodeKey, t);
-            
-            // Debug UI Güncelle
             const dEl = document.getElementById('resumeDebugOverlay');
-            if (dEl) {
-                dEl.innerHTML = `epKey: ${currentEpisodeKey}<br>Saved: ${t.toFixed(2)}s<br>Pos in LS: ${localStorage.getItem('anitr_ts_'+currentEpisodeKey)}`;
-            }
-
-            // %95+ izlenmişse tamamlandı say ve pozisyonu sil
+            if (dEl) dEl.innerHTML = 'Saved: ' + t.toFixed(1) + 's | Key: ' + currentEpisodeKey;
             if (dur && dur > 0 && t / dur >= 0.95) {
                 clearPosition(currentEpisodeKey);
                 markWatched(currentEpisodeKey);
             }
         }
     }, 2000);
-    
-    // beforeunload yedeği (üstteki global listener'a ek olarak)
+
+    // Kapanışta kaydet
     window.onbeforeunload = () => {
-        if (animePlayer && animePlayer.currentTime > 5) {
-            savePosition(currentEpisodeKey, animePlayer.currentTime);
+        if (vjsPlayer && vjsPlayer.currentTime() > 5) savePosition(currentEpisodeKey, vjsPlayer.currentTime());
+        syncToServer();
+    };
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden' && vjsPlayer && vjsPlayer.currentTime() > 5) {
+            savePosition(currentEpisodeKey, vjsPlayer.currentTime());
+            syncToServer();
         }
-    };
+    });
+}
 
-    const plyrOpts = {
-        controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'fullscreen'],
-        settings: ['captions', 'quality', 'speed'],
-        speed:    { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
-        captions: { active: true, language: 'tr', update: true },
-        i18n: { play:'Oynat', pause:'Duraklat', mute:'Sesi Kapat', speed:'Hız', quality:'Kalite', settings:'Ayarlar', fullscreen:'Tam Ekran', captions:'Altyazılar', disabled:'Kapalı', enabled:'Açık' }
-    };
+// Çoklu Kalite Menüsü
+function _buildQualityMenu(player, urls, labels, mimeType) {
+    try {
+        const controlBar = player.getChild('controlBar');
+        if (!controlBar) return;
+        const existing = controlBar.getChild('AnitrQualityMenu');
+        if (existing) controlBar.removeChild(existing);
 
-    // Intro/Outro Atlatma Butonları ve Mantığı
-    function setupSkipButtons() {
-        const skipContainer = document.createElement('div');
-        skipContainer.className = 'player-skip-controls';
-        container.appendChild(skipContainer);
+        const QualityMenuItem = videojs.getComponent('MenuItem');
+        const QualityButton = videojs.getComponent('MenuButton');
 
-        const updateSkips = () => {
-            const curr = animePlayer.currentTime;
-            skipContainer.innerHTML = '';
-            
-            if (opening) {
-                const start = timeToSec(opening.Start);
-                const end = timeToSec(opening.End);
-                if (curr >= start && curr <= end) {
-                    const btn = document.createElement('button');
-                    btn.className = 'skip-btn';
-                    btn.innerHTML = '<i class="fa-solid fa-forward"></i> Açılışı Atla';
-                    btn.onclick = () => { animePlayer.currentTime = end; showToast('⏭ Açılış atlatıldı'); };
-                    skipContainer.appendChild(btn);
-                }
+        class AnitrQualityItem extends QualityMenuItem {
+            constructor(player, options) {
+                super(player, options);
+                this._src = options.src;
+                this._qualityLabel = options.qualityLabel;
             }
-            if (ending) {
-                const start = timeToSec(ending.Start);
-                const end = timeToSec(ending.End);
-                if (curr >= start && curr <= end) {
-                    const btn = document.createElement('button');
-                    btn.className = 'skip-btn';
-                    btn.innerHTML = '<i class="fa-solid fa-forward"></i> Kapanışı Atla';
-                    btn.onclick = () => { animePlayer.currentTime = end; showToast('⏭ Kapanış atlatıldı'); };
-                    skipContainer.appendChild(btn);
-                }
+            handleClick() {
+                const currentTime = player.currentTime();
+                player.src({ src: this._src, type: mimeType });
+                player.one('canplay', () => { player.currentTime(currentTime); player.play(); });
+                showToast('🎬 ' + this._qualityLabel + ' kaliteye geçildi');
             }
-        };
-        animePlayer.addEventListener('timeupdate', updateSkips);
-    }
+        }
+        videojs.registerComponent('AnitrQualityItem', AnitrQualityItem);
 
+        class AnitrQualityMenu extends QualityButton {
+            constructor(player, options) {
+                super(player, options);
+                this.addClass('vjs-quality-selector');
+                this.controlText('Kalite');
+            }
+            createItems() {
+                return urls.map((u, i) => {
+                    const item = new AnitrQualityItem(player, { label: labels[i] || (i + 1) + '. Kalite', src: u, qualityLabel: labels[i] });
+                    if (i === 0) item.addClass('vjs-selected');
+                    return item;
+                });
+            }
+        }
+        videojs.registerComponent('AnitrQualityMenu', AnitrQualityMenu);
+        const btn = new AnitrQualityMenu(player, {});
+        controlBar.addChild(btn, {}, controlBar.children().length - 1);
+    } catch(e) { console.warn('Quality menu error:', e); }
+}
+
+// Intro/Outro Atlama
+function _setupSkipButtons(player, opening, ending) {
     function timeToSec(t) {
         if (!t || typeof t !== 'string') return 0;
         const parts = t.split(':').map(Number);
@@ -3126,400 +3090,94 @@ function openPlayer(watch, resumeAt) {
         if (parts.length === 2) return parts[0] * 60 + parts[1];
         return parts[0] || 0;
     }
-
-    // Kalite etiketini okunabilir hale getir (4K, 1080p vb.)
-    function qualityLabel(h) {
-        if (h >= 2160) return '4K (2160p)';
-        if (h >= 1440) return '1440p (2K)';
-        if (h >= 1080) return '1080p';
-        if (h >= 720)  return '720p';
-        if (h >= 480)  return '480p';
-        if (h >= 360)  return '360p';
-        return h + 'p';
+    const playerEl = player.el();
+    let skipContainer = playerEl.querySelector('.player-skip-controls');
+    if (!skipContainer) {
+        skipContainer = document.createElement('div');
+        skipContainer.className = 'player-skip-controls';
+        playerEl.appendChild(skipContainer);
     }
-
-    if (Hls.isSupported() && isM3u8) {
-        const _hlsStartPos = resumeAt > 10 ? resumeAt : -1;
-        hls = new Hls({ 
-            maxMaxBufferLength: 120, 
-            enableWorker: true,
-            startPosition: _hlsStartPos
-        });
-        hls.loadSource(videoUrl);
-        hls.attachMedia(animePlayer);
-        // HLS start position - set again after attach to be sure
-        if (_hlsStartPos > 0) {
-            hls.startPosition = _hlsStartPos;
-        }
-
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            // Backend'den birden fazla URL (farklı manifest) geldiyse
-            if (urls.length > 1 && labels.length === urls.length) {
-                // labels'ı p cinsinden sayıya çevir (4K desteği ile)
-                const qualityNums = labels.map(l => {
-                    if (/4k/i.test(l)) return 2160;
-                    if (/2k/i.test(l) || /1440/i.test(l)) return 1440;
-                    const m = l.match(/(\d+)/);
-                    return m ? parseInt(m[1]) : 720;
-                });
-                
-                // 1080'in aslında 4K olması durumu: Menüde 1080'in üstüne 4K ekle
-                if (qualityNums[0] === 1080 && !qualityNums.includes(2160)) {
-                    qualityNums.unshift(2160);
-                    urls.unshift(urls[0]); // 4K seçildiğinde aynı (aslında 4K olan 1080p) kaynağı yükle
-                }
-
-                const best = Math.max(...qualityNums);
-                plyrOpts.quality = {
-                    default: best,
-                    options: qualityNums,
-                    forced: true,
-                    onChange: (q) => {
-                        const idx = qualityNums.indexOf(q);
-                        if (idx !== -1) {
-                            const pos = animePlayer.currentTime;
-                            hls.loadSource(urls[idx]);
-                            animePlayer.addEventListener('loadedmetadata', () => { animePlayer.currentTime = pos; animePlayer.play(); }, { once: true });
-                        }
-                    }
-                };
-                plyrOpts.i18n = Object.assign(plyrOpts.i18n || {}, {
-                    qualityLabel: (q) => qualityLabel(q)
-                });
-            } else {
-                // Tek manifest - HLS level'larından kalite al
-                const hlsQualities = hls.levels
-                    .map(l => l.height)
-                    .filter((v, i, a) => a.indexOf(v) === i && v > 0)
-                    .sort((a, b) => b - a);
-
-                // 1080'in aslında 4K olması durumu
-                if (hlsQualities.includes(1080) && !hlsQualities.includes(2160)) {
-                    hlsQualities.unshift(2160);
-                }
-
-                plyrOpts.quality = {
-                    default:  hlsQualities[0] || 1080,
-                    options:  hlsQualities.length ? hlsQualities : [2160, 1080, 720, 480, 360],
-                    forced:   true,
-                    onChange: q => {
-                        // Eğer 4K seçildiyse ve gerçekte level olarak yoksa 1080'i oynat (çünkü 1080 = 4K)
-                        const targetQ = (q === 2160 && !hls.levels.some(l => l.height === 2160)) ? 1080 : q;
-                        hls.levels.forEach((lvl, li) => { if (lvl.height === targetQ) hls.currentLevel = li; });
-                    }
-                };
-                plyrOpts.i18n = Object.assign(plyrOpts.i18n || {}, {
-                    qualityLabel: (q) => qualityLabel(q)
-                });
+    player.on('timeupdate', () => {
+        const curr = player.currentTime();
+        skipContainer.innerHTML = '';
+        if (opening) {
+            const s = timeToSec(opening.Start), e = timeToSec(opening.End);
+            if (curr >= s && curr <= e) {
+                const btn = document.createElement('button');
+                btn.className = 'skip-btn';
+                btn.innerHTML = '<i class="fa-solid fa-forward"></i> Açılışı Atla';
+                btn.onclick = () => { player.currentTime(e); showToast('⏭ Açılış atlatıldı'); };
+                skipContainer.appendChild(btn);
             }
-
-            plyr = new Plyr(animePlayer, plyrOpts);
-            finishSetup();
-        });
-    } else {
-        // MP4 veya HLS desteklenmeyen durum
-        if (urls.length > 1 && labels.length === urls.length) {
-            let sources = urls.map((u, i) => {
-                const sizeMatch = labels[i].match(/\d+/);
-                return { src: u, type: isM3u8 ? 'application/x-mpegURL' : 'video/mp4', size: sizeMatch ? parseInt(sizeMatch[0]) : (1080 - i) };
-            });
-
-            // 1080 varsa üstüne 4K seçeneğini de ekle (1080 aslında 4K olduğu için aynı URL'yi kullanır)
-            if (sources.some(s => s.size === 1080) && !sources.some(s => s.size === 2160)) {
-                const source1080 = sources.find(s => s.size === 1080);
-                sources.unshift({ ...source1080, size: 2160 });
+        }
+        if (ending) {
+            const s = timeToSec(ending.Start), e = timeToSec(ending.End);
+            if (curr >= s && curr <= e) {
+                const btn = document.createElement('button');
+                btn.className = 'skip-btn';
+                btn.innerHTML = '<i class="fa-solid fa-forward"></i> Kapanışı Atla';
+                btn.onclick = () => { player.currentTime(e); showToast('⏭ Kapanış atlatıldı'); };
+                skipContainer.appendChild(btn);
             }
-
-            sources = sources.sort((a, b) => b.size - a.size);
-
-            plyr = new Plyr(animePlayer, plyrOpts);
-            plyr.source = { type: 'video', title: 'Anime', sources: sources, tracks: tracks };
-        } else {
-            animePlayer.src = videoUrl;
-            plyr = new Plyr(animePlayer, plyrOpts);
         }
-        finishSetup();
-    }
-
-    function finishSetup() {
-        updateManualResumeArea();
-        console.log('finishSetup called!');
-        
-        plyr.on('ready', () => {
-            console.log('Plyr is ready!');
-            if (animePlayer.textTracks) {
-                for (let i = 0; i < animePlayer.textTracks.length; i++) {
-                    const tt = animePlayer.textTracks[i];
-                    if (tt.language !== 'tr') tt.mode = 'hidden';
-                }
-            }
-            
-            // Add listener for settings button
-            addCustomSettingsToPlyr();
-            
-            // Setup mutation observer to watch for settings menu!
-            setupMutationObserver();
-            
-            setupSkipButtons();
-            setupSubtitleSettings();
-        });
-
-        console.log('[RESUME] finishSetup içinde resumeAt:', resumeAt);
-        
-        // resumeAt > 10 ise video yüklendiğinde o saniyeye atla
-        // Tek, basit, kesin yöntem: Plyr 'ready' event'i attıktan sonra zorla atla
-        if (resumeAt > 10) {
-            let _applied = false;
-            const forceSeek = () => {
-                if (_applied) return;
-                const dEl = document.getElementById('resumeDebugOverlay');
-                if (dEl) dEl.innerHTML += `<br>forceSeek(${resumeAt})`;
-                try {
-                    // Önce plyr'a söyle
-                    if (plyr && typeof plyr.currentTime !== 'undefined') plyr.currentTime = resumeAt;
-                    // Sonra native video element'e söyle
-                    if (animePlayer) animePlayer.currentTime = resumeAt;
-                    _applied = true;
-                    if (dEl) dEl.innerHTML += ` ✅`;
-                } catch(e) { console.warn('forceSeek err:', e); }
-            };
-
-            // Plyr 'ready' olunca seek et
-            plyr.on('ready', forceSeek);
-            
-            // Video native 'canplay' olunca seek et (HLS buffer yüklendikten sonra)
-            animePlayer.addEventListener('canplay', forceSeek, { once: true });
-
-            // 🛑 EN GÜVENLİ YÖNTEM: Video gerçekten 'playing' olunca
-            // (tarayıcının ve Plyr'in tamamen hazır olduğundan emin olunduğunda)
-            // aşağıdaki event'te saıniyeyi kontrol et ve eğer hala baştaysa zorla atla
-            animePlayer.addEventListener('playing', () => {
-                setTimeout(() => {
-                    const cur = plyr ? plyr.currentTime : (animePlayer ? animePlayer.currentTime : 0);
-                    const dEl = document.getElementById('resumeDebugOverlay');
-                    if (dEl) dEl.innerHTML += `<br>playing@${cur.toFixed(1)}`;
-                    if (cur < resumeAt - 5) {
-                        if (dEl) dEl.innerHTML += ` =>ForceSeek`;
-                        forceSeek();
-                    } else {
-                        _applied = true;
-                        if (dEl) dEl.innerHTML += ` ✅OK`;
-                    }
-                }, 800);
-            }, { once: true });
-        }
-
-        plyr.on('ended', () => {
-            if (disableEndedEvent) {
-                console.log('disableEndedEvent is true → skipping playNextEpisode!');
-                return;
-            }
-            // Bölüm bitti: pozisyonu sıfırla (bir daha açılınca baştan başlasın)
-            clearPosition(currentEpisodeKey);
-            markWatched(currentEpisodeKey);
-            if (appSettings.autoNext) playNextEpisode();
-        });
-        const keyboardHandler = (event) => {
-            if (watchView.classList.contains('hidden')) return;
-            const activeTag = document.activeElement && document.activeElement.tagName;
-            if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
-            if (event.code === 'Space') {
-                event.preventDefault();
-                if (plyr.playing) plyr.pause(); else plyr.play();
-            } else if (event.key === 'ArrowLeft') {
-                event.preventDefault();
-                animePlayer.currentTime = Math.max(0, animePlayer.currentTime - 10);
-            } else if (event.key === 'ArrowRight') {
-                event.preventDefault();
-                animePlayer.currentTime = Math.min(animePlayer.duration || Infinity, animePlayer.currentTime + 10);
-            } else if (event.key.toLowerCase() === 'f') {
-                event.preventDefault();
-                if (plyr.fullscreen) plyr.fullscreen.toggle();
-            }
-        };
-        document.removeEventListener('keydown', window._anitrPlayerKeyboardHandler);
-        window._anitrPlayerKeyboardHandler = keyboardHandler;
-        document.addEventListener('keydown', keyboardHandler);
-        startSaving();
-        setupSkipButtons();
-        animePlayer.play().catch(() => {});
-    }
-
-    function addCustomSettingsToPlyr() {
-        console.log('addCustomSettingsToPlyr called');
-        // Listen for settings button clicks
-        const settingsBtn = document.querySelector('.plyr__control--settings');
-        if (settingsBtn) {
-            console.log('Settings button found, adding listener');
-            settingsBtn.addEventListener('click', function() {
-                console.log('Settings button clicked (from addCustomSettingsToPlyr)');
-                setTimeout(injectCustomSettings, 50); 
-                setTimeout(injectCustomSettings, 200); 
-                setTimeout(injectCustomSettings, 400); // extra delay just in case!
-            });
-        }
-    }
-
-    function setupMutationObserver() {
-        console.log('Setting up mutation observer');
-        const observer = new MutationObserver((mutations) => {
-            for (let mutation of mutations) {
-                if (mutation.addedNodes) {
-                    for (let node of mutation.addedNodes) {
-                        if (node.classList && node.classList.contains('plyr__settings')) {
-                            console.log('Settings menu added via mutation observer!');
-                            injectCustomSettings();
-                        }
-                        if (node.querySelectorAll) {
-                            const settingsMenus = node.querySelectorAll('.plyr__settings');
-                            if (settingsMenus.length > 0) {
-                                console.log('Found settings menu via query selector in mutation');
-                                injectCustomSettings();
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        observer.observe(document.body, { childList: true, subtree: true });
-    }
-
-    function injectCustomSettings() {
-        console.log('injectCustomSettings called');
-        const settingsMenu = document.querySelector('.plyr__settings');
-        if (!settingsMenu) {
-            console.error('Settings menu not found!');
-            return;
-        }
-        console.log('Settings menu found!');
-        
-        // Remove existing custom sections to prevent duplicates
-        const existingCustomSections = settingsMenu.querySelectorAll('[data-custom-subtitle-setting]');
-        console.log('Found existing custom sections:', existingCustomSections.length);
-        existingCustomSections.forEach(el => el.remove());
-        
-        // Add custom sections
-        const settings = getSubtitleSettings();
-        console.log('Loaded settings:', settings);
-        
-        // Add Font Size
-        const fontSizeHTML = `
-            <div class="plyr__menu__section" data-custom-subtitle-setting>
-                <div class="plyr__menu__item">
-                    <span>Altyazı Boyutu</span>
-                    <span>${settings.fontSize}px</span>
-                </div>
-                <div class="plyr__menu__item" style="padding: 0 1em 1em;">
-                    <input type="range" id="customSubtitleFontSize" min="10" max="40" value="${settings.fontSize}" style="width:100%">
-                </div>
-            </div>
-        `;
-        
-        // Add Background Opacity
-        const bgOpacityHTML = `
-            <div class="plyr__menu__section" data-custom-subtitle-setting>
-                <div class="plyr__menu__item">
-                    <span>Arka Plan Şeffaflığı</span>
-                    <span>${Math.round(settings.backgroundOpacity * 100)}%</span>
-                </div>
-                <div class="plyr__menu__item" style="padding:0 1em 1em;">
-                    <input type="range" id="customSubtitleBgOpacity" min="0" max="100" value="${Math.round(settings.backgroundOpacity * 100)}" style="width:100%">
-                </div>
-            </div>
-        `;
-        
-        // Add Font Family
-        const fontFamilyHTML = `
-            <div class="plyr__menu__section" data-custom-subtitle-setting>
-                <div class="plyr__menu__item">
-                    <span>Yazı Tipi</span>
-                    <span id="customSubtitleFontLabel">${settings.fontFamily.split(',')[0]}</span>
-                </div>
-                <div class="plyr__menu__item" style="padding: 0 1em 1em;">
-                    <select id="customSubtitleFontFamily" style="width:100%; padding:0.5em;">
-                        <option value="Arial, sans-serif" ${settings.fontFamily.includes('Arial') ? 'selected' : ''}>Arial</option>
-                        <option value="Verdana, sans-serif" ${settings.fontFamily.includes('Verdana') ? 'selected' : ''}>Verdana</option>
-                        <option value="Georgia, serif" ${settings.fontFamily.includes('Georgia') ? 'selected' : ''}>Georgia</option>
-                        <option value="Times New Roman, serif" ${settings.fontFamily.includes('Times') ? 'selected' : ''}>Times New Roman</option>
-                        <option value="Courier New, monospace" ${settings.fontFamily.includes('Courier') ? 'selected' : ''}>Courier New</option>
-                    </select>
-                </div>
-            </div>
-        `;
-        
-        // Add Text Color
-        const textColorHTML = `
-            <div class="plyr__menu__section" data-custom-subtitle-setting>
-                <div class="plyr__menu__item">
-                    <span>Yazı Rengi</span>
-                    <input type="color" id="customSubtitleTextColor" value="${settings.textColor}" style="width:30px; height:25px; border:none;">
-                </div>
-            </div>
-        `;
-        
-        // Insert before the last section
-        const sections = settingsMenu.querySelectorAll('.plyr__menu__section');
-        console.log('Total menu sections:', sections.length);
-        if (sections.length > 0) {
-            const lastSection = sections[sections.length - 1];
-            lastSection.insertAdjacentHTML('beforebegin', fontSizeHTML + bgOpacityHTML + fontFamilyHTML + textColorHTML);
-            console.log('Injected custom settings!');
-        } else {
-            settingsMenu.innerHTML += fontSizeHTML + bgOpacityHTML + fontFamilyHTML + textColorHTML;
-            console.log('Appended custom settings to empty menu!');
-        }
-        
-        // Add event listeners
-        const sizeInput = document.getElementById('customSubtitleFontSize');
-        if (sizeInput) {
-            console.log('Adding size input listener');
-            sizeInput.addEventListener('input', function() {
-                const settings = getSubtitleSettings();
-                settings.fontSize = parseInt(this.value);
-                saveSubtitleSettings(settings);
-                this.closest('.plyr__menu__section')
-                    .querySelector('div:first-of-type span:last-child')
-                    .textContent = this.value + 'px';
-            });
-        }
-        
-        const bgInput = document.getElementById('customSubtitleBgOpacity');
-        if (bgInput) {
-            console.log('Adding bg opacity input listener');
-            bgInput.addEventListener('input', function() {
-                const settings = getSubtitleSettings();
-                settings.backgroundOpacity = parseInt(this.value) / 100;
-                saveSubtitleSettings(settings);
-                this.closest('.plyr__menu__section')
-                    .querySelector('div:first-of-type span:last-child')
-                    .textContent = this.value + '%';
-            });
-        }
-        
-        const fontSelect = document.getElementById('customSubtitleFontFamily');
-        if (fontSelect) {
-            console.log('Adding font select listener');
-            fontSelect.addEventListener('change', function() {
-                const settings = getSubtitleSettings();
-                settings.fontFamily = this.value;
-                saveSubtitleSettings(settings);
-                const label = document.getElementById('customSubtitleFontLabel');
-                if (label) label.textContent = this.value.split(',')[0];
-            });
-        }
-        
-        const colorInput = document.getElementById('customSubtitleTextColor');
-        if (colorInput) {
-            console.log('Adding color input listener');
-            colorInput.addEventListener('input', function() {
-                const settings = getSubtitleSettings();
-                settings.textColor = this.value;
-                saveSubtitleSettings(settings);
-            });
-        }
-    }
+    });
 }
+
+// Altyazı Ayar Paneli
+function _setupSubtitlePanel(player) {
+    const panel = document.getElementById('subtitleSettingsPanel');
+    if (!panel) return;
+    const settings = getSubtitleSettings();
+    panel.innerHTML = `
+        <div class="subtitle-settings-header">
+            <h3><i class="fa-solid fa-closed-captioning"></i> Altyazı Ayarları</h3>
+            <button onclick="document.getElementById('subtitleSettingsPanel').classList.add('hidden')" class="close-subtitle-settings">&times;</button>
+        </div>
+        <div class="subtitle-setting-item">
+            <label>Yazı Boyutu: <span id="fontSizeValue">${settings.fontSize}px</span></label>
+            <input type="range" min="10" max="40" value="${settings.fontSize}" oninput="_subtitleUpdate('fontSize', this.value)">
+        </div>
+        <div class="subtitle-setting-item">
+            <label>Arkaplan Şeffaflığı: <span id="bgOpacityValue">${Math.round(settings.backgroundOpacity * 100)}%</span></label>
+            <input type="range" min="0" max="100" value="${Math.round(settings.backgroundOpacity * 100)}" oninput="_subtitleUpdate('backgroundOpacity', this.value / 100)">
+        </div>
+        <div class="subtitle-setting-item">
+            <label>Yazı Rengi:</label>
+            <input type="color" value="${settings.textColor}" oninput="_subtitleUpdate('textColor', this.value)">
+        </div>
+        <div class="subtitle-setting-item">
+            <label>Yazı Tipi:</label>
+            <select onchange="_subtitleUpdate('fontFamily', this.value)">
+                <option value="Inter, sans-serif" ${settings.fontFamily.includes('Inter') ? 'selected' : ''}>Inter</option>
+                <option value="Arial, sans-serif" ${settings.fontFamily.includes('Arial') ? 'selected' : ''}>Arial</option>
+                <option value="Verdana, sans-serif" ${settings.fontFamily.includes('Verdana') ? 'selected' : ''}>Verdana</option>
+                <option value="Georgia, serif" ${settings.fontFamily.includes('Georgia') ? 'selected' : ''}>Georgia</option>
+            </select>
+        </div>
+    `;
+    applySubtitleSettings(settings);
+}
+window._subtitleUpdate = function(key, value) {
+    const settings = getSubtitleSettings();
+    if (key === 'fontSize') {
+        settings.fontSize = parseInt(value);
+        const el = document.getElementById('fontSizeValue');
+        if(el) el.textContent = value + 'px';
+    } else if (key === 'backgroundOpacity') {
+        settings.backgroundOpacity = parseFloat(value);
+        const el = document.getElementById('bgOpacityValue');
+        if(el) el.textContent = Math.round(parseFloat(value) * 100) + '%';
+    } else {
+        settings[key] = value;
+    }
+    localStorage.setItem('anitr_subtitle_settings', JSON.stringify(settings));
+    applySubtitleSettings(settings);
+};
+window.toggleSubtitleSettings = function() {
+    const p = document.getElementById('subtitleSettingsPanel');
+    if (p) p.classList.toggle('hidden');
+};
+
 
 // ══════════════════════════════════════════════════════════
 // MYANIMELIST ENTEGRASYONU (Jikan Public List)
@@ -3768,38 +3426,38 @@ function handleW2GMessage(msg) {
             addW2GMessage(msg);
             break;
         case 'play':
-            if (!w2gLocalAction && plyr) {
+            if (!w2gLocalAction && vjsPlayer) {
                 w2gLocalAction = true;
-                plyr.play();
+                vjsPlayer.play();
                 setTimeout(() => w2gLocalAction = false, 100);
             }
             break;
         case 'pause':
-            if (!w2gLocalAction && plyr) {
+            if (!w2gLocalAction && vjsPlayer) {
                 w2gLocalAction = true;
-                plyr.pause();
+                vjsPlayer.pause();
                 setTimeout(() => w2gLocalAction = false, 100);
             }
             break;
         case 'seek':
-            if (!w2gLocalAction && plyr && typeof msg.data === 'number') {
+            if (!w2gLocalAction && vjsPlayer && typeof msg.data === 'number') {
                 w2gLocalAction = true;
-                plyr.currentTime = msg.data;
+                vjsPlayer.currentTime(msg.data);
                 setTimeout(() => w2gLocalAction = false, 100);
             }
             break;
     }
 }
 function setupW2GPlayerListeners() {
-    if (!plyr) return;
-    plyr.on('play', () => {
+    if (!vjsPlayer) return;
+    vjsPlayer.on('play', () => {
         if (!w2gLocalAction) sendW2GPlayerEvent('play');
     });
-    plyr.on('pause', () => {
+    vjsPlayer.on('pause', () => {
         if (!w2gLocalAction) sendW2GPlayerEvent('pause');
     });
-    plyr.on('seeked', () => {
-        if (!w2gLocalAction) sendW2GPlayerEvent('seek', plyr.currentTime);
+    vjsPlayer.on('seeked', () => {
+        if (!w2gLocalAction) sendW2GPlayerEvent('seek', vjsPlayer.currentTime());
     });
 }
 function sendW2GPlayerEvent(type, data) {
@@ -4153,44 +3811,7 @@ function goToAnimeFromRoom(animeId, animeSlug, isMovie) {
     showAnimeDetail(animeId, animeSlug, isMovie);
 }
 
-// ── Keyboard Shortcuts (Yeni Özellik 2) ───────────────────
-document.addEventListener('keydown', (e) => {
-    // Sadece player açıkken çalışsın - use watchView instead!
-    const watchView = document.getElementById('watchView');
-    if (!plyr || !watchView || watchView.classList.contains('hidden')) return;
-
-    // Arama kutusu veya input'a yazıyorsa engelleme
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-    switch (e.code) {
-        case 'Space':
-        case 'KeyK':
-            e.preventDefault();
-            plyr.togglePlay();
-            break;
-        case 'ArrowRight':
-            e.preventDefault();
-            plyr.forward(10);
-            break;
-        case 'ArrowLeft':
-            e.preventDefault();
-            plyr.rewind(10);
-            break;
-        case 'KeyF':
-            e.preventDefault();
-            plyr.fullscreen.toggle();
-            break;
-        case 'KeyM':
-            e.preventDefault();
-            plyr.muted = !plyr.muted;
-            break;
-        case 'KeyN':
-            e.preventDefault();
-            const nxtBtn = document.getElementById('nextEpBtn2');
-            if (nxtBtn && !nxtBtn.disabled) nxtBtn.click();
-            break;
-    }
-});
+// Global keyboard handler was here, moved into openPlayer for vjsPlayer
 
 // ── Schedule (Yeni Özellik 3) ──────────────────────────────
 async function loadSchedule() {
