@@ -2960,15 +2960,27 @@ function openPlayer(watch, resumeAt) {
 
         // RESUME PLAYBACK - Video.js
         if (resumeAt > 10) {
-            // Video.js automatically queues this if the video isn't ready yet
-            p.currentTime(resumeAt);
+            let resumed = false;
+            const attemptResume = () => {
+                if (!resumed) {
+                    p.currentTime(resumeAt);
+                    // currentTime anında güncellenir, eğer güncellendiyse başardık demektir
+                    if (p.currentTime() >= resumeAt - 2) {
+                        resumed = true;
+                        const dEl = document.getElementById('resumeDebugOverlay');
+                        if (dEl) dEl.innerHTML += '<br>VJS Resumed ✅';
+                    }
+                }
+            };
             
-            // KESİN ÇÖZÜM: Video.js VHS eklentisi veya tarayıcı başa sararsa diye 'playing' eventinde kontrol et
+            // Video.js HLS için metadata veya data yüklendiğinde atlamayı dene
+            p.on('loadedmetadata', attemptResume);
+            p.on('canplay', attemptResume);
+            
+            // KESİN ÇÖZÜM: Oynatma başladığında hala atlamadıysa zorla
             p.one('playing', function() {
                 if (p.currentTime() < resumeAt - 5) {
                     p.currentTime(resumeAt);
-                    const dEl = document.getElementById('resumeDebugOverlay');
-                    if (dEl) dEl.innerHTML += '<br>VJS Force Resume: ' + resumeAt + 's ✅';
                 }
             });
             
@@ -3018,7 +3030,10 @@ function openPlayer(watch, resumeAt) {
                 savePosition(currentEpisodeKey, t);
                 const dEl = document.getElementById('resumeDebugOverlay');
                 if (dEl) dEl.innerHTML = 'Saved: ' + t.toFixed(1) + 's | Key: ' + currentEpisodeKey;
-                if (dur && dur > 0 && t / dur >= 0.95) {
+                
+                // HLS bazen başlarda süreyi 0 veya çok küçük verebiliyor.
+                // Sadece süre 60 saniyeden büyükse ve %95 izlendiyse tamamlandı say.
+                if (dur && dur > 60 && t / dur >= 0.95) {
                     clearPosition(currentEpisodeKey);
                     markWatched(currentEpisodeKey);
                 }
