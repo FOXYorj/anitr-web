@@ -2958,14 +2958,21 @@ function openPlayer(watch, resumeAt) {
             if (tTracks[i].language === 'tr') tTracks[i].mode = 'showing';
         }
 
-        // RESUME PLAYBACK - Video.js ile 1 satır, HLS.js ile çatışma yok!
+        // RESUME PLAYBACK - Video.js
         if (resumeAt > 10) {
-            p.one('canplay', function() {
-                p.currentTime(resumeAt);
-                showToast('⏩ ' + Math.floor(resumeAt / 60) + ':' + String(Math.floor(resumeAt % 60)).padStart(2, '0') + "'den devam ediliyor", 3000);
-                const dEl = document.getElementById('resumeDebugOverlay');
-                if (dEl) dEl.innerHTML += '<br>VJS Resume: ' + resumeAt + 's ✅';
+            // Video.js automatically queues this if the video isn't ready yet
+            p.currentTime(resumeAt);
+            
+            // KESİN ÇÖZÜM: Video.js VHS eklentisi veya tarayıcı başa sararsa diye 'playing' eventinde kontrol et
+            p.one('playing', function() {
+                if (p.currentTime() < resumeAt - 5) {
+                    p.currentTime(resumeAt);
+                    const dEl = document.getElementById('resumeDebugOverlay');
+                    if (dEl) dEl.innerHTML += '<br>VJS Force Resume: ' + resumeAt + 's ✅';
+                }
             });
+            
+            showToast('⏩ ' + Math.floor(resumeAt / 60) + ':' + String(Math.floor(resumeAt % 60)).padStart(2, '0') + "'den devam ediliyor", 3000);
         }
 
         // Klavye kısayolları
