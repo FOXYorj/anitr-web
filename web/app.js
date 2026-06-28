@@ -665,10 +665,14 @@ function savePosition(key, time) {
 function getPosition(key) {
     if (!key) return 0;
     // Önce yeni basit sisteme bak
-    const direct = parseFloat(localStorage.getItem('anitr_ts_' + key));
+    const directVal = localStorage.getItem('anitr_ts_' + key);
+    const direct = parseFloat(directVal);
+    console.log('[GET_POSITION] key:', key, 'directVal:', directVal, 'parsed:', direct);
     if (!isNaN(direct) && direct > 0) return direct;
+    
     // Eski sisteme de bak (geriye dönük uyumluluk)
     const pos = ls.getRaw(currentSourcePositionsKey, {});
+    console.log('[GET_POSITION] fallback to old system, val:', pos[key]);
     return pos[key] || 0;
 }
 
@@ -735,11 +739,6 @@ document.addEventListener('visibilitychange', () => {
         syncToServer();
     }
 });
-
-function getPosition(key) {
-    const pos = getPositions();
-    return key ? (pos[key] || 0) : 0;
-}
 
 // ── Settings ──────────────────────────────────────────────
 let profile = {
@@ -3029,7 +3028,10 @@ function openPlayer(watch, resumeAt) {
                 _lastSavedSec = tFloor;
                 savePosition(currentEpisodeKey, t);
                 const dEl = document.getElementById('resumeDebugOverlay');
-                if (dEl) dEl.innerHTML = 'Saved: ' + t.toFixed(1) + 's | Key: ' + currentEpisodeKey;
+                if (dEl) {
+                    dEl.innerHTML = 'Saved: ' + t.toFixed(1) + 's | Key: ' + currentEpisodeKey + 
+                                    '<br>Stored: ' + localStorage.getItem('anitr_ts_' + currentEpisodeKey);
+                }
                 
                 // HLS bazen başlarda süreyi 0 veya çok küçük verebiliyor.
                 // Sadece süre 60 saniyeden büyükse ve %95 izlendiyse tamamlandı say.
