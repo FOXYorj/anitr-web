@@ -639,22 +639,24 @@ function getPositions() {
 
 function savePosition(key, time) {
     if (!key || time < 5) return;
+    // Milisaniye hassasiyeti: 2 ondalıklı kaydet
+    const preciseTime = Math.round(time * 100) / 100;
     const pos = getPositions();
-    pos[key] = Math.floor(time);
+    pos[key] = preciseTime;
     const keys = Object.keys(pos);
     if (keys.length > 500) delete pos[keys[0]];
     // LocalStorage'a kaydet (hızlı erişim için)
     ls.setRaw(currentSourcePositionsKey, pos);
 
-    // Kullanıcı isteği üzerine: History (geçmiş) objesinin içine de saniyeyi yazalım
+    // History (geçmiş) objesinin içine de saniyeyi yazalım
     const hist = ls.getRaw(currentSourceHistoryKey, []);
     let histModified = false;
     for (let i = 0; i < hist.length; i++) {
         const epKeyTemp = (hist[i].slug || hist[i].id) + '_s' + (hist[i].sIdx || 0) + '_e' + (hist[i].eIdx || 0);
         if (epKeyTemp === key) {
-            hist[i].lastWatchedSec = Math.floor(time);
-            const m = Math.floor(time / 60);
-            const s = Math.floor(time % 60).toString().padStart(2, '0');
+            hist[i].lastWatchedSec = preciseTime;
+            const m = Math.floor(preciseTime / 60);
+            const s = Math.floor(preciseTime % 60).toString().padStart(2, '0');
             hist[i].lastWatchedMinute = `${m}:${s}`;
             histModified = true;
             break;
@@ -666,6 +668,26 @@ function savePosition(key, time) {
 
     // Sunucu dosyasına da yaz (kalıcı kayıt - debounced)
     _debouncedPositionSync();
+}
+
+// Bölüm tamamlandığında (ended veya %95+) pozisyonu temizle
+function clearPosition(key) {
+    if (!key) return;
+    const pos = getPositions();
+    delete pos[key];
+    ls.setRaw(currentSourcePositionsKey, pos);
+    // History'den de kaldır
+    const hist = ls.getRaw(currentSourceHistoryKey, []);
+    for (let i = 0; i < hist.length; i++) {
+        const epKeyTemp = (hist[i].slug || hist[i].id) + '_s' + (hist[i].sIdx || 0) + '_e' + (hist[i].eIdx || 0);
+        if (epKeyTemp === key) {
+            delete hist[i].lastWatchedSec;
+            delete hist[i].lastWatchedMinute;
+            break;
+        }
+    }
+    ls.setRaw(currentSourceHistoryKey, hist);
+    syncToServer();
 }
 
 let _lastSyncTime = 0;
@@ -684,7 +706,23 @@ function _debouncedPositionSync() {
         }, 5000);
     }
 }
-window.addEventListener('beforeunload', () => { syncToServer(); });
+// Kapanış/yenileme: son pozisyonu yaz
+window.addEventListener('beforeunload', () => {
+    if (typeof animePlayer !== 'undefined' && animePlayer && animePlayer.currentTime > 5) {
+        savePosition(currentEpisodeKey, animePlayer.currentTime);
+    }
+    syncToServer();
+});
+
+// Sekme arka plana geçince de kaydet (mobil / tab switch)
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        if (typeof animePlayer !== 'undefined' && animePlayer && animePlayer.currentTime > 5) {
+            savePosition(currentEpisodeKey, animePlayer.currentTime);
+        }
+        syncToServer();
+    }
+});
 
 function getPosition(key) {
     const pos = getPositions();
@@ -2968,23 +3006,35 @@ function openPlayer(watch, resumeAt) {
     const videoUrl = urls[0];
     const isM3u8   = videoUrl.includes('.m3u8');
 
-    // Position save interval
-    let _posInterval = null;
+    // ══ RESUME PLAYBACK: Hassas Zaman Takibi ══
+    let _lastSavedSec = -1;
     function startSaving() {
-        clearInterval(_posInterval);
-        // Zaman güncellendikçe (her ~250ms) kaydet, sunucuya debounced
-        let _lastSavedSec = -1;
+        // timeupdate: her saniyede bir hassas zaman kaydet
         animePlayer.addEventListener('timeupdate', () => {
-            const t = Math.floor(animePlayer.currentTime);
-            if (t > 5 && t !== _lastSavedSec) {
-                _lastSavedSec = t;
+            const t = animePlayer.currentTime;
+            const tFloor = Math.floor(t);
+            // İlk 5 saniyeyi kaydetme
+            if (t <= 5) return;
+            // Her 2 saniyede bir kaydet (gereksiz yazımı önle)
+            if (tFloor % 2 === 0 && tFloor !== _lastSavedSec) {
+                _lastSavedSec = tFloor;
+                // Milisaniye hassasiyetiyle kaydet
                 savePosition(currentEpisodeKey, t);
+                // %95+ izlenmişse tamamlandı say ve pozisyonu sil
+                const dur = animePlayer.duration;
+                if (dur && dur > 0 && t / dur >= 0.95) {
+                    clearPosition(currentEpisodeKey);
+                    markWatched(currentEpisodeKey);
+                }
             }
         });
     }
-    startSaving(); // 📌 BU SATIR EKSİKTİ, POZİSYONLAR KAYDEDİLMİYORDU
+    startSaving();
+    // beforeunload yedeği (üstteki global listener'a ek olarak)
     window.onbeforeunload = () => {
-        if (animePlayer && animePlayer.currentTime > 5) savePosition(currentEpisodeKey, animePlayer.currentTime);
+        if (animePlayer && animePlayer.currentTime > 5) {
+            savePosition(currentEpisodeKey, animePlayer.currentTime);
+        }
     };
 
     const plyrOpts = {
@@ -3195,13 +3245,15 @@ function openPlayer(watch, resumeAt) {
             plyr.once('playing', applyResume);
         }
 
-        plyr.on('ended', () => { 
-            if (disableEndedEvent) { 
+        plyr.on('ended', () => {
+            if (disableEndedEvent) {
                 console.log('disableEndedEvent is true → skipping playNextEpisode!');
-                return; 
+                return;
             }
-            markWatched(currentEpisodeKey); 
-            if (appSettings.autoNext) playNextEpisode(); 
+            // Bölüm bitti: pozisyonu sıfırla (bir daha açılınca baştan başlasın)
+            clearPosition(currentEpisodeKey);
+            markWatched(currentEpisodeKey);
+            if (appSettings.autoNext) playNextEpisode();
         });
         const keyboardHandler = (event) => {
             if (watchView.classList.contains('hidden')) return;
