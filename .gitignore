@@ -45,3 +45,7 @@ probe_subtitle
 
 # AI geliştirme bağlamı — kişisel, repoya girmemeli
 AI_STATE.md
+
+# Runtime data files
+userdata.json
+users.json
