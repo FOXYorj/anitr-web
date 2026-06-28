@@ -2671,8 +2671,8 @@ async function watchEpisode(id, slug, isMovie, ep, sIdx, eIdx, animeTitle, synop
     if (!debugEl) {
         debugEl = document.createElement('div');
         debugEl.id = 'resumeDebugOverlay';
-        debugEl.style = 'position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.8); color:lime; font-family:monospace; padding:5px; z-index:9999; font-size:12px; pointer-events:none; border-radius:4px;';
-        document.querySelector('.player-container').appendChild(debugEl);
+        debugEl.style = 'position:fixed; top:70px; right:10px; background:rgba(0,0,0,0.8); color:lime; font-family:monospace; padding:10px; z-index:999999; font-size:14px; pointer-events:none; border-radius:4px; border: 1px solid lime;';
+        document.body.appendChild(debugEl);
     }
     debugEl.innerHTML = `epKey: ${epKey}<br>getPosition(): ${getPosition(epKey)}`;
 
@@ -2899,6 +2899,7 @@ function openPlayer(watch, resumeAt) {
 
     if (plyr) { try { plyr.destroy(); } catch (e) {} plyr = null; }
     if (hls)  { hls.destroy(); hls = null; }
+    if (window._globalPosInterval) clearInterval(window._globalPosInterval); // Temizle
 
     const container = document.querySelector('.video-container-page');
     container.innerHTML = '<video id="animePlayer" class="plyr" controls playsinline crossorigin="anonymous"></video><div id="subtitleSettingsPanel" class="subtitle-settings-panel hidden"></div>';
@@ -3029,37 +3030,44 @@ function openPlayer(watch, resumeAt) {
     const videoUrl = urls[0];
     const isM3u8   = videoUrl.includes('.m3u8');
 
-    // ══ RESUME PLAYBACK: Hassas Zaman Takibi ══
+    // ══ RESUME PLAYBACK: Hassas Zaman Takibi (setInterval ile %100 Garanti) ══
     let _lastSavedSec = -1;
-    function startSaving() {
-        // timeupdate: her saniyede bir hassas zaman kaydet
-        animePlayer.addEventListener('timeupdate', () => {
-            const t = animePlayer.currentTime;
-            const tFloor = Math.floor(t);
-            // İlk 5 saniyeyi kaydetme
-            if (t <= 5) return;
-            // Her 2 saniyede bir kaydet (gereksiz yazımı önle)
-            if (tFloor % 2 === 0 && tFloor !== _lastSavedSec) {
-                _lastSavedSec = tFloor;
-                // Milisaniye hassasiyetiyle kaydet
-                savePosition(currentEpisodeKey, t);
-                
-                // Debug UI Güncelle
-                const dEl = document.getElementById('resumeDebugOverlay');
-                if (dEl) {
-                    dEl.innerHTML = `epKey: ${currentEpisodeKey}<br>Saved: ${t.toFixed(2)}s<br>Pos in LS: ${localStorage.getItem('anitr_ts_'+currentEpisodeKey)}`;
-                }
+    if (window._globalPosInterval) clearInterval(window._globalPosInterval);
+    
+    window._globalPosInterval = setInterval(() => {
+        let t = 0;
+        let dur = 0;
+        
+        if (typeof plyr !== 'undefined' && plyr && typeof plyr.currentTime === 'number') {
+            t = plyr.currentTime;
+            dur = plyr.duration;
+        } else if (typeof animePlayer !== 'undefined' && animePlayer && typeof animePlayer.currentTime === 'number') {
+            t = animePlayer.currentTime;
+            dur = animePlayer.duration;
+        }
 
-                // %95+ izlenmişse tamamlandı say ve pozisyonu sil
-                const dur = animePlayer.duration;
-                if (dur && dur > 0 && t / dur >= 0.95) {
-                    clearPosition(currentEpisodeKey);
-                    markWatched(currentEpisodeKey);
-                }
+        if (t <= 5) return;
+
+        const tFloor = Math.floor(t);
+        if (tFloor !== _lastSavedSec) {
+            _lastSavedSec = tFloor;
+            // Milisaniye hassasiyetiyle kaydet
+            savePosition(currentEpisodeKey, t);
+            
+            // Debug UI Güncelle
+            const dEl = document.getElementById('resumeDebugOverlay');
+            if (dEl) {
+                dEl.innerHTML = `epKey: ${currentEpisodeKey}<br>Saved: ${t.toFixed(2)}s<br>Pos in LS: ${localStorage.getItem('anitr_ts_'+currentEpisodeKey)}`;
             }
-        });
-    }
-    startSaving();
+
+            // %95+ izlenmişse tamamlandı say ve pozisyonu sil
+            if (dur && dur > 0 && t / dur >= 0.95) {
+                clearPosition(currentEpisodeKey);
+                markWatched(currentEpisodeKey);
+            }
+        }
+    }, 2000);
+    
     // beforeunload yedeği (üstteki global listener'a ek olarak)
     window.onbeforeunload = () => {
         if (animePlayer && animePlayer.currentTime > 5) {
