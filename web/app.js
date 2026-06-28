@@ -3006,28 +3006,27 @@ function openPlayer(watch, resumeAt) {
             if (appSettings.autoNext) playNextEpisode();
         });
 
+        // Konum Takibi (timeupdate — player'ın içinden güvenilir)
+        let _lastSavedSec = -1;
+        p.on('timeupdate', () => {
+            const t = p.currentTime();
+            const dur = p.duration();
+            if (!t || t <= 5) return;
+            const tFloor = Math.floor(t);
+            if (tFloor !== _lastSavedSec) {
+                _lastSavedSec = tFloor;
+                savePosition(currentEpisodeKey, t);
+                const dEl = document.getElementById('resumeDebugOverlay');
+                if (dEl) dEl.innerHTML = 'Saved: ' + t.toFixed(1) + 's | Key: ' + currentEpisodeKey;
+                if (dur && dur > 0 && t / dur >= 0.95) {
+                    clearPosition(currentEpisodeKey);
+                    markWatched(currentEpisodeKey);
+                }
+            }
+        });
+
         updateManualResumeArea();
     });
-
-    // Konum Takibi (setInterval — %100 güvenilir)
-    let _lastSavedSec = -1;
-    window._globalPosInterval = setInterval(() => {
-        if (!vjsPlayer || vjsPlayer.paused() || vjsPlayer.ended()) return;
-        const t = vjsPlayer.currentTime();
-        const dur = vjsPlayer.duration();
-        if (!t || t <= 5) return;
-        const tFloor = Math.floor(t);
-        if (tFloor !== _lastSavedSec) {
-            _lastSavedSec = tFloor;
-            savePosition(currentEpisodeKey, t);
-            const dEl = document.getElementById('resumeDebugOverlay');
-            if (dEl) dEl.innerHTML = 'Saved: ' + t.toFixed(1) + 's | Key: ' + currentEpisodeKey;
-            if (dur && dur > 0 && t / dur >= 0.95) {
-                clearPosition(currentEpisodeKey);
-                markWatched(currentEpisodeKey);
-            }
-        }
-    }, 2000);
 
     // Kapanışta kaydet
     window.onbeforeunload = () => {

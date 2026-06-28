@@ -3084,3 +3084,111 @@ body[data-nav-layout="right"] #homeView {
   font-size: 1.1rem;
   box-shadow: 0 10px 30px rgba(229, 9, 20, 0.3);
 }
+
+/* ── Video.js Modern Custom Skin ───────────────────────────── */
+.video-js {
+    font-family: var(--font-primary) !important;
+    border-radius: 12px;
+    overflow: hidden;
+    background-color: #000;
+}
+.video-js .vjs-control-bar {
+    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 70%, transparent 100%) !important;
+    height: 4em !important;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+}
+.video-js .vjs-big-play-button {
+    background-color: var(--accent) !important;
+    border: none !important;
+    border-radius: 50% !important;
+    width: 80px !important;
+    height: 80px !important;
+    line-height: 80px !important;
+    margin-top: -40px !important;
+    margin-left: -40px !important;
+    transition: transform 0.2s, box-shadow 0.2s !important;
+    box-shadow: 0 4px 20px var(--accent-glow) !important;
+}
+.video-js:hover .vjs-big-play-button, .video-js .vjs-big-play-button:focus {
+    background-color: var(--accent-2) !important;
+    transform: scale(1.1) !important;
+    box-shadow: 0 6px 30px var(--accent-glow2) !important;
+}
+.video-js .vjs-play-progress {
+    background-color: var(--accent) !important;
+}
+.video-js .vjs-slider {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    border-radius: 4px;
+}
+.video-js .vjs-load-progress {
+    background-color: rgba(255, 255, 255, 0.4) !important;
+}
+.video-js .vjs-load-progress div {
+    background-color: rgba(255, 255, 255, 0.5) !important;
+}
+.video-js .vjs-play-progress:before {
+    color: var(--accent) !important;
+    font-size: 1.2em;
+    top: -0.4em;
+}
+.video-js .vjs-volume-level {
+    background-color: var(--accent) !important;
+}
+.video-js .vjs-volume-level:before {
+    color: var(--accent) !important;
+}
+.video-js .vjs-time-control {
+    font-size: 1.1em;
+    line-height: 4em;
+}
+.video-js .vjs-menu-button-popup .vjs-menu {
+    margin-bottom: 1em;
+}
+.video-js .vjs-menu-content {
+    background-color: rgba(15, 15, 20, 0.95) !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    padding: 5px !important;
+}
+.video-js .vjs-menu-item {
+    border-radius: 4px;
+    margin: 2px 0;
+    transition: background-color 0.2s;
+}
+.video-js .vjs-menu-item:hover {
+    background-color: rgba(255,255,255,0.1) !important;
+}
+.video-js .vjs-menu-item.vjs-selected {
+    background-color: var(--accent) !important;
+    color: #fff !important;
+}
+/* Skip Buttons Inside Player */
+.player-skip-controls {
+    position: absolute;
+    bottom: 5em;
+    right: 20px;
+    z-index: 100;
+    display: flex;
+    gap: 10px;
+}
+.player-skip-controls .skip-btn {
+    background: rgba(15, 15, 20, 0.85);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    transition: all 0.2s;
+}
+.player-skip-controls .skip-btn:hover {
+    background: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px var(--accent-glow);
+}
