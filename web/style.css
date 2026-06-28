@@ -3095,9 +3095,6 @@ body[data-nav-layout="right"] #homeView {
 .video-js .vjs-control-bar {
     background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 70%, transparent 100%) !important;
     height: 4em !important;
-    display: flex;
-    align-items: center;
-    padding: 0 10px;
 }
 .video-js .vjs-big-play-button {
     background-color: var(--accent) !important;
@@ -3165,6 +3162,11 @@ body[data-nav-layout="right"] #homeView {
 .video-js .vjs-menu-item.vjs-selected {
     background-color: var(--accent) !important;
     color: #fff !important;
+}
+.vjs-quality-selector .vjs-icon-placeholder:before {
+    content: "\f013";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
 }
 /* Skip Buttons Inside Player */
 .player-skip-controls {

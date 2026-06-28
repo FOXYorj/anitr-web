@@ -315,13 +315,7 @@
                     <div class="watch-meta">
                         <span id="watchAnimeTitle" class="meta-badge accent"></span>
                         <span id="watchSource" class="meta-badge"></span>
-                        <select id="watchSoundSelect" class="btn-secondary" style="outline:none; cursor:pointer;" onchange="changeWatchSound(this.value)">
-                            <option value="">Varsayılan Ses</option>
-                            <option value="original">Orijinal (Japonca)</option>
-                            <option value="trdub">Türkçe Dublaj</option>
-                            <option value="endub">İngilizce Dublaj</option>
-                            <option value="trsub">Türkçe Altyazı</option>
-                        </select>
+
                         <button class="btn-secondary" id="watchSavePosBtn" onclick="saveManualPosition()">
                             <i class="fa-regular fa-floppy-disk"></i> Konumu Kaydet
                         </button>
@@ -481,58 +475,13 @@
                 </div>
                 <div class="setting-item">
                     <div>
-                        <h4>Altyazı Boyutu</h4>
-                        <p>Video altyazılarının büyüklüğü</p>
+                        <h4>Geliştirici Oynatıcı Hata Ayıklama (Debug)</h4>
+                        <p>Oynatıcının sağ üstünde kaldığı yeri gösterme bilgisini açar/kapatır</p>
                     </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <input type="range" id="settingSubSize" min="14" max="48" value="20" onchange="saveSettings()" style="width:120px">
-                        <span id="subSizeVal">20px</span>
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <div>
-                        <h4>Altyazı Rengi</h4>
-                        <p>Altyazıların metin rengi</p>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <input type="color" id="settingSubColor" value="#ffffff" onchange="saveSettings()">
-                        <span id="subColorVal">#ffffff</span>
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <div>
-                        <h4>Altyazı Arka Planı</h4>
-                        <p>Altyazıların arka plan rengi ve opaklığı</p>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <input type="color" id="settingSubBgColor" value="#000000" onchange="saveSettings()">
-                        <input type="range" id="settingSubBgOpacity" min="0" max="100" value="70" onchange="saveSettings()" style="width:80px">
-                        <span id="subBgOpacityVal">%70</span>
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <div>
-                        <h4>Altyazı Fontu</h4>
-                        <p>Altyazıların yazı tipi</p>
-                    </div>
-                    <select id="settingSubFont" onchange="saveSettings()">
-                        <option value="Arial">Arial</option>
-                        <option value="Inter">Inter (Varsayılan)</option>
-                        <option value="Verdana">Verdana</option>
-                        <option value="Georgia">Georgia</option>
-                        <option value="Times New Roman">Times New Roman</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <div>
-                        <h4>Altyazı Konumu</h4>
-                        <p>Altyazıların videodaki konumu</p>
-                    </div>
-                    <select id="settingSubPosition" onchange="saveSettings()">
-                        <option value="bottom">Alt (Varsayılan)</option>
-                        <option value="bottom-center">Alt-Orta</option>
-                        <option value="top">Üst</option>
-                    </select>
+                    <label class="switch">
+                        <input type="checkbox" id="settingPlayerDebug" onchange="saveSettings()">
+                        <span class="slider"></span>
+                    </label>
                 </div>
                 <div class="setting-item">
                     <span>Otomatik Sonraki Bölüm</span>

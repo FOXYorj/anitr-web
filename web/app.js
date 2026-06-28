@@ -766,27 +766,9 @@ function saveSettings() {
     appSettings.aiApiKey          = document.getElementById('settingAIApiKey') ? document.getElementById('settingAIApiKey').value : '';
     appSettings.aiPrompt          = document.getElementById('settingAIPrompt') ? document.getElementById('settingAIPrompt').value : '';
     
-    // Save subtitle settings to existing localStorage key
-    const subtitleSettings = {
-        fontSize: parseInt(document.getElementById('settingSubSize').value) || 20,
-        textColor: document.getElementById('settingSubColor').value || '#ffffff',
-        backgroundColor: document.getElementById('settingSubBgColor').value || '#000000',
-        backgroundOpacity: (parseInt(document.getElementById('settingSubBgOpacity').value) || 70) / 100,
-        fontFamily: (document.getElementById('settingSubFont').value || 'Inter') + ', sans-serif',
-        position: document.getElementById('settingSubPosition').value || 'bottom'
-    };
-    localStorage.setItem('anitr_subtitle_settings', JSON.stringify(subtitleSettings));
+    appSettings.playerDebug       = document.getElementById('settingPlayerDebug') ? document.getElementById('settingPlayerDebug').checked : false;
     
     ls.set('anitr_settings', appSettings);
-    
-    // Uygula
-    document.getElementById('subSizeVal').textContent = subtitleSettings.fontSize + 'px';
-    document.getElementById('subColorVal').textContent = subtitleSettings.textColor;
-    document.getElementById('subBgOpacityVal').textContent = `%${Math.round(subtitleSettings.backgroundOpacity * 100)}`;
-    document.documentElement.style.setProperty('--sub-size', subtitleSettings.fontSize + 'px');
-    
-    // Apply subtitle styles to Plyr
-    applySubtitleSettings(subtitleSettings);
     
     // Kaynak değişti mi kontrol et
     if (prevSource !== appSettings.defaultSource) {
@@ -830,52 +812,9 @@ function loadSettingsUI() {
     document.getElementById('settingAutoNext').checked  = appSettings.autoNext !== false;
     document.getElementById('settingBannerAuto').checked = appSettings.bannerAuto !== false;
     
-    // Load subtitle settings from existing localStorage key
-    const subtitleSettings = (function getSubtitleSettings() {
-        const saved = localStorage.getItem('anitr_subtitle_settings');
-        return saved ? JSON.parse(saved) : {
-            fontSize: 20,
-            backgroundOpacity: 0.7,
-            fontFamily: 'Inter, sans-serif',
-            textColor: '#ffffff',
-            backgroundColor: '#000000',
-            position: 'bottom'
-        };
-    })();
-    
-    const subSizeInput = document.getElementById('settingSubSize');
-    if (subSizeInput) {
-        subSizeInput.value = subtitleSettings.fontSize;
-        document.getElementById('subSizeVal').textContent = subtitleSettings.fontSize + 'px';
-        document.documentElement.style.setProperty('--sub-size', subtitleSettings.fontSize + 'px');
+    if (document.getElementById('settingPlayerDebug')) {
+        document.getElementById('settingPlayerDebug').checked = appSettings.playerDebug === true;
     }
-    const subColorInput = document.getElementById('settingSubColor');
-    if (subColorInput) {
-        subColorInput.value = subtitleSettings.textColor;
-        document.getElementById('subColorVal').textContent = subtitleSettings.textColor;
-    }
-    const subBgColorInput = document.getElementById('settingSubBgColor');
-    if (subBgColorInput) {
-        subBgColorInput.value = subtitleSettings.backgroundColor;
-    }
-    const subBgOpacityInput = document.getElementById('settingSubBgOpacity');
-    if (subBgOpacityInput) {
-        subBgOpacityInput.value = Math.round(subtitleSettings.backgroundOpacity * 100);
-        document.getElementById('subBgOpacityVal').textContent = `%${Math.round(subtitleSettings.backgroundOpacity * 100)}`;
-    }
-    const subFontInput = document.getElementById('settingSubFont');
-    if (subFontInput) {
-        // Extract just the font name (without ', sans-serif')
-        const fontName = subtitleSettings.fontFamily.split(',')[0].trim();
-        subFontInput.value = fontName;
-    }
-    const subPositionInput = document.getElementById('settingSubPosition');
-    if (subPositionInput) {
-        subPositionInput.value = subtitleSettings.position;
-    }
-    
-    // Apply subtitle styles initially
-    applySubtitleSettings(subtitleSettings);
 
     const sourceSelect = document.getElementById('settingDefaultSource');
     if (sourceSelect) {
