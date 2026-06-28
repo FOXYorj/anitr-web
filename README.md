@@ -313,7 +313,7 @@ Sağ üst köşedeki ⚙️ simgesine tıklayarak tüm ayarlara erişebilirsin.
 | **Go** | HTTP sunucu, scraping, API katmanı |
 | **Vanilla JS** | SPA mantığı, state yönetimi |
 | **CSS3** | Glassmorphism, animasyonlar, responsive layout |
-| **Plyr** | Video oynatıcı |
+| **Videojs** | Video oynatıcı |
 | **Font Awesome** | İkon seti |
 | **Jikan API** | MyAnimeList veri kaynağı |
 | **WebSocket** | W2G gerçek zamanlı senkron |
