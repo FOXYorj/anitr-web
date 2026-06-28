@@ -2613,7 +2613,12 @@ async function watchEpisode(id, slug, isMovie, ep, sIdx, eIdx, animeTitle, synop
         debugEl.style = 'position:fixed; top:70px; right:10px; background:rgba(0,0,0,0.8); color:lime; font-family:monospace; padding:10px; z-index:999999; font-size:14px; pointer-events:none; border-radius:4px; border: 1px solid lime;';
         document.body.appendChild(debugEl);
     }
-    debugEl.innerHTML = `epKey: ${epKey}<br>getPosition(): ${getPosition(epKey)}`;
+    if (appSettings.playerDebug) {
+        debugEl.style.display = 'block';
+        debugEl.innerHTML = `epKey: ${epKey}<br>getPosition(): ${getPosition(epKey)}`;
+    } else {
+        debugEl.style.display = 'none';
+    }
 
     // Set ambient background!
     if (imgUrl) {
@@ -2854,11 +2859,9 @@ function startAmbilight(videoEl) {
         _ambientLightFrameId = requestAnimationFrame(draw);
     }
     
-    videoEl.addEventListener('loadeddata', () => {
-        canvas.width = 128; // Optimize for blur
-        canvas.height = 72;
-        if (!_ambientLightFrameId) _ambientLightFrameId = requestAnimationFrame(draw);
-    }, { once: true });
+    canvas.width = 128; // Optimize for blur
+    canvas.height = 72;
+    if (!_ambientLightFrameId) _ambientLightFrameId = requestAnimationFrame(draw);
 }
 function openPlayer(watch, resumeAt) {
     resumeAt = resumeAt || 0;
@@ -2927,7 +2930,8 @@ function openPlayer(watch, resumeAt) {
     vjsPlayer.ready(function() {
         const p = this;
         
-        startAmbilight(document.getElementById('animePlayer'));
+        const realVideoEl = document.querySelector('.video-container-page video');
+        if (realVideoEl) startAmbilight(realVideoEl);
 
         // Türkçe altyazıyı varsayılan yap
         const tTracks = p.textTracks();
