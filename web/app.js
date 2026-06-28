@@ -3139,13 +3139,18 @@ function openPlayer(watch, resumeAt) {
     }
 
     if (Hls.isSupported() && isM3u8) {
+        const _hlsStartPos = resumeAt > 10 ? resumeAt : -1;
         hls = new Hls({ 
             maxMaxBufferLength: 120, 
             enableWorker: true,
-            startPosition: resumeAt > 10 ? resumeAt : -1 
+            startPosition: _hlsStartPos
         });
         hls.loadSource(videoUrl);
         hls.attachMedia(animePlayer);
+        // HLS start position - set again after attach to be sure
+        if (_hlsStartPos > 0) {
+            hls.startPosition = _hlsStartPos;
+        }
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
             // Backend'den birden fazla URL (farklı manifest) geldiyse
@@ -3262,56 +3267,47 @@ function openPlayer(watch, resumeAt) {
         console.log('[RESUME] finishSetup içinde resumeAt:', resumeAt);
         
         // resumeAt > 10 ise video yüklendiğinde o saniyeye atla
-        let _resumeApplied = false;
-        const applyResume = () => {
-            if (resumeAt <= 10 || _resumeApplied) return;
-            const dEl = document.getElementById('resumeDebugOverlay');
-            if (dEl) dEl.innerHTML += `<br>applyResume(${resumeAt.toFixed(2)})`;
-            console.log('[RESUME] applyResume çağrıldı, resumeAt:', resumeAt);
-
-            try {
-                if (plyr && typeof plyr.currentTime === 'number') plyr.currentTime = resumeAt;
-                if (animePlayer) animePlayer.currentTime = resumeAt;
-                
-                // Kontrol et
-                const checkTime = plyr ? plyr.currentTime : animePlayer.currentTime;
-                if (Math.abs(checkTime - resumeAt) < 3) {
-                    _resumeApplied = true;
+        // Tek, basit, kesin yöntem: Plyr 'ready' event'i attıktan sonra zorla atla
+        if (resumeAt > 10) {
+            let _applied = false;
+            const forceSeek = () => {
+                if (_applied) return;
+                const dEl = document.getElementById('resumeDebugOverlay');
+                if (dEl) dEl.innerHTML += `<br>forceSeek(${resumeAt})`;
+                try {
+                    // Önce plyr'a söyle
+                    if (plyr && typeof plyr.currentTime !== 'undefined') plyr.currentTime = resumeAt;
+                    // Sonra native video element'e söyle
+                    if (animePlayer) animePlayer.currentTime = resumeAt;
+                    _applied = true;
                     if (dEl) dEl.innerHTML += ` ✅`;
-                }
-            } catch(e) { console.warn('[RESUME] Seek hatası:', e); }
-        };
+                } catch(e) { console.warn('forceSeek err:', e); }
+            };
 
-        // Normal eventler ile dene
-        if (plyr) {
-            plyr.once('ready', applyResume);
-            plyr.once('canplay', applyResume);
-        }
-        if (animePlayer) {
-            animePlayer.addEventListener('loadedmetadata', applyResume, { once: true });
-            animePlayer.addEventListener('canplay', applyResume, { once: true });
-            if (animePlayer.readyState >= 2) applyResume();
+            // Plyr 'ready' olunca seek et
+            plyr.on('ready', forceSeek);
             
-            // 🛑 KESİN ÇÖZÜM (FORCE SEEK): Video oynamaya başladıktan hemen sonra kontrol et. 
-            // Hls.js veya tarayıcı başa sarmışsa, zorla eski konuma atla!
+            // Video native 'canplay' olunca seek et (HLS buffer yüklendikten sonra)
+            animePlayer.addEventListener('canplay', forceSeek, { once: true });
+
+            // 🛑 EN GÜVENLİ YÖNTEM: Video gerçekten 'playing' olunca
+            // (tarayıcının ve Plyr'in tamamen hazır olduğundan emin olunduğunda)
+            // aşağıdaki event'te saıniyeyi kontrol et ve eğer hala baştaysa zorla atla
             animePlayer.addEventListener('playing', () => {
-                if (resumeAt <= 10 || _resumeApplied) return;
                 setTimeout(() => {
-                    const current = plyr ? plyr.currentTime : animePlayer.currentTime;
-                    // Eğer video hala başlardaysa (0-10 sn civarı) ve aslında çok ileride olmalıysa
-                    if (current < resumeAt - 5) {
-                        const dEl = document.getElementById('resumeDebugOverlay');
-                        if (dEl) dEl.innerHTML += `<br>Force Seek!`;
-                        if (plyr) plyr.currentTime = resumeAt;
-                        if (animePlayer) animePlayer.currentTime = resumeAt;
-                        _resumeApplied = true;
+                    const cur = plyr ? plyr.currentTime : (animePlayer ? animePlayer.currentTime : 0);
+                    const dEl = document.getElementById('resumeDebugOverlay');
+                    if (dEl) dEl.innerHTML += `<br>playing@${cur.toFixed(1)}`;
+                    if (cur < resumeAt - 5) {
+                        if (dEl) dEl.innerHTML += ` =>ForceSeek`;
+                        forceSeek();
+                    } else {
+                        _applied = true;
+                        if (dEl) dEl.innerHTML += ` ✅OK`;
                     }
-                }, 500); // Video buffer'ı dolup oynamaya başladıktan 500ms sonra zorla.
+                }, 800);
             }, { once: true });
         }
-
-        // Tüm olası yükleme eventlerine dinle
-        // Önceki loop'lu yapıyı ve eventleri temizledik, yukarıda hepsi eklendi.
 
         plyr.on('ended', () => {
             if (disableEndedEvent) {
