@@ -3210,3 +3210,20 @@ body[data-nav-layout="right"] #homeView {
     transform: translateY(-2px);
     box-shadow: 0 4px 15px var(--accent-glow);
 }
+
+/* ¦¦ Creators Section ¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦ */
+.creators-section { margin: 3rem auto; max-width: 800px; }
+.creators-title { font-size: 2rem; margin-bottom: 2rem; color: var(--accent); }
+.creators-grid { display: flex; flex-wrap: wrap; gap: 2rem; justify-content: center; }
+.creator-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; width: 220px; transition: all 0.3s ease; text-decoration: none; color: inherit; position: relative; overflow: hidden; }
+.creator-card::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%); opacity: 0; transition: opacity 0.3s ease; z-index: 0; pointer-events: none; }
+.creator-card:hover { transform: translateY(-10px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-color: var(--accent); }
+.creator-card:hover::before { opacity: 0.1; }
+.creator-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--surface); z-index: 1; transition: transform 0.3s ease; }
+.creator-card:hover .creator-avatar { transform: scale(1.1) rotate(5deg); border-color: var(--accent); }
+.creator-info { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; z-index: 1; }
+.creator-name { font-size: 1.2rem; font-weight: 700; color: #fff; }
+.creator-role { font-size: 0.85rem; color: var(--text3); font-weight: 500; text-align: center; }
+.footer-extras { margin: 3rem 0; font-size: 0.9rem; color: var(--text3); }
+.scroll-3d-content { animation: float3d 6s ease-in-out infinite; }
+@keyframes float3d { 0%, 100% { transform: translateY(0) rotateX(0deg); } 50% { transform: translateY(-10px) rotateX(2deg); } }
