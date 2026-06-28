@@ -767,6 +767,7 @@ function saveSettings() {
     appSettings.aiPrompt          = document.getElementById('settingAIPrompt') ? document.getElementById('settingAIPrompt').value : '';
     
     appSettings.playerDebug       = document.getElementById('settingPlayerDebug') ? document.getElementById('settingPlayerDebug').checked : false;
+    appSettings.ambientLight      = document.getElementById('settingAmbilight') ? document.getElementById('settingAmbilight').checked : false;
     
     ls.set('anitr_settings', appSettings);
     
@@ -814,6 +815,9 @@ function loadSettingsUI() {
     
     if (document.getElementById('settingPlayerDebug')) {
         document.getElementById('settingPlayerDebug').checked = appSettings.playerDebug === true;
+    }
+    if (document.getElementById('settingAmbilight')) {
+        document.getElementById('settingAmbilight').checked = appSettings.ambientLight === true;
     }
 
     const sourceSelect = document.getElementById('settingDefaultSource');
@@ -2823,6 +2827,39 @@ function formatTime(secs) {
     }
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
+
+let _ambientLightFrameId = null;
+function startAmbilight(videoEl) {
+    if (_ambientLightFrameId) { cancelAnimationFrame(_ambientLightFrameId); _ambientLightFrameId = null; }
+    const canvas = document.getElementById('videoAmbilightCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    
+    function draw() {
+        if (!document.body.contains(videoEl)) {
+            canvas.classList.add('hidden');
+            _ambientLightFrameId = null;
+            return;
+        }
+        if (!appSettings.ambientLight) {
+            canvas.classList.add('hidden');
+        } else {
+            canvas.classList.remove('hidden');
+            if (!videoEl.paused && !videoEl.ended && videoEl.readyState >= 2) {
+                try {
+                    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+                } catch(e) {}
+            }
+        }
+        _ambientLightFrameId = requestAnimationFrame(draw);
+    }
+    
+    videoEl.addEventListener('loadeddata', () => {
+        canvas.width = 128; // Optimize for blur
+        canvas.height = 72;
+        if (!_ambientLightFrameId) _ambientLightFrameId = requestAnimationFrame(draw);
+    }, { once: true });
+}
 function openPlayer(watch, resumeAt) {
     resumeAt = resumeAt || 0;
     const urls      = watch.Urls      || [];
@@ -2889,6 +2926,8 @@ function openPlayer(watch, resumeAt) {
     // Player hazır olunca
     vjsPlayer.ready(function() {
         const p = this;
+        
+        startAmbilight(document.getElementById('animePlayer'));
 
         // Türkçe altyazıyı varsayılan yap
         const tTracks = p.textTracks();

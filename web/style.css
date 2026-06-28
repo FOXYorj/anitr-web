@@ -1569,8 +1569,24 @@ main:not(#homeView) {
   aspect-ratio: 16/9;
   background: #000;
   border-radius: var(--radius);
-  overflow: hidden;
   box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+/* Ambilight Canvas */
+.video-ambilight {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  transform: translate(-50%, -50%) scale(1.05);
+  filter: blur(50px) saturate(150%) opacity(0.8);
+  z-index: -1;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  border-radius: 12px;
+}
+.video-ambilight.hidden {
+  opacity: 0 !important;
 }
 .video-container-page video { width: 100%; height: 100%; display: block; }
 .watch-details { padding-top: 1rem; }

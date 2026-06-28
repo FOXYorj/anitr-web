@@ -307,7 +307,8 @@
         <div id="watchAmbient" class="watch-ambient"></div>
         <div class="watch-layout">
             <div class="watch-main">
-                <div class="video-container-page">
+                <div class="video-container-page" style="overflow: visible;">
+                    <canvas id="videoAmbilightCanvas" class="video-ambilight hidden"></canvas>
                     <video id="animePlayer" class="video-js vjs-default-skin vjs-big-play-centered" controls playsinline crossorigin="anonymous"></video>
                 </div>
                 <div class="watch-details">
@@ -480,6 +481,16 @@
                     </div>
                     <label class="switch">
                         <input type="checkbox" id="settingPlayerDebug" onchange="saveSettings()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Sinematik Arka Plan (Ambilight)</h4>
+                        <p>Videodaki renklerin sayfanın arka planına yansımasını sağlar</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="settingAmbilight" onchange="saveSettings()">
                         <span class="slider"></span>
                     </label>
                 </div>
