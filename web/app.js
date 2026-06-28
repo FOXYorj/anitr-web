@@ -3282,18 +3282,32 @@ function openPlayer(watch, resumeAt) {
             } catch(e) { console.warn('[RESUME] Seek hatası:', e); }
         };
 
-        // Tüm olası yükleme eventlerine dinle (Plyr ve HTML5 Video)
+        // Normal eventler ile dene
         if (plyr) {
             plyr.once('ready', applyResume);
             plyr.once('canplay', applyResume);
-            plyr.once('playing', applyResume);
         }
         if (animePlayer) {
             animePlayer.addEventListener('loadedmetadata', applyResume, { once: true });
             animePlayer.addEventListener('canplay', applyResume, { once: true });
-            animePlayer.addEventListener('playing', applyResume, { once: true });
-            // Eğer video zaten yüklü ise hemen dene
             if (animePlayer.readyState >= 2) applyResume();
+            
+            // 🛑 KESİN ÇÖZÜM (FORCE SEEK): Video oynamaya başladıktan hemen sonra kontrol et. 
+            // Hls.js veya tarayıcı başa sarmışsa, zorla eski konuma atla!
+            animePlayer.addEventListener('playing', () => {
+                if (resumeAt <= 10 || _resumeApplied) return;
+                setTimeout(() => {
+                    const current = plyr ? plyr.currentTime : animePlayer.currentTime;
+                    // Eğer video hala başlardaysa (0-10 sn civarı) ve aslında çok ileride olmalıysa
+                    if (current < resumeAt - 5) {
+                        const dEl = document.getElementById('resumeDebugOverlay');
+                        if (dEl) dEl.innerHTML += `<br>Force Seek!`;
+                        if (plyr) plyr.currentTime = resumeAt;
+                        if (animePlayer) animePlayer.currentTime = resumeAt;
+                        _resumeApplied = true;
+                    }
+                }, 500); // Video buffer'ı dolup oynamaya başladıktan 500ms sonra zorla.
+            }, { once: true });
         }
 
         // Tüm olası yükleme eventlerine dinle
