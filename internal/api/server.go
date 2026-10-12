@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -268,7 +269,52 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 	}
 
 	// MAL Entegrasyonu (Jikan üzerinden)
-	http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r *http.Request) {
+		http.HandleFunc("/api/upload", withRecovery(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			respondError(w, fmt.Errorf("Only POST allowed"), http.StatusMethodNotAllowed)
+			return
+		}
+		
+		err := r.ParseMultipartForm(100 << 20) // 100 MB max
+		if err != nil {
+			respondError(w, err, http.StatusBadRequest)
+			return
+		}
+		
+		file, handler, err := r.FormFile("file")
+		if err != nil {
+			respondError(w, err, http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+		
+		uploadsDir := filepath.Join(webDir, "uploads")
+		if _, err := os.Stat(uploadsDir); os.IsNotExist(err) {
+			os.MkdirAll(uploadsDir, os.ModePerm)
+		}
+		
+		ext := filepath.Ext(handler.Filename)
+		filename := fmt.Sprintf("hero_%d%s", time.Now().UnixNano(), ext)
+		filePath := filepath.Join(uploadsDir, filename)
+		
+		dst, err := os.Create(filePath)
+		if err != nil {
+			respondError(w, err, http.StatusBadRequest)
+			return
+		}
+		defer dst.Close()
+		
+		if _, err := io.Copy(dst, file); err != nil {
+			respondError(w, err, http.StatusBadRequest)
+			return
+		}
+		
+		respondJSON(w, map[string]string{
+			"url": "/uploads/" + filename,
+		})
+	}))
+
+http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r *http.Request) {
 		username := r.URL.Query().Get("username")
 		status   := r.URL.Query().Get("status")
 		if username == "" {
@@ -281,7 +327,7 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 
 		list, err := jikan.GetUserAnimeList(username, status)
 		if err != nil {
-			respondError(w, err, http.StatusInternalServerError)
+			respondError(w, err, http.StatusBadRequest)
 			return
 		}
 		respondJSON(w, list)
@@ -297,7 +343,7 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 			list, err = jikan.GetTopAnimeFast()
 		}
 		if err != nil {
-			respondError(w, err, http.StatusInternalServerError)
+			respondError(w, err, http.StatusBadRequest)
 			return
 		}
 		respondJSON(w, list)
@@ -306,7 +352,7 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 	http.HandleFunc("/api/mal/seasonal", withRecovery(func(w http.ResponseWriter, r *http.Request) {
 		list, err := jikan.GetSeasonalAnimeFast()
 		if err != nil {
-			respondError(w, err, http.StatusInternalServerError)
+			respondError(w, err, http.StatusBadRequest)
 			return
 		}
 		respondJSON(w, list)
@@ -321,7 +367,7 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 
 		list, err := jikan.GetAnimeByGenre(genre)
 		if err != nil {
-			respondError(w, err, http.StatusInternalServerError)
+			respondError(w, err, http.StatusBadRequest)
 			return
 		}
 		respondJSON(w, list)
@@ -423,7 +469,8 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 			recs, err = jikan.GetRecommendationsByGenres(topGenres)
 		}
 		if err != nil {
-			respondError(w, err, http.StatusInternalServerError)
+			// Jikan API rate limit veya hata durumunda frontend'i kırmak yerine boş dizi dön
+			respondJSON(w, []jikan.AnimeBasic{})
 			return
 		}
 
@@ -441,7 +488,7 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 	http.HandleFunc("/api/mal/schedule", withRecovery(func(w http.ResponseWriter, r *http.Request) {
 		schedule, err := jikan.GetSchedule()
 		if err != nil {
-			respondError(w, err, http.StatusInternalServerError)
+			respondError(w, err, http.StatusBadRequest)
 			return
 		}
 		respondJSON(w, schedule)
@@ -560,7 +607,12 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 		// Set dynamic Referer based on target URL
 		referer := "https://animecix.net/"
 		if strings.Contains(target, "anizium") || strings.Contains(target, "aniziumserver") {
-			referer = "https://anizium.com/"
+			referer = "https://anizium.co/"
+			req.Header.Set("Cf-Control", anizium.GenerateCfToken())
+			req.Header.Set("device", "browser")
+			req.Header.Set("language", "tr")
+			req.Header.Set("site", "main")
+			req.Header.Set("Accept", "application/json")
 		}
 		
 		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
@@ -590,6 +642,41 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 		respondJSON(w, names)
 	}))
 
+	http.HandleFunc("/api/animes", withRecovery(func(w http.ResponseWriter, r *http.Request) {
+		page := r.URL.Query().Get("page")
+		if page == "" {
+			page = "1"
+		}
+		platform := r.URL.Query().Get("platform")
+		if platform == "" {
+			platform = "all"
+		}
+		targetURL := fmt.Sprintf("https://api.anizium.co/page/top?platform=%s&page=%s", platform, page)
+		req, err := http.NewRequest("GET", targetURL, nil)
+		if err != nil {
+			respondError(w, err, http.StatusInternalServerError)
+			return
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+		req.Header.Set("Referer", "https://anizium.co/animes?platform=all")
+		req.Header.Set("Origin", "https://anizium.co")
+		req.Header.Set("Cf-Control", anizium.GenerateCfToken())
+		req.Header.Set("device", "browser")
+		req.Header.Set("language", "tr")
+		req.Header.Set("site", "main")
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			respondError(w, err, http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+
+		w.Header().Set("Content-Type", "application/json")
+		io.Copy(w, resp.Body)
+	}))
+
 	http.HandleFunc("/api/popular", withRecovery(func(w http.ResponseWriter, r *http.Request) {
 		page := r.URL.Query().Get("page")
 		if page == "" {
@@ -598,7 +685,7 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 		jikanURL := "https://api.jikan.moe/v4/top/anime?limit=24&filter=bypopularity&page=" + page
 		resp, err := http.Get(jikanURL)
 		if err != nil {
-			respondError(w, err, http.StatusInternalServerError)
+			respondError(w, err, http.StatusBadRequest)
 			return
 		}
 		defer resp.Body.Close()
@@ -639,7 +726,7 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 		}
 
 		if err != nil {
-			respondError(w, err, http.StatusInternalServerError)
+			respondError(w, err, http.StatusBadRequest)
 			return
 		}
 		respondJSON(w, results)
@@ -658,7 +745,7 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 
 		results, err := src.GetSearchData(q)
 		if err != nil {
-			respondError(w, err, http.StatusInternalServerError)
+			respondError(w, err, http.StatusBadRequest)
 			return
 		}
 		respondJSON(w, results)
@@ -676,7 +763,7 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 
 		anime, err := src.GetAnimeByID(id)
 		if err != nil {
-			respondError(w, err, http.StatusInternalServerError)
+			respondError(w, err, http.StatusBadRequest)
 			return
 		}
 
@@ -706,7 +793,7 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 
 		seasons, err := src.GetSeasonsData(params)
 		if err != nil {
-			respondError(w, err, http.StatusInternalServerError)
+			respondError(w, err, http.StatusBadRequest)
 			return
 		}
 		respondJSON(w, seasons)
@@ -745,7 +832,7 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 
 		eps, err := src.GetEpisodesData(params)
 		if err != nil {
-			respondError(w, err, http.StatusInternalServerError)
+			respondError(w, err, http.StatusBadRequest)
 			return
 		}
 		respondJSON(w, eps)
@@ -799,7 +886,7 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 
 		watchData, err := src.GetWatchData(params)
 		if err != nil {
-			respondError(w, err, http.StatusInternalServerError)
+			respondError(w, err, http.StatusBadRequest)
 			return
 		}
 		respondJSON(w, watchData)

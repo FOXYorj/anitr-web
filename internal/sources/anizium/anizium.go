@@ -50,7 +50,26 @@ func randomString(n int) string {
 }
 
 // generateCfToken - CF-Control header değerini üretir (auth.go tarafından da kullanılır)
+func GenerateCfToken() string {
+	tokenKey := "hlxjl1c2w281ax473rt1ofgrvhyjvi"
+	loc, err := time.LoadLocation("Europe/Istanbul")
+	if err != nil {
+		loc = time.UTC
+	}
+	now := time.Now().In(loc)
+	dayName := strings.ToLower(now.Format("Monday"))
+	key := fmt.Sprintf("%s_%s", tokenKey, dayName)
+	randStr := randomString(6)
+	tMap := map[string]int64{randStr: now.UnixNano() / int64(time.Millisecond)}
+	tBytes, _ := json.Marshal(tMap)
+	return xorEncrypt(string(tBytes), key)
+}
+
 func generateCfToken() string {
+	return GenerateCfToken()
+}
+
+func _old_generateCfToken() string {
 	tokenKey := "hlxjl1c2w281ax473rt1ofgrvhyjvi"
 	loc, err := time.LoadLocation("Europe/Istanbul")
 	if err != nil {

@@ -49,3 +49,9 @@ AI_STATE.md
 # Runtime data files
 userdata.json
 users.json
+
+# Android build outputs
+android/app/src/main/jniLibs/
+android/app/build/
+android/.gradle/
+android/build/

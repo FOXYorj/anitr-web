@@ -211,30 +211,64 @@ func GetUserWatchlist(username string) ([]AnimeBasic, error) {
 	return GetUserAnimeList(username, "watching")
 }
 
-// GetUserAnimeList fetches any status of a user's anime list via Jikan v4 API
-// status can be: watching, completed, onhold, dropped, plantowatch
+
+// GetUserAnimeList fetches any status of a user's anime list directly from MyAnimeList
+// username: MAL username
+// status: watching, completed, onhold, dropped, plantowatch
 func GetUserAnimeList(username string, status string) ([]AnimeBasic, error) {
-	if status == "" {
-		status = "watching"
+	if username == "" {
+		return nil, fmt.Errorf("kullanıcı adı boş olamaz")
 	}
 
-	var allAnimes []AnimeBasic
+	// Map status from string format to MAL internal status ID
+	malStatusMap := map[string]int{
+		"watching":    1,
+		"completed":   2,
+		"onhold":      3,
+		"dropped":     4,
+		"plantowatch": 6,
+	}
+	
+	statusID, ok := malStatusMap[status]
+	if !ok {
+		statusID = 1 // Default to watching
+	}
+
+	results := []AnimeBasic{}
 	client := &http.Client{Timeout: 15 * time.Second}
-	page := 1
+	offset := 0
 
 	for {
-		// Jikan v4 limit max 25
-		apiURL := fmt.Sprintf("https://api.jikan.moe/v4/users/%s/animelist?status=%s&limit=25&page=%d", username, status, page)
-		req, err := http.NewRequest("GET", apiURL, nil)
+		// MAL internal API allows fetching up to 300 items per request
+		url := fmt.Sprintf("https://myanimelist.net/animelist/%s/load.json?offset=%d&status=%d", username, offset, statusID)
+		
+		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("istek oluşturulamadı: %v", err)
 		}
-		req.Header.Set("User-Agent", "anitr-web/1.0")
-
+		// Mimic browser to prevent being blocked by Cloudflare/MAL
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+		
 		resp, err := client.Do(req)
 		if err != nil {
-			if page == 1 {
-				return nil, fmt.Errorf("Jikan API'ye bağlanılamadı: %v", err)
+			if offset == 0 {
+				return nil, fmt.Errorf("MyAnimeList'e bağlanılamadı: %v", err)
+			}
+			break
+		}
+		
+		if resp.StatusCode == 404 || resp.StatusCode == 400 {
+			resp.Body.Close()
+			if offset == 0 {
+				return nil, fmt.Errorf("Kullanıcı bulunamadı veya liste gizli: %s", username)
+			}
+			break
+		}
+		
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			if offset == 0 {
+				return nil, fmt.Errorf("MAL hatası (HTTP %d)", resp.StatusCode)
 			}
 			break
 		}
@@ -242,109 +276,65 @@ func GetUserAnimeList(username string, status string) ([]AnimeBasic, error) {
 		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			if page == 1 {
-				return nil, err
+			break
+		}
+
+		// MAL's load.json returns an array directly
+		var malData []struct {
+			AnimeID        int     `json:"anime_id"`
+			AnimeTitle     string  `json:"anime_title"`
+			AnimeImagePath string  `json:"anime_image_path"`
+			Score          float64 `json:"score"`
+		}
+
+		if err := json.Unmarshal(body, &malData); err != nil {
+			if offset == 0 {
+				return nil, fmt.Errorf("Veri çözümlenemedi (Geçersiz format)")
 			}
 			break
 		}
 
-		// 429 Rate Limit — bekle ve tekrar dene
-		if resp.StatusCode == 429 {
-			time.Sleep(1500 * time.Millisecond)
-			continue
-		}
-
-		if resp.StatusCode == http.StatusNotFound {
-			// Jikan API, kullanıcı bulunamayınca veya o kategoride hiç anime yoksa 404 döndürüyor
-			if page == 1 {
-				return []AnimeBasic{}, nil
-			}
-			break
-		}
-		if resp.StatusCode == 403 || resp.StatusCode == 401 {
-			return nil, fmt.Errorf("Bu kullanıcının listesi gizli: %s", username)
-		}
-		if resp.StatusCode != http.StatusOK {
-			if page == 1 {
-				return nil, fmt.Errorf("Jikan API hatası (HTTP %d)", resp.StatusCode)
-			}
+		// If no items returned, we've reached the end
+		if len(malData) == 0 {
 			break
 		}
 
-		// Jikan v4 gerçek format: { data: [ { anime: { mal_id, title, images, ... }, ... } ], pagination: {...} }
-		var jikanResp struct {
-			Data []struct {
-				Anime struct {
-					MalID  int    `json:"mal_id"`
-					Title  string `json:"title"`
-					Images struct {
-						JPG struct {
-							ImageURL      string `json:"image_url"`
-							LargeImageURL string `json:"large_image_url"`
-						} `json:"jpg"`
-					} `json:"images"`
-					Score  float64 `json:"score"`
-					Genres []struct {
-						MalID int    `json:"mal_id"`
-						Name  string `json:"name"`
-					} `json:"genres"`
-				} `json:"anime"`
-				Score          int `json:"score"`
-				EpisodesWatched int `json:"episodes_watched"`
-			} `json:"data"`
-			Pagination struct {
-				HasNextPage bool `json:"has_next_page"`
-			} `json:"pagination"`
+		for _, item := range malData {
+			a := AnimeBasic{
+				MalID: item.AnimeID,
+				Title: item.AnimeTitle,
+				Score: item.Score,
+			}
+			// Map image
+			img := item.AnimeImagePath
+			// Sometimes MAL returns smaller images /r/x/images, we can remove the /r/ dimensions to get high quality
+			// e.g. https://cdn.myanimelist.net/r/192x272/images/anime/1244/138851.jpg -> https://cdn.myanimelist.net/images/anime/1244/138851.jpg
+			if strings.Contains(img, "/r/") {
+				parts := strings.Split(img, "/images/")
+				if len(parts) == 2 {
+					img = "https://cdn.myanimelist.net/images/" + parts[1]
+				}
+			}
+			// Remove query parameters like ?s=...
+			if idx := strings.Index(img, "?"); idx != -1 {
+				img = img[:idx]
+			}
+			
+			a.Images.JPG.ImageURL = img
+			a.Images.JPG.LargeImageURL = img
+			
+			results = append(results, a)
 		}
 
-		if err := json.Unmarshal(body, &jikanResp); err != nil {
-			if page == 1 {
-				return nil, fmt.Errorf("JSON çözümlenemedi: %v", err)
-			}
+		// Pagination: MAL returns max 300 per page
+		if len(malData) < 300 {
 			break
 		}
-
-		for _, item := range jikanResp.Data {
-			a := item.Anime
-			img := a.Images.JPG.LargeImageURL
-			if img == "" {
-				img = a.Images.JPG.ImageURL
-			}
-
-			var genres []struct {
-				MalID int    `json:"mal_id"`
-				Name  string `json:"name"`
-			}
-			for _, g := range a.Genres {
-				genres = append(genres, struct {
-					MalID int    `json:"mal_id"`
-					Name  string `json:"name"`
-				}{MalID: g.MalID, Name: g.Name})
-			}
-
-			score := float64(item.Score)
-			if score == 0 {
-				score = a.Score
-			}
-
-			allAnimes = append(allAnimes, AnimeBasic{
-				MalID:  a.MalID,
-				Title:  a.Title,
-				Score:  score,
-				Images: a.Images,
-				Genres: genres,
-			})
-		}
-
-		if !jikanResp.Pagination.HasNextPage {
-			break
-		}
-
-		page++
-		time.Sleep(500 * time.Millisecond) // Jikan rate limit
+		offset += 300
+		time.Sleep(500 * time.Millisecond) // Be nice to the server
 	}
 
-	return allAnimes, nil
+	return results, nil
 }
 
 // CleanTitle removes common tags and punctuation that prevent accurate matching.
