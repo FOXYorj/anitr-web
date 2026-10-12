@@ -206,7 +206,10 @@ public class MainActivity extends Activity {
                 // 2. Find and execute libanitr.so
                 File binFile = new File(getApplicationInfo().nativeLibraryDir, "libanitr.so");
                 if (!binFile.exists()) {
-                    updateStatus("HATA: Motor dosyası bulunamadı (" + binFile.getAbsolutePath() + ")");
+                    File libDir = new File(getApplicationInfo().nativeLibraryDir);
+                    String[] files = libDir.list();
+                    String listing = (files != null && files.length > 0) ? String.join(", ", files) : "boş";
+                    updateStatus("HATA: Motor dosyası bulunamadı\nKonum: " + binFile.getAbsolutePath() + "\nKlasördekiler: " + listing);
                     return;
                 }
 
@@ -214,32 +217,55 @@ public class MainActivity extends Activity {
                 updateStatus("Sunucu başlatılıyor...");
 
                 ProcessBuilder pb = new ProcessBuilder(binFile.getAbsolutePath());
+                pb.directory(getFilesDir());
                 pb.environment().put("PORT", "3000");
+                pb.environment().put("HOME", getFilesDir().getAbsolutePath());
+                pb.environment().put("TMPDIR", getCacheDir().getAbsolutePath());
                 pb.redirectErrorStream(true);
                 serverProcess = pb.start();
 
-                // Read output in background
+                // Read output in background and capture log
+                StringBuilder logOutput = new StringBuilder();
                 new Thread(() -> {
                     try (BufferedReader reader = new BufferedReader(new InputStreamReader(serverProcess.getInputStream()))) {
                         String line;
                         while ((line = reader.readLine()) != null) {
                             android.util.Log.d("AnitrCore", line);
+                            synchronized (logOutput) {
+                                if (logOutput.length() < 1200) {
+                                    logOutput.append(line).append("\n");
+                                }
+                            }
                         }
                     } catch (Exception ignored) {}
                 }).start();
 
-                // 3. Poll until ready (up to 15 seconds)
+                // 3. Poll until ready (up to 20 seconds)
                 int attempts = 0;
-                while (attempts < 60 && !isServerReady) {
+                while (attempts < 80 && !isServerReady) {
                     if (checkServerRunning()) {
                         onServerReady();
                         return;
                     }
+
+                    // Check if server crashed early
+                    try {
+                        int exitCode = serverProcess.exitValue();
+                        String logs;
+                        synchronized (logOutput) { logs = logOutput.toString(); }
+                        updateStatus("HATA: Motor beklenmedik şekilde durdu (Kod: " + exitCode + ")\n" + logs);
+                        return;
+                    } catch (IllegalThreadStateException ignored) {
+                        // Still running normally, continue waiting
+                    }
+
                     Thread.sleep(250);
                     attempts++;
                 }
 
-                updateStatus("Sunucu yanıt vermedi. Lütfen uygulamayı yeniden başlatın.");
+                String logs;
+                synchronized (logOutput) { logs = logOutput.toString(); }
+                updateStatus("Sunucu yanıt vermedi.\nLog:\n" + logs);
 
             } catch (Exception e) {
                 updateStatus("Sunucu Hatası: " + e.getMessage() + "\n" + android.util.Log.getStackTraceString(e));

@@ -47,27 +47,27 @@ jobs:
 
       - name: Prepare APK File
         run: |
-          cp android/app/build/outputs/apk/debug/app-debug.apk anitr-web-v8.3.5.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk anitr-web-v8.3.6.apk
 
       - name: Upload APK to Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: anitr-web-v8.3.5-apk
-          path: anitr-web-v8.3.5.apk
+          name: anitr-web-v8.3.6-apk
+          path: anitr-web-v8.3.6.apk
           if-no-files-found: error
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v8.3.5-apk
-          name: Anitr Web Standalone Android APK (v8.3.5)
+          tag_name: v8.3.6-apk
+          name: Anitr Web Standalone Android APK (v8.3.6)
           body: |
-            📱 **Anitr Web Bağımsız Android APK**
+            📱 **Anitr Web Bağımsız Android APK (v8.3.6)**
 
-            - 🚀 **Sunucusuz / Bağımsız:** Arka planda harici sunucu, bilgisayar veya localhost gerektirmez.
-            - ⚡ **Gömülü Motor:** Telefon içinde çalışan yerel Go çekirdeği ile tam performans.
+            - ⚡ **Gömülü Go Motoru Düzeltmesi:** `useLegacyPackaging = true` etkinleştirildi; yerel motor cihazın `/lib/arm64` dizinine çıkartılıyor.
+            - 🚀 **Sunucusuz / Bağımsız:** Arka planda harici sunucu veya bilgisayar gerektirmez.
             - 🎬 **Video.js Tam Ekran:** Otomatik yatay ekran döndürme ve gezinme çubuğu gizleme.
-            - 🔍 **Modern Arama & Sosyal Hub:** v8.3.5 sürümündeki tüm yeni özellikler dahildir.
-          files: anitr-web-v8.3.5.apk
+            - 🔍 **Modern Arama & Sosyal Hub:** En güncel v8.3.6 sürümü.
+          files: anitr-web-v8.3.6.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
