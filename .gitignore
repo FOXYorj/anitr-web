@@ -39,9 +39,9 @@ Thumbs.db
 
 # Compiled binaries (go build çıktıları)
 /build
-anitr-cli
-anitr
-probe_subtitle
+/anitr-cli
+/anitr
+/probe_subtitle
 
 # AI geliştirme bağlamı — kişisel, repoya girmemeli
 AI_STATE.md
