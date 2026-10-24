@@ -1,0 +1,2272 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anitr - Anime Platformu</title>
+    <meta name="description" content="Anitr Web - Ücretsiz anime izleme platformu. Binlerce anime, altyazılı ve dublajlı.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Video.js (replaces Plyr + HLS.js) -->
+    <link rel="stylesheet" href="https://vjs.zencdn.net/8.10.0/video-js.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/videojs-contrib-quality-levels@4.1.0/dist/videojs-contrib-quality-levels.min.css" onerror="this.remove()">
+    <link rel="stylesheet" href="style.css?v=8.6.1">
+    <link rel="stylesheet" href="search.css?v=8.5.7">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.lordicon.com/lordicon.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<canvas id="starsCanvas"></canvas>
+<canvas id="confettiCanvas"></canvas>
+<div id="ambientBackground" class="ambient-bg"></div>
+<div id="toast" class="toast hidden"></div>
+
+<!-- Lightbox -->
+<div id="lightbox" class="lightbox hidden" onclick="closeLightbox()">
+    <img id="lightboxImg" src="" alt="Poster" onclick="event.stopPropagation()">
+    <button class="lightbox-close" onclick="event.stopPropagation();closeLightbox()"><i class="fa-solid fa-xmark"></i></button>
+</div>
+
+<div id="app">
+    <!-- Navbar -->
+    <nav class="navbar">
+        <!-- Left: Logo -->
+        <div class="nav-left">
+            <div class="logo" onclick="loadHome()" style="cursor:pointer; display:flex; align-items:center;">
+                <img src="/assets/anitr-logo.png" alt="Anitr Web" style="height: 100px; object-fit: contain; transform-origin: left center; margin-left: 6px;"><span style="background:var(--accent); color:white; font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px; letter-spacing:1px; margin-left:4px; margin-top:2px;">BETA</span>
+            </div>
+            </div>
+
+        <!-- Center: Search + Visual Scene Search (Trace.moe) -->
+        <div class="nav-center">
+            <div class="search-trigger" onclick="openSearchOverlay()">
+                <i class="fa-solid fa-magnifying-glass search-trigger-lens"></i>
+                <span class="search-trigger-text">Anime, tür veya sezon ara...</span>
+                <button type="button" class="search-trigger-camera-btn" onclick="event.stopPropagation(); openTraceMoeModal()" title="Görselden Anime & Sahne Bul (Trace.moe)">
+                    <i class="fa-solid fa-camera-retro"></i>
+                    <span>Görselden Bul</span>
+                </button>
+                <kbd class="search-trigger-kbd">/</kbd>
+            </div>
+        </div>
+
+        <!-- Right: Actions -->
+        <div class="nav-right">
+            <div class="nav-group">
+                <button class="nav-btn" id="animeListBtn" title="Tüm Animeler" onclick="showAnimeListView()">
+                    <lord-icon src="https://cdn.lordicon.com/wuvorxbv.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon>
+                    <span class="nav-btn-text">Tüm Animeler</span>
+                </button>
+                <button class="nav-btn" id="randomBtn" title="Rastgele Anime" onclick="loadRandom()">
+                    <lord-icon src="https://cdn.lordicon.com/rsbokaso.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon>
+                    <span class="nav-btn-text">Rastgele</span>
+                </button>
+                <button class="nav-btn" id="scheduleBtn" title="Yayın Takvimi" onclick="showScheduleView()">
+                    <lord-icon src="https://cdn.lordicon.com/abfverha.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon>
+                    <span class="nav-btn-text">Yayın Takvimi</span>
+                </button>
+            </div>
+            <div class="nav-divider"></div>
+            <div class="nav-group">
+                <button class="nav-btn" id="myListsBtn" title="Listelerim" onclick="showMyLists()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                        <polyline points="2 12 12 17 22 12"></polyline>
+                        <polyline points="2 17 12 22 22 17"></polyline>
+                    </svg>
+                    <span class="nav-btn-text">Listelerim</span>
+                </button>
+                <button class="nav-btn" id="historyBtn" title="Geçmiş" onclick="showHistory()">
+                    <lord-icon src="https://cdn.lordicon.com/kbtmbyzy.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon>
+                    <span class="nav-btn-text">Geçmiş</span>
+                </button>
+                <button class="nav-btn" id="favoritesBtn" title="Favoriler" onclick="showFavorites()">
+                    <lord-icon src="https://cdn.lordicon.com/xryjrepg.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon>
+                    <span class="nav-btn-text">Favoriler</span>
+                </button>
+                <button class="nav-btn" id="statsBtn" title="İstatistikler" onclick="showStats()">
+                    <lord-icon src="https://cdn.lordicon.com/gqdnbnwt.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon>
+                    <span class="nav-btn-text">İstatistikler</span>
+                </button>
+            </div>
+            <div class="nav-divider"></div>
+            <div class="nav-group">
+                <button class="nav-btn" id="roomsBtnNav" title="Online Odalar" onclick="showOnlineRooms()">
+                    <lord-icon src="https://cdn.lordicon.com/moscwhoj.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon>
+                    <span class="nav-btn-text">Online Odalar</span>
+                </button>
+                <button class="nav-btn" id="friendsBtnNav" title="Arkadaşlar" onclick="showFriendsModal()">
+                    <lord-icon src="https://cdn.lordicon.com/ljvjsnvh.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon>
+                    <span class="nav-btn-text">Arkadaşlar</span>
+                </button>
+                <button class="nav-btn" id="malBtnNav" title="MyAnimeList" onclick="showMALView()">
+                    <svg style="width: 20px; height: 20px; fill: currentColor;" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8.273 7.247v8.423l-2.103-.003v-5.216l-2.03 2.404-1.989-2.458-.02 5.285H.001L0 7.247h2.203l1.865 2.545 2.015-2.546 2.19.001zm8.628 2.069l.025 6.335h-2.365l-.008-2.871h-2.8c.07.499.21 1.266.417 1.779.155.381.298.751.583 1.128l-1.705 1.125c-.349-.636-.622-1.337-.878-2.082a9.296 9.296 0 0 1-.507-2.179c-.085-.75-.097-1.471.107-2.212a3.908 3.908 0 0 1 1.161-1.866c.313-.293.749-.5 1.1-.687.351-.187.743-.264 1.107-.359a7.405 7.405 0 0 1 1.191-.183c.398-.034 1.107-.066 2.39-.028l.545 1.749H14.51c-.593.008-.878.001-1.341.209a2.236 2.236 0 0 0-1.278 1.92l2.663.033.038-1.81h2.309zm3.992-2.099v6.627l3.107.032-.43 1.775h-4.807V7.187l2.13.03z"/></svg>
+                    <span class="nav-btn-text">MyAnimeList</span>
+                </button>
+                <button class="nav-btn" id="downloadsBtn" title="İndirilenler" onclick="showDownloadsModal()">
+                    <i class="fa-solid fa-download"></i>
+                    <span class="nav-btn-text">İndirilenler</span>
+                </button>
+            </div>
+            <div class="nav-divider"></div>
+            <div class="nav-group">
+
+                
+                <button class="nav-btn" id="aiModalBtnNav" title="Yapay Zeka" onclick="showAIModal()" style="color: var(--accent);">
+                    <img src="/assets/fox-ai.png" alt="AI" style="width:24px; height:24px; object-fit:contain; filter: drop-shadow(0 0 5px rgba(255,105,180,0.5));">
+                    <span class="nav-btn-text">Yapay Zeka</span>
+                </button>
+                <div class="notif-bell-wrap" id="notifBellWrap">
+                    <button class="nav-btn notif-bell-btn" id="notifBellBtn" title="Bölüm Bildirimleri & Geri Sayım" onclick="toggleNotifPanel(event)">
+                        <i class="fa-regular fa-bell"></i>
+                        <span id="notifUnreadBadge" class="notif-unread-badge hidden">0</span>
+                    </button>
+                    <div id="notifPanel" class="notif-panel hidden" onclick="event.stopPropagation()">
+                        <div class="notif-panel-head">
+                            <div class="notif-panel-title">
+                                <i class="fa-solid fa-bell"></i>
+                                <span>Bölüm Bildirimleri</span>
+                            </div>
+                            <div class="notif-panel-actions">
+                                <button type="button" id="notifPermBtn" class="notif-action-btn" onclick="requestBrowserNotifPermission()" title="Masaüstü Bildirimlerini Aç">
+                                    <i class="fa-regular fa-bell-slash"></i>
+                                </button>
+                                <button type="button" class="notif-action-btn" onclick="markAllNotifsRead()" title="Tümünü Okundu İşaretle">
+                                    <i class="fa-solid fa-check-double"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="notifPermBanner" class="notif-perm-banner hidden">
+                            <span>Yeni bölüm çıktığında masaüstü bildirimi al</span>
+                            <button type="button" onclick="requestBrowserNotifPermission()">İzin Ver</button>
+                        </div>
+                        <div class="notif-tabs notif-tabs-3">
+                            <button type="button" class="notif-tab active" data-nptab="alerts" onclick="switchNotifTab('alerts', this)">
+                                Yeni Bölümler
+                            </button>
+                            <button type="button" class="notif-tab" data-nptab="upcoming" onclick="switchNotifTab('upcoming', this)">
+                                Geri Sayım
+                            </button>
+                            <button type="button" class="notif-tab" data-nptab="followed" onclick="switchNotifTab('followed', this)">
+                                Takip <span id="notifFollowedCountBadge" class="notif-tab-count">0</span>
+                            </button>
+                        </div>
+                        <div id="notifPanelBody" class="notif-panel-body">
+                            <div class="notif-empty">
+                                <i class="fa-regular fa-bell"></i>
+                                <p>Yayın verileri yükleniyor...</p>
+                            </div>
+                        </div>
+                        <div class="notif-panel-foot">
+                            <button type="button" class="notif-foot-btn" onclick="closeNotifPanel(); showScheduleView();">
+                                <i class="fa-regular fa-calendar"></i> Haftalık Yayın Takvimini Aç
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <button class="nav-btn profile-btn" id="profileBtnNav" title="Profil" onclick="showProfileModal()">
+                    <i class="fa-solid fa-user"></i>
+                    <span class="nav-btn-text">Profil</span>
+                </button>
+                <button class="nav-btn" id="settingsBtn" title="Ayarlar" onclick="openSettings()">
+                    <i class="fa-solid fa-gear"></i>
+                    <span class="nav-btn-text">Ayarlar</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+
+    <div id="loader" class="hidden">
+        <div class="custom-loader-wrapper">
+            <img src="/assets/anitr-logo.png" alt="Yükleniyor..." class="logo-loader">
+        </div>
+    </div>
+
+    <!-- Achievements removed -->
+    <div id="achievementPopup" class="hidden" style="display:none!important"></div>
+    <div id="achievementsModal" class="hidden" style="display:none!important"><div id="achievementsContainer"></div></div>
+
+    <!-- â•Ââ•Â AUTH MODAL â•Ââ•Â -->
+    <div id="authModal" class="modal hidden">
+        <div class="modal-content settings-modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 id="authTitle"><i class="fa-solid fa-user"></i> Giriş Yap</h3>
+                <button onclick="closeAuthModal()" class="close-btn" id="authCloseBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="settings-body">
+                <div class="setting-item" style="display:block; margin-bottom: 1rem;">
+                    <label style="display:block; margin-bottom: 0.5rem; color: var(--text2);">Kullanıcı Adı</label>
+                    <input type="text" id="authUsername" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text);" placeholder="Kullanıcı adınız">
+                </div>
+                <div class="setting-item" style="display:block; margin-bottom: 1.5rem;">
+                    <label style="display:block; margin-bottom: 0.5rem; color: var(--text2);">Åifre</label>
+                    <input type="password" id="authPassword" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text);" placeholder="Åifreniz">
+                </div>
+                <button class="btn-primary" style="width: 100%; margin-bottom: 1rem;" id="authSubmitBtn" onclick="handleAuthSubmit()">Giriş Yap</button>
+                <div style="text-align: center; color: var(--text3); font-size: 0.9rem;">
+                    <span id="authToggleText">Hesabın yok mu? </span>
+                    <a href="#" style="color: var(--accent); text-decoration: none;" id="authToggleLink" onclick="toggleAuthMode()">Kayıt Ol</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- â•Ââ•Â TRAILER MODAL â•Ââ•Â -->
+    <div id="trailerModal" class="modal hidden" style="z-index: 10000;">
+        <div class="modal-content" style="max-width: 800px; padding:0; background: transparent; box-shadow: none;">
+            <div style="text-align: right; margin-bottom: 10px;">
+                <button onclick="closeTrailerModal()" style="background:var(--surface2); color:white; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; background: black;">
+                <iframe id="trailerIframe" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- â•Ââ•Â HOME VIEW â•Ââ•Â -->
+    <main id="homeView">
+
+        <!-- Netflix Hero Banner -->
+        <div id="cinematicHero" class="nf-hero">
+            <div id="cinematicHeroBg" class="nf-hero-bg"></div>
+            <div class="nf-hero-overlay"></div>
+            <button class="nf-hero-nav nf-nav-prev" onclick="prevCinematicHero()"><i class="fa-solid fa-chevron-left"></i></button>
+            <button class="nf-hero-nav nf-nav-next" onclick="nextCinematicHero()"><i class="fa-solid fa-chevron-right"></i></button>
+            <div class="nf-hero-content">
+                <div class="nf-hero-badge" id="cinematicBadge">🔥 Trend</div>
+                <h1 id="cinematicTitle">Yükleniyor...</h1>
+                <div class="nf-hero-meta" id="cinematicMeta"></div>
+                <p id="cinematicDesc"></p>
+                <div class="nf-hero-actions" id="cinematicActions">
+                    <button class="btn-primary" onclick="loadRandom()"><lord-icon src="https://cdn.lordicon.com/rsbokaso.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon> Åansına Güven</button>
+                </div>
+            </div>
+            <div class="nf-hero-dots" id="cinematicDots"></div>
+            <div class="hx-counter" id="heroCounter"></div>
+            <div class="nf-hero-progress-container" id="heroProgressContainer"></div>
+        </div>
+
+        <!-- Continue Watching Row -->
+        <div id="continueWatching" class="nf-section hidden">
+            <h2 class="nf-section-title">Kaldığın Yerden Devam Et</h2>
+            <div class="nf-row-wrapper">
+                <button class="nf-row-btn nf-btn-prev" onclick="scrollCarousel(this, -1)"><i class="fa-solid fa-chevron-left"></i></button>
+                <div id="cwContainer" class="nf-row"></div>
+                <button class="nf-row-btn nf-btn-next" onclick="scrollCarousel(this, 1)"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+
+        <!-- Main Rows (Categories) -->
+        <div id="mainContent" class="nf-content"></div>
+
+        <!-- 3D Scroll Footer -->
+        </div>
+    </main>
+
+    <!-- â•Ââ•Â ANIME LIST VIEW â•Ââ•Â -->
+    <main id="animeListView" class="hidden">
+        <h2 class="section-title"><lord-icon src="https://cdn.lordicon.com/wuvorxbv.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon> Tüm Animeler</h2>
+        <!-- Filters -->
+        <div class="filters">
+            <select id="catalogSourceFilter" class="filter-select" onchange="applyFilters()" style="border-color:var(--accent);font-weight:600;">
+                <option value="anizium" selected>ğŸ“º Kaynak: Anizium (Dublaj & 4K)</option>
+                <option value="anilist">ğŸŒÂ Kaynak: AniList (Global)</option>
+            </select>
+            <select id="genreFilter" class="filter-select">
+                <option value="">Tüm Türler</option>
+            </select>
+            <select id="yearFilter" class="filter-select">
+                <option value="">Tüm Yıllar</option>
+            </select>
+            <select id="statusFilter" class="filter-select">
+                <option value="">Tüm Durumlar</option>
+                <option value="ongoing">Devam Eden</option>
+                <option value="completed">Tamamlanan</option>
+            </select>
+            <select id="sortFilter" class="filter-select">
+                <option value="">Sıralama</option>
+                <option value="popular">Popülerlik</option>
+                <option value="rating">Puan</option>
+                <option value="name">İsim (A-Z)</option>
+                <option value="year">Yıl (Yeni-Eski)</option>
+            </select>
+            <button class="btn-primary" onclick="applyFilters()" style="padding:0.5rem 1rem">Filtrele</button>
+            <button class="btn-secondary" onclick="clearFilters()" style="padding:0.5rem 1rem">Sıfırla</button>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; margin-top:0.5rem; padding: 0 10px;">
+            <div id="animeListCounter" style="color:var(--text3); font-size:0.9rem; font-weight:600;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                        <polyline points="2 12 12 17 22 12"></polyline>
+                        <polyline points="2 17 12 22 22 17"></polyline>
+                    </svg> Yüklenen: 0 Anime</div>
+        </div>
+        <div id="animeListGrid" class="anime-grid"></div>
+        
+        <div id="animeListLoader" class="hidden" style="text-align:center; padding:2rem;"><div class="spinner" style="display:inline-block"></div><div style="color:var(--text3); margin-top:1rem; font-size:0.9rem;">Animeler yükleniyor...</div></div>
+        
+        <div style="text-align:center; padding:2rem;">
+            <button id="loadMoreAnimeBtn" class="btn-primary hidden" onclick="loadMoreAnime()" style="padding:0.75rem 2rem; font-size:1rem; border-radius:999px;"><i class="fa-solid fa-plus"></i> Daha Fazla Yükle</button>
+        </div>
+    </main>
+
+    <!-- â•Ââ•Â MYANIMELIST VIEW â•Ââ•Â -->
+    <main id="malView" class="hidden mal-hub-page">
+        <div class="mal-hub-shell">
+            <!-- Top Header Bar -->
+            <div class="mal-hub-topbar">
+                <div class="mal-hub-brand">
+                    <div class="mal-hub-logo">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8.273 7.247v8.423l-2.103-.003v-5.216l-2.03 2.404-1.989-2.458-.02 5.285H.001L0 7.247h2.203l1.865 2.545 2.015-2.546 2.19.001zm8.628 2.069l.025 6.335h-2.365l-.008-2.871h-2.8c.07.499.21 1.266.417 1.779.155.381.298.751.583 1.128l-1.705 1.125c-.349-.636-.622-1.337-.878-2.082a9.296 9.296 0 0 1-.507-2.179c-.085-.75-.097-1.471.107-2.212a3.908 3.908 0 0 1 1.161-1.866c.313-.293.749-.5 1.1-.687.351-.187.743-.264 1.107-.359a7.405 7.405 0 0 1 1.191-.183c.398-.034 1.107-.066 2.39-.028l.545 1.749H14.51c-.593.008-.878.001-1.341.209a2.236 2.236 0 0 0-1.278 1.92l2.663.033.038-1.81h2.309zm3.992-2.099v6.627l3.107.032-.43 1.775h-4.807V7.187l2.13.03z"/></svg>
+                    </div>
+                    <div>
+                        <span class="mal-hub-kicker">MYANIMELIST ENTEGRASYONU</span>
+                        <h2 class="mal-hub-title">Profil, İzleme Süresi &amp; Kütüphane</h2>
+                    </div>
+                </div>
+
+                <div class="mal-hub-connect-inline">
+                    <div id="malAuthStatus" class="mal-auth-pill"></div>
+                    <div class="mal-quick-switch-form">
+                        <i class="fa-solid fa-user-astronaut"></i>
+                        <input type="text" id="malQuickUserInput" placeholder="MAL kullanıcı adı..." onkeypress="if(event.key==='Enter') connectMALDirect()">
+                        <button type="button" class="mal-connect-btn" onclick="connectMALDirect()">
+                            <i class="fa-solid fa-arrows-rotate"></i><span>Bağla / Yenile</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State when no MAL user connected -->
+            <div id="malNoUser" class="mal-empty-hero" style="display:none;">
+                <div class="mal-empty-glow"></div>
+                <div class="mal-empty-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8.273 7.247v8.423l-2.103-.003v-5.216l-2.03 2.404-1.989-2.458-.02 5.285H.001L0 7.247h2.203l1.865 2.545 2.015-2.546 2.19.001zm8.628 2.069l.025 6.335h-2.365l-.008-2.871h-2.8c.07.499.21 1.266.417 1.779.155.381.298.751.583 1.128l-1.705 1.125c-.349-.636-.622-1.337-.878-2.082a9.296 9.296 0 0 1-.507-2.179c-.085-.75-.097-1.471.107-2.212a3.908 3.908 0 0 1 1.161-1.866c.313-.293.749-.5 1.1-.687.351-.187.743-.264 1.107-.359a7.405 7.405 0 0 1 1.191-.183c.398-.034 1.107-.066 2.39-.028l.545 1.749H14.51c-.593.008-.878.001-1.341.209a2.236 2.236 0 0 0-1.278 1.92l2.663.033.038-1.81h2.309zm3.992-2.099v6.627l3.107.032-.43 1.775h-4.807V7.187l2.13.03z"/></svg>
+                </div>
+                <h3>MyAnimeList Profilini Bağla</h3>
+                <p>Åifre gerekmez! Sadece MyAnimeList kullanıcı adını girerek <b>toplam anime izleme süreni</b>, <b>ortalama puanını</b>, <b>favori karakterlerini</b> ve <b>tüm anime listeni</b> anında görüntüle.</p>
+                <div class="mal-empty-input-row">
+                    <input type="text" id="malEmptyUserInput" placeholder="Örn: Xinil veya kendi MAL kullanıcı adın..." onkeypress="if(event.key==='Enter') connectMALDirect(this.value)">
+                    <button type="button" class="btn-primary" onclick="connectMALDirect(document.getElementById('malEmptyUserInput').value)">
+                        <i class="fa-solid fa-bolt"></i> Profili Getir
+                    </button>
+                </div>
+            </div>
+
+            <!-- Connected Content Area -->
+            <div id="malContent" class="hidden">
+                <!-- Profile & Watch Time Dashboard -->
+                <div id="malProfileDashboard" class="mal-profile-dashboard"></div>
+
+                <!-- Favorites Showcase -->
+                <div id="malFavoritesShowcase" class="mal-favorites-showcase hidden"></div>
+
+                <!-- Tabs & Filter Toolbar -->
+                <div class="mal-list-toolbar" id="malTabs">
+                    <div class="mal-status-tabs">
+                        <button class="mal-tab-btn active" id="tabWatching" onclick="switchMALTab('watching')">
+                            <span class="mal-dot watching"></span>
+                            <span>İzleniyor</span>
+                            <b id="malCountWatching" class="mal-tab-badge">0</b>
+                        </button>
+                        <button class="mal-tab-btn" id="tabCompleted" onclick="switchMALTab('completed')">
+                            <span class="mal-dot completed"></span>
+                            <span>Tamamlandı</span>
+                            <b id="malCountCompleted" class="mal-tab-badge">0</b>
+                        </button>
+                        <button class="mal-tab-btn" id="tabPlantowatch" onclick="switchMALTab('plantowatch')">
+                            <span class="mal-dot ptw"></span>
+                            <span>Planlanan</span>
+                            <b id="malCountPlantowatch" class="mal-tab-badge">0</b>
+                        </button>
+                        <button class="mal-tab-btn" id="tabOnhold" onclick="switchMALTab('onhold')">
+                            <span class="mal-dot onhold"></span>
+                            <span>Beklemede</span>
+                            <b id="malCountOnhold" class="mal-tab-badge">0</b>
+                        </button>
+                        <button class="mal-tab-btn" id="tabDropped" onclick="switchMALTab('dropped')">
+                            <span class="mal-dot dropped"></span>
+                            <span>Bırakıldı</span>
+                            <b id="malCountDropped" class="mal-tab-badge">0</b>
+                        </button>
+                        <button class="mal-tab-btn mal-tab-recs" id="tabRecs" onclick="switchMALTab('recs')">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>Sana Özel Öneriler</span>
+                        </button>
+                    </div>
+
+                    <div class="mal-list-controls">
+                        <div class="mal-search-field">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="malListSearchInput" placeholder="Listede anime ara..." oninput="renderMALFilteredGrid()">
+                        </div>
+                        <select id="malListSortSelect" class="mal-sort-select" onchange="renderMALFilteredGrid()">
+                            <option value="default">Varsayılan Sıra</option>
+                            <option value="score_desc">Puana Göre (Yüksek → Düşük)</option>
+                            <option value="ep_desc">İzlenen Bölüme Göre</option>
+                            <option value="title_asc">İsme Göre (A → Z)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Anime Cards Grid -->
+                <div id="malListGrid" class="mal-cards-grid"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- â•Ââ•Â SCHEDULE VIEW â•Ââ•Â -->
+    <main id="scheduleView" class="hidden">
+        <div id="scheduleContainer">
+            <div style="text-align:center; padding: 3rem;"><div class="spinner"></div></div>
+        </div>
+    </main>
+
+    <!-- â•Ââ•Â HISTORY VIEW â•Ââ•Â -->
+    <main id="historyView" class="hidden" style="padding: 2rem;">
+        <h2 class="section-title"><lord-icon src="https://cdn.lordicon.com/kbtmbyzy.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon> İzleme Geçmişi</h2>
+        <div id="historyContent">
+            <!-- Geçmiş verileri buraya eklenecek -->
+        </div>
+    </main>
+
+    <!-- â•Ââ•Â WATCH VIEW â•Ââ•Â -->
+    <main id="watchView" class="hidden">
+        <div id="watchAmbient" class="watch-ambient"></div>
+        <div class="watch-layout">
+            <div class="watch-main">
+                <div class="video-container-page" style="overflow: visible;">
+                    <canvas id="videoAmbilightCanvas" class="video-ambilight hidden"></canvas>
+                    <video id="animePlayer" class="video-js vjs-default-skin vjs-big-play-centered" controls playsinline crossorigin="anonymous"></video>
+                </div>
+                <div class="watch-details-modern">
+                    <div id="watchFillerAlertBanner" class="watch-filler-alert hidden"></div>
+                    <!-- ── Başlık Satırı ── -->
+                    <div class="wd2-header">
+                        <div class="wd2-title-col">
+                            <div class="wd2-badges">
+                                <span id="watchAnimeTitle" class="wd2-badge-anime"></span>
+                                <span id="watchSource" class="wd2-badge-source"></span>
+                                <span id="watchEpisodeCanonBadge" class="wd2-badge-canon hidden"></span>
+                            </div>
+                            <h1 id="watchTitle" class="wd2-title">Yükleniyor...</h1>
+                        </div>
+                        <div class="wd2-actions">
+                            <button class="wd2-btn wd2-btn-w2g" id="w2gCreateBtn" onclick="openW2GModal('create')" title="Birlikte İzle">
+                                <i class="fa-solid fa-tv"></i><span>Birlikte İzle</span>
+                            </button>
+                            <button class="wd2-btn wd2-btn-join" id="w2gJoinBtn" onclick="openW2GModal('join')" title="Odaya Katıl">
+                                <i class="fa-solid fa-right-to-bracket"></i><span>Katıl</span>
+                            </button>
+                            <button class="wd2-btn wd2-btn-dl" onclick="openDownloadModal()">
+                                <i class="fa-solid fa-cloud-arrow-down"></i><span>İndir</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- W2G göstergesi -->
+                    <div id="w2gIndicator" class="w2g-indicator-modern hidden">
+                        <div class="w2g-dot"></div> Oda Aktif (<span id="w2gRoomIdDisp"></span>)
+                    </div>
+
+                    <!-- ── Araç Çubuğu ── -->
+                    <div class="wd2-toolbar">
+                        <div class="wd2-ep-nav">
+                            <button class="wd2-tool wd2-nav-ep" id="watchPrevEpBtn" onclick="playPrevEpisode()" title="Önceki Bölüm">
+                                <i class="fa-solid fa-backward-step"></i><span>Önceki</span>
+                            </button>
+                            <button class="wd2-tool wd2-nav-ep" id="watchNextEpBtn" onclick="playNextEpisodeManual()" title="Sonraki Bölüm">
+                                <span>Sonraki</span><i class="fa-solid fa-forward-step"></i>
+                            </button>
+                        </div>
+                        <div class="wd2-divider"></div>
+                        <div class="wd2-tool-group">
+                            <button class="wd2-tool" id="watchFollowBtn" onclick="toggleFollowFromWatch()">
+                                <i class="fa-regular fa-bell"></i><span>Takip Et</span>
+                            </button>
+                            <button class="wd2-tool" id="watchFavBtn" onclick="toggleFavoriteFromWatch()">
+                                <i class="fa-regular fa-heart"></i><span>Favori</span>
+                            </button>
+                            <button class="wd2-tool" id="watchWatchlistBtn" onclick="openAddToListFromWatch()">
+                                <i class="fa-regular fa-bookmark"></i><span>Liste</span>
+                            </button>
+                            <button class="wd2-tool" id="watchNoteBtn" onclick="openNoteModal()">
+                                <i class="fa-regular fa-note-sticky"></i><span>Not Al</span>
+                            </button>
+                        </div>
+                        <div class="wd2-tool-sep"></div>
+                        <button class="wd2-tool wd2-tool-synopsis" onclick="document.getElementById('watchSynopsisWrapper').classList.toggle('expanded')">
+                            <i class="fa-solid fa-align-left"></i><span>Bölüm Özeti</span>
+                        </button>
+                    </div>
+
+                    <!-- ── Özet ── -->
+                    <div id="watchSynopsisWrapper" class="wd2-synopsis-wrapper">
+                        <div class="wd2-synopsis-inner">
+                            <div id="watchSynopsis" class="wd2-synopsis-text"></div>
+                            <div id="aiAnalysisResults"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── YORUMLAR BÖLÜMÜ ── -->
+                <div class="wd-comments-wrapper">
+                    <div class="cm-head">
+                        <div class="cm-head-left">
+                            <i class="fa-regular fa-message cm-head-icon"></i>
+                            <h3 class="cm-head-title">Bölüm Yorumları</h3>
+                            <span id="commentsCountBadge" class="cm-count">0</span>
+                        </div>
+                        <span class="cm-head-sub">Sürprizbozan içeren yorumları işaretlemeyi unutmayın</span>
+                    </div>
+                    
+                    <!-- Yorum Yapma Alanı -->
+                    <div class="comment-input-area">
+                        <div class="cm-composer-top">
+                            <div class="cm-author-field">
+                                <i class="fa-regular fa-user"></i>
+                                <input type="text" id="commentUsername" class="comment-input-name" placeholder="Adınız veya rumuzunuz (Örn: AnimeSlayer99)">
+                            </div>
+                            <button type="button" id="commentSpoilerBtn" class="comment-spoiler-btn" onclick="toggleSpoilerFlag(this)">
+                                <i class="fa-solid fa-eye-slash"></i> <span>Spoiler içeriyor</span>
+                            </button>
+                        </div>
+                        <textarea id="commentContent" class="comment-input-text" placeholder="Bu bölüm hakkında ne düşünüyorsun? Düşüncelerini paylaş..."></textarea>
+                        <div class="cm-composer-foot">
+                            <span class="cm-foot-hint"><i class="fa-solid fa-shield-halved"></i> Topluluk kurallarına uygun şekilde yorum yapın</span>
+                            <button type="button" onclick="postComment()" class="comment-submit-btn">
+                                <i class="fa-solid fa-paper-plane"></i> Gönder
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Yorum Listesi -->
+                    <div id="commentsList" class="comments-list">
+                        <div class="cm-empty">Yorumlar yükleniyor...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="watch-right">
+                <div class="watch-sidebar">
+                    <div class="sidebar-header">
+                        <h3><i class="fa-solid fa-list"></i> Bölümler</h3>
+                        <input type="text" id="episodeFilterInput" class="episode-filter-input" placeholder="Bölüm ara..." oninput="filterEpisodeList(this.value)">
+                        <select id="watchSeasonSelect" class="season-select hidden"></select>
+                        <div id="watchFillerControlBar" class="watch-filler-ctrl hidden"></div>
+                    </div>
+                    <div id="watchEpisodesList" class="sidebar-episodes"></div>
+                </div>
+                <!-- Watch2Gether Chat -->
+                <div id="w2gChatContainer" class="w2g-chat hidden">
+                    <div class="sidebar-header">
+                        <h3><i class="fa-solid fa-comments"></i> Sohbet</h3>
+                        <button class="close-btn" onclick="leaveW2GRoom()"><i class="fa-solid fa-right-from-bracket"></i></button>
+                    </div>
+                    <div id="w2gMessages" class="w2g-messages"></div>
+                    <div class="w2g-input-wrap">
+                        <input type="text" id="w2gMessageInput" class="w2g-input" placeholder="Mesajınızı yazın..." onkeypress="if(event.key==='Enter')sendW2GMessage()">
+                        <button class="btn-primary" onclick="sendW2GMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    </main>
+
+    <!-- â•Ââ•Â DRAWER â•Ââ•Â -->
+    <div id="drawer" class="drawer hidden">
+        <div class="drawer-header">
+            <h3 id="drawerTitle">Panel</h3>
+            <button onclick="closeDrawer()" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="drawerContent" class="drawer-content"></div>
+    </div>
+    <div id="drawerOverlay" class="drawer-overlay hidden" onclick="closeDrawer()"></div>
+
+    <!-- â•Ââ•Â SETTINGS MODAL â•Ââ•Â -->
+    <div id="settingsModal" class="modal hidden">
+        <div class="profile-modal-card" style="max-width:700px;">
+            <!-- Header -->
+            <div class="prf-banner stg-header">
+                <div class="stg-title">
+                    <span class="stg-title-ico"><i class="fa-solid fa-sliders"></i></span>
+                    <div><h3>Ayarlar</h3><p>Deneyimini kişiselleştir</p></div>
+                </div>
+                <button onclick="closeSettings()" class="prf-close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <nav class="stg-nav">
+                <div class="stg-search"><i class="fa-solid fa-magnifying-glass"></i><input id="stgSearch" type="text" placeholder="Ayarlarda ara..." oninput="stgFilter(this.value)" autocomplete="off"></div>
+                <button class="on" data-go="account" onclick="stgTab('account')"><i class="fa-solid fa-user"></i><span>Hesap</span></button>
+                <button data-go="appearance" onclick="stgTab('appearance')"><i class="fa-solid fa-palette"></i><span>Görünüm</span></button>
+                <button data-go="player" onclick="stgTab('player')"><i class="fa-solid fa-circle-play"></i><span>Oynatıcı</span></button>
+                <button data-go="integration" onclick="stgTab('integration')"><i class="fa-solid fa-plug"></i><span>Entegrasyon</span></button>
+                <button data-go="advanced" onclick="stgTab('advanced')"><i class="fa-solid fa-code"></i><span>Gelişmiş</span></button>
+            </nav>
+            <div class="prf-body stg-body">
+                <!-- General Info Grid -->
+                <div class="prf-grid2" data-tab="account">
+                    <div class="prf-section">
+                        <label class="prf-label"><i class="fa-solid fa-user"></i> Hesabım</label>
+                        <div class="prf-currently-watching" style="flex-direction:column; align-items:flex-start; justify-content:center; gap:8px;">
+                            <span style="font-size:13px; color:var(--text3);">Kullanıcı girişi ve profil yönetimi</span>
+                            <button class="btn-secondary" style="width:100%; padding:8px;" onclick="showAuthModal(true); closeSettings()">
+                                <i class="fa-solid fa-user-pen"></i> Profili Yönet
+                            </button>
+                        </div>
+                    </div>
+                    <div class="prf-section">
+                        <label class="prf-label"><i class="fa-solid fa-circle-info"></i> Proje Hakkında</label>
+                        <div class="prf-currently-watching" style="flex-direction:column; align-items:flex-start; justify-content:center; gap:8px;">
+                            <span style="font-size:13px; color:var(--text3);">Sürüm ve geliştirici notları</span>
+                            <button class="btn-secondary" style="width:100%; padding:8px;" onclick="showAboutProject(); closeSettings()">
+                                <i class="fa-solid fa-file-lines"></i> Bilgi Görüntüle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Appearance & UI -->
+                <div class="prf-section" data-tab="appearance">
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Ana Renk (Vurgu)</span>
+                            <small>Sitenin temasını değiştirin</small>
+                        </div>
+                        <select id="settingAccentColor" class="prf-color-select" style="min-width:140px;" onchange="saveSettings()">
+                            <option value="purple">Mor (Varsayılan)</option>
+                            <option value="red">Kan Kırmızı</option>
+                            <option value="blue">Okyanus Mavi</option>
+                            <option value="green">Zehir Yeşil</option>
+                            <option value="orange">Ateş Turuncu</option>
+                        </select>
+                    </div>
+
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Devam Et Kapak Tipi</span>
+                            <small>Ana sayfadaki devam et kartlarının görünümü</small>
+                        </div>
+                        <select id="settingCwStyle" class="prf-color-select" style="min-width:140px;" onchange="saveSettings()">
+                            <option value="poster">Poster (Varsayılan)</option>
+                            <option value="logo">Åeffaf Logo (TMDB)</option>
+                            <option value="thumbnail">Bölüm Kapağı (Kitsu)</option>
+                        </select>
+                    </div>
+
+                    <label class="prf-label"><i class="fa-solid fa-palette"></i> Görünüm & Arayüz</label>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Dinamik Tema ğŸÂ¨</span>
+                            <small>Detay sayfalarında site rengi afişe göre değişir</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="settingDynamicTheme" onchange="saveSettings()">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Kaydırma Animasyonları âœ¨</span>
+                            <small>Aşağı kaydırırken ögeler yumuşakça belirir</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="settingScrollAnim" onchange="saveSettings()">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Tema Değiştir</span>
+                            <small>Karanlık / Aydınlık mod</small>
+                        </div>
+                        <button class="btn-secondary" id="themeBtn" style="padding:6px 12px; font-size:13px;" onclick="toggleTheme()">
+                            <i class="fa-solid fa-moon"></i> Değiştir
+                        </button>
+                    </div>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Menü (Navbar) Tipi</span>
+                            <small>Sabit veya yandan açılır</small>
+                        </div>
+                        <select id="settingNavbarLayout" class="prf-color-select" style="min-width:140px;" onchange="saveSettings()">
+                            <option value="top">Sabit (Üstte)</option>
+                            <option value="top-hidden">Gizli (Yukarıdan)</option>
+                            <option value="left">Gizli (Soldan)</option>
+                            <option value="right">Gizli (Sağdan)</option>
+                        </select>
+                    </div>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Mobil Görünüm</span>
+                            <small>Mobil cihazlar için alt menü görünümü</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="settingMobileView" onchange="saveSettings()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                
+                <!-- Custom Hero -->
+                <div class="prf-section" data-tab="appearance">
+                    <label class="prf-label"><i class="fa-solid fa-image"></i> Özel Ana Afiş (Hero Banner)</label>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Özel Afiş Kullan</span>
+                            <small>Trend animeler yerine kendi görselinizi koyun</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="settingHeroCustomEnable" onchange="saveSettings()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div id="heroCustomSettingsContainer" style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:rgba(255,255,255,0.05); padding:1rem; border-radius:8px;">
+                        <input type="text" id="settingHeroCustomTitle" class="prf-input" placeholder="Afiş Başlığı (Örn: Anime Dünyasına Hoşgeldin)" onchange="saveSettings()">
+                        <textarea id="settingHeroCustomDesc" class="prf-textarea" placeholder="Kısa bir açıklama..." onchange="saveSettings()" style="min-height:60px; font-size:13px;"></textarea>
+                        
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" id="settingHeroCustomBg" class="prf-input" placeholder="Arka Plan URL veya Dosya Seç" onchange="saveSettings()" style="flex:1;">
+                            <input type="file" id="heroCustomFile" accept="image/*,video/*" style="display:none;" onchange="uploadHeroBackground(this)">
+                            <button class="btn-secondary" onclick="document.getElementById('heroCustomFile').click()" style="padding:0 12px;" title="Cihazdan Yükle"><i class="fa-solid fa-upload"></i></button>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Playback & Video -->
+                <div class="prf-section" data-tab="player">
+                    <label class="prf-label"><lord-icon src="https://cdn.lordicon.com/kbtmbyzy.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon> Oynatıcı & İzleme</label>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Varsayılan Ses</span>
+                            <small>Dublaj veya Altyazı tercihi</small>
+                        </div>
+                        <select id="settingAudio" class="prf-color-select" style="min-width:100px;" onchange="saveSettings()">
+                            <option value="sub">Altyazı</option>
+                            <option value="dub">Dublaj</option>
+                        </select>
+                    </div>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Altyazı Büyüklüğü</span>
+                            <small>Oynatıcıdaki altyazıların boyutu</small>
+                        </div>
+                        <select id="settingSubtitleSize" class="prf-color-select" style="min-width:100px;" onchange="saveSettings()">
+                            <option value="small">Küçük</option>
+                            <option value="normal" selected>Normal</option>
+                            <option value="large">Büyük</option>
+                            <option value="xlarge">Çok Büyük</option>
+                        </select>
+                    </div>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Otomatik Sonraki Bölüm</span>
+                            <small>Bölüm bittiğinde diğerine geç</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="settingAutoNext" onchange="saveSettings()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Ambient Light ğŸ’¡</span>
+                            <small>Videonun renkleri oynatıcının çevresine yumuşak bir ışık olarak yansır</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="settingAmbilight" onchange="saveSettings()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Işık Yoğunluğu</span>
+                            <small>Ambient Light parlaklığı</small>
+                        </div>
+                        <select id="settingAmbientIntensity" class="prf-color-select" style="min-width:110px;" onchange="saveSettings()">
+                            <option value="low">Hafif</option>
+                            <option value="medium" selected>Orta</option>
+                            <option value="high">Güçlü</option>
+                        </select>
+                    </div>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Zaman Çubuğu Önizlemesi ğŸ–¼ï¸Â</span>
+                            <small>Çubuğun üstüne gelince o anın küçük resmini göster</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="settingThumbPreview" onchange="saveSettings()" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Integration & Features -->
+                <div class="prf-section" data-tab="integration">
+                    <label class="prf-label"><i class="fa-solid fa-plug"></i> Entegrasyon & Özellikler</label>
+                    
+                    <div class="prf-currently-watching" style="flex-direction:column; align-items:stretch; gap:12px;">
+                        <div class="prf-toggle-info" style="flex-direction:row; justify-content:space-between;">
+                            <span style="color:var(--accent-light);">MyAnimeList Bağlantısı</span>
+                            <small>Herkese Açık Liste</small>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" id="malUsernameInput" class="prf-input" placeholder="Kullanıcı Adı" style="flex:1;">
+                            <button class="btn-primary" onclick="saveMALUsername()" style="padding:0 16px;"><i class="fa-solid fa-check"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Yapay Zekayı Aç/Kapat</span>
+                            <small>Tüm YZ özelliklerini etkinleştir</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="settingAIEnabled" onchange="saveSettings()" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="prf-currently-watching" style="flex-direction:column; align-items:stretch; gap:12px; background:rgba(124,58,237,0.05);">
+                        <span style="font-size:13px; font-weight:700; color:var(--accent-light);">Yapay Zeka Yapılandırması</span>
+                        
+                        <select id="settingAIProvider" class="prf-select" onchange="saveSettings()">
+                            <option value="openai">OpenAI (ChatGPT)</option>
+                            <option value="gemini">Google Gemini</option>
+                            <option value="openrouter">OpenRouter</option>
+                        </select>
+                        
+                        <input type="password" id="settingAIApiKey" class="prf-input" placeholder="API Anahtarınızı Girin" onchange="saveSettings()">
+                        
+                        <textarea id="settingAIPrompt" class="prf-textarea" placeholder="Yapay zekanın kullanacağı özel prompt şablonunu yazın..." onchange="saveSettings()" style="min-height:70px; font-size:13px;"></textarea>
+                    </div>
+
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Banner Animasyonu</span>
+                            <small>Ana sayfa banner otomatik geçiş</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="settingBannerAuto" onchange="saveSettings()" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Varsayılan Kaynak</span>
+                            <small>Arama ve izleme için varsayılan</small>
+                        </div>
+                        <select id="settingDefaultSource" class="prf-color-select" style="min-width:140px;" onchange="saveSettings()">
+                            <option value="AnimeciX">AnimeciX</option>
+                            <option value="Anizium">Anizium</option>
+                            <option value="Anizium Free">Anizium Free</option>
+                            <option value="OpenAnime" disabled>OpenAnime (devre dışı)</option>
+                        </select>
+                    </div>
+                    <div class="prf-toggle-row" style="margin-top: 15px;">
+                        <div class="prf-toggle-info">
+                            <span>Ana Sayfa Anime Kaynağı</span>
+                            <small>Ana sayfadaki öneri satırlarının ve banner'ın nereden çekileceğini seçin.</small>
+                        </div>
+                        <select id="settingHomeDataSource" class="prf-color-select" style="min-width:140px;" onchange="saveSettings(); window.location.reload();">
+                            <option value="animerank">Animerank.tv (Varsayılan)</option>
+                            <option value="anitr">Anitr Web-API (GitHub)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Advanced -->
+                <div class="prf-section" data-tab="advanced">
+                    <label class="prf-label"><i class="fa-solid fa-code"></i> Gelişmiş</label>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Oynatıcı Hata Ayıklama (Debug)</span>
+                            <small>Oynatıcının sağ üstünde kaldığı yeri gösterir</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="settingPlayerDebug" onchange="saveSettings()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="prf-toggle-row" style="margin-top: 15px;">
+                        <div class="prf-toggle-info">
+                            <span>Sahne Sarsıntısı (Screen Shake) <span class="beta-badge">BETA</span></span>
+                            <small>Büyük patlama veya seslerde ekran titrer (4D Sinema hissi)</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="settingScreenShake" onchange="saveSettings()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <label class="prf-label" style="margin-top: 24px;"><i class="fa-solid fa-headphones"></i> Cihazlar</label>
+                    <div class="prf-toggle-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <div class="prf-toggle-info">
+                            <span>Ses Çıkışı (Hoparlör / Kulaklık)</span>
+                            <small>Videonun sesinin hangi cihazdan geleceğini seçin</small>
+                        </div>
+                        <select id="settingAudioOutput" class="prf-select" style="width: 100%; margin-top: 8px;" onchange="saveSettings()">
+                            <option value="default">Sistem Varsayılanı</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- â•Ââ•Â WATCH2GETHER MODAL â•Ââ•Â -->
+    <div id="w2gModal" class="modal hidden">
+        <div class="modal-content settings-modal">
+            <div class="modal-header">
+                <h3 id="w2gModalTitle"><i class="fa-solid fa-users-line"></i> Oda Kur</h3>
+                <button onclick="closeW2GModal()" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="settings-body">
+                <div class="setting-item">
+                    <div>
+                        <h4>Kullanıcı Adınız</h4>
+                        <p>Sohbette görünecek isim</p>
+                    </div>
+                    <input type="text" id="w2gUsername" placeholder="Kullanıcı adınızı girin" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--surface2); color:var(--text);">
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Oda Adı</h4>
+                        <p>Odanızın ismi</p>
+                    </div>
+                    <input type="text" id="w2gRoomName" placeholder="Oda adı" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--surface2); color:var(--text);">
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <h4>Åifre</h4>
+                        <p>Odaya girmek için şifre</p>
+                    </div>
+                    <input type="password" id="w2gPassword" placeholder="Åifre" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--surface2); color:var(--text);">
+                </div>
+                <button id="w2gActionBtn" class="btn-primary" style="width:100%" onclick="handleW2GAction()">
+                    <i class="fa-solid fa-check"></i> Odayı Kur
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- â•Ââ•Â NOTE MODAL â•Ââ•Â -->
+    <div id="noteModal" class="modal hidden">
+        <div class="modal-content settings-modal">
+            <div class="modal-header">
+                <h3><i class="fa-regular fa-note-sticky"></i> Bölüm Notu</h3>
+                <button onclick="closeNoteModal()" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="settings-body">
+                <p style="color:var(--text3);font-size:0.9rem;margin-bottom:0.5rem">Bu bölüme kişisel notunuzu ekleyin:</p>
+                <textarea id="noteTextarea" style="width:100%;height:120px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:0.75rem;font-family:inherit;font-size:0.95rem;resize:vertical" placeholder="Notunuzu buraya yazın..."></textarea>
+                <button class="btn-primary" style="margin-top:1rem;width:100%" onclick="saveNote()"><i class="fa-solid fa-floppy-disk"></i> Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- â•Ââ•Â STATS MODAL â•Ââ•Â -->
+    <div id="statsModal" class="modal hidden">
+        <div class="modal-content settings-modal">
+            <div class="modal-header">
+                <h3><lord-icon src="https://cdn.lordicon.com/gqdnbnwt.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon> İzleme İstatistikleri</h3>
+                <button onclick="closeStats()" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="statsBody" class="settings-body"></div>
+        </div>
+    </div>
+    
+
+    <!-- â•Ââ•Â DETAILED PROFILE MODAL â•Ââ•Â -->
+    <div id="profileModal" class="modal hidden">
+        <div class="profile-modal-card">
+            <!-- Banner -->
+            <div class="prf-banner" id="profileBannerWrapper">
+                <img id="profileBanner" src="" alt="Banner" onerror="this.style.display='none'">
+                <div class="prf-banner-gradient"></div>
+                <button class="prf-close-btn" onclick="closeProfileModal()"><i class="fa-solid fa-xmark"></i></button>
+                <label for="profileBannerInput" class="prf-banner-edit" title="Banner Değiştir"><i class="fa-solid fa-image"></i></label>
+                <input type="file" id="profileBannerInput" accept="image/*" style="display:none">
+            </div>
+
+            <!-- Avatar + Name row -->
+            <div class="prf-top-row">
+                <div class="prf-avatar-wrap">
+                    <div class="profile-avatar-wrapper" id="profileAvatarWrapper">
+                        <img id="profileAvatar" src="https://api.dicebear.com/8.x/avataaars/svg?seed=anitr" alt="Avatar">
+                        <label for="profileAvatarInput" class="profile-avatar-upload-btn" title="Avatar Değiştir"><i class="fa-solid fa-camera"></i></label>
+                        <input type="file" id="profileAvatarInput" accept="image/*" style="display:none">
+                    </div>
+                </div>
+                <div class="prf-name-col">
+                    <input type="text" id="profileUsername" class="prf-username-input" placeholder="Kullanıcı adı...">
+                    <div class="prf-color-row">
+                        <span style="font-size:12px;color:var(--text3)">Ad rengi:</span>
+                        <select id="profileNameColor" class="prf-color-select">
+                            <option value="#ffffff">Beyaz</option>
+                            <option value="#8b5cf6">Mor</option>
+                            <option value="#06b6d4">Cyan</option>
+                            <option value="#22c55e">Yeşil</option>
+                            <option value="#f59e0b">Altın</option>
+                            <option value="#ef4444">Kırmızı</option>
+                            <option value="#ec4899">Pembe</option>
+                            <option value="#FF6B6B">Mercan</option>
+                            <option value="#4ECDC4">Teal</option>
+                            <option value="#87CEEB">Açık Mavi</option>
+                            <option value="#C9B1FF">Lavanta</option>
+                            <option value="#FFE66D">Sarı</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="prf-body">
+
+                <!-- Bio -->
+                <div class="prf-section">
+                    <label class="prf-label"><i class="fa-solid fa-quote-left"></i> Hakkımda (Bio)</label>
+                    <textarea id="profileBio" class="prf-textarea" placeholder="Kendini kısaca tanıt..."></textarea>
+                </div>
+
+                <!-- Info grid -->
+                <div class="prf-grid2">
+                    <div class="prf-section">
+                        <label class="prf-label"><i class="fa-brands fa-discord" style="color:#5865F2"></i> Discord</label>
+                        <input type="text" id="profileDiscord" class="prf-input" placeholder="kullanici#0000">
+                    </div>
+                    <div class="prf-section">
+                        <label class="prf-label"><i class="fa-solid fa-star" style="color:#f59e0b"></i> Favori Tür</label>
+                        <select id="profileFavGenre" class="prf-select">
+                            <option value="">Seçilmedi</option>
+                            <option value="Aksiyon">Aksiyon</option>
+                            <option value="Komedi">Komedi</option>
+                            <option value="Romantik">Romantik</option>
+                            <option value="Fantastik">Fantastik</option>
+                            <option value="Bilim Kurgu">Bilim Kurgu</option>
+                            <option value="Dram">Dram</option>
+                            <option value="Korku">Korku</option>
+                            <option value="Gizem">Gizem</option>
+                            <option value="Spor">Spor</option>
+                            <option value="Slice of Life">Slice of Life</option>
+                            <option value="Mecha">Mecha</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Privacy settings -->
+                <div class="prf-section">
+                    <label class="prf-label"><i class="fa-solid fa-shield-halved"></i> Gizlilik</label>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>İzlediğim Animeler</span>
+                            <small>Diğer kullanıcılar görebilsin</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="profileShowWatchedAnime" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="prf-toggle-row">
+                        <div class="prf-toggle-info">
+                            <span>Anlık İzleme Durumu</span>
+                            <small>Åu an ne izlediğini göster</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="profileShowCurrentWatching" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Currently watching -->
+                <div class="prf-section">
+                    <label class="prf-label"><i class="fa-solid fa-circle-play" style="color:var(--accent-light)"></i> Åu An İzliyor</label>
+                    <div id="profileCurrentWatching" class="prf-currently-watching"></div>
+                </div>
+
+                <!-- Save button -->
+                <button class="btn-primary prf-save-btn" onclick="saveProfile()">
+                    <i class="fa-solid fa-floppy-disk"></i> Profili Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- â•Ââ•Â DOWNLOAD MODAL â•Ââ•Â -->
+    <div id="downloadModal" class="modal hidden">
+        <div class="modal-content dl-modal-content">
+            <div class="dl-modal-header">
+                <div class="dl-modal-title-area">
+                    <div class="dl-modal-icon-wrap"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+                    <div>
+                        <h3>Bölümü İndir</h3>
+                        <p id="dlModalSubtitle" class="dl-modal-subtitle">Kalite &amp; dil seçin</p>
+                    </div>
+                </div>
+                <button onclick="closeDownloadModal()" class="dl-close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="dl-modal-body">
+                <div class="dl-section-label"><i class="fa-solid fa-layer-group"></i> Kalite &amp; Dil Seç</div>
+                <div id="downloadQualityList" class="dl-quality-list"></div>
+                <button class="dl-start-btn" id="startDownloadBtn" onclick="startDownload()">
+                    <i class="fa-solid fa-cloud-arrow-down"></i>
+                    <span>İndirmeye Başla</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- â•Ââ•Â DOWNLOADS MODAL â•Ââ•Â -->
+    <div id="downloadsModal" class="modal hidden">
+        <div class="modal-content dls-modal-content">
+            <div class="dls-modal-header">
+                <div class="dls-modal-title-area">
+                    <div class="dls-modal-icon-wrap"><i class="fa-solid fa-folder-arrow-down"></i></div>
+                    <div>
+                        <h3>İndirmeler</h3>
+                        <p class="dl-modal-subtitle" id="dlsCountLabel">İndirme geçmişiniz</p>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button class="dl-clear-btn" onclick="clearAllDownloads()" title="Tümünü Temizle"><i class="fa-solid fa-trash"></i></button>
+                    <button onclick="closeDownloadsModal()" class="dl-close-btn"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div id="downloadsContainer" class="dls-container"></div>
+        </div>
+    </div>
+
+    <!-- â•Ââ•Â MOBILE BOTTOM BAR â•Ââ•Â -->
+    <nav class="mobile-bottom-bar hidden">
+        <button class="mobile-nav-btn active" onclick="loadHome()">
+            <i class="fa-solid fa-house"></i>
+            <span>Ana Sayfa</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="openSearchOverlay();">
+            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon>
+            <span>Ara</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="showMyLists()">
+            <i class="fa-solid fa-bookmark"></i>
+            <span>Liste</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="showFavorites()">
+            <lord-icon src="https://cdn.lordicon.com/xryjrepg.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon>
+            <span>Favoriler</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="showFriendsModal()">
+            <lord-icon src="https://cdn.lordicon.com/ljvjsnvh.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon>
+            <span>Arkadaşlar</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="openSettings()">
+            <i class="fa-solid fa-gear"></i>
+            <span>Ayarlar</span>
+        </button>
+    </nav>
+</div>
+
+<script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/videojs-http-source-selector@1.1.6/dist/videojs-http-source-selector.min.js" onerror=""></script>
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.1/vanilla-tilt.min.js"></script>
+<!-- Full Screen Search Overlay -->
+<div id="searchOverlay" class="search-overlay" onclick="if(event.target===this) closeSearchOverlay()">
+    <div class="search-overlay-content">
+        <div class="search-box-large" id="searchBoxLarge">
+            <i class="fa-solid fa-magnifying-glass so-icon"></i>
+            <input type="text" id="largeSearchInput" placeholder="Anime, tür veya sezon ara..." autocomplete="off">
+            <button type="button" class="so-camera-btn" onclick="closeSearchOverlay(); openTraceMoeModal();" title="Görselden Anime & Sahne Bul (Trace.moe)">
+                <i class="fa-solid fa-camera-retro"></i>
+                <span>Görselden Bul</span>
+            </button>
+            <div class="esc-hint" onclick="closeSearchOverlay()">ESC</div>
+        </div>
+        <div id="largeSearchSuggestions" class="large-suggestions">
+            <div class="empty-search-state" id="largeSearchEmpty">Aramak istediğin animeyi yaz...</div>
+        </div>
+        <div id="searchQuickPanel" class="so-quick">
+            <div id="soRecentWrap" class="so-block hidden">
+                <div class="so-block-head"><span>Son Aramalar</span><button type="button" onclick="clearRecentSearches()">Temizle</button></div>
+                <div id="soRecentChips" class="so-chips"></div>
+            </div>
+            <div class="so-block">
+                <div class="so-block-head">
+                    <span>Hızlı Keşif</span>
+                    <button type="button" class="so-trace-banner-btn" onclick="closeSearchOverlay(); openTraceMoeModal();">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Ekran Görüntüsünden Anime & Dakika Bul (Trace.moe)
+                    </button>
+                </div>
+                <div class="so-chips">
+                    <button type="button" class="so-chip" onclick="quickSearchTerm('Jujutsu Kaisen')">Jujutsu Kaisen</button>
+                    <button type="button" class="so-chip" onclick="quickSearchTerm('Solo Leveling')">Solo Leveling</button>
+                    <button type="button" class="so-chip" onclick="quickSearchTerm('One Piece')">One Piece</button>
+                    <button type="button" class="so-chip" onclick="quickSearchTerm('Attack on Titan')">Attack on Titan</button>
+                    <button type="button" class="so-chip" onclick="quickSearchTerm('Frieren')">Frieren</button>
+                    <button type="button" class="so-chip" onclick="quickSearchTerm('Demon Slayer')">Demon Slayer</button>
+                    <button type="button" class="so-chip" onclick="quickSearchTerm('Chainsaw Man')">Chainsaw Man</button>
+                    <button type="button" class="so-chip" onclick="quickSearchTerm('Bleach')">Bleach</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     ğŸ” TRACE.MOE — GÖRSELDEN ANİME, BÖLÜM & SAHNE BULUCU MODAL
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div id="traceMoeModal" class="modal hidden tracemoe-backdrop" onclick="if(event.target===this) closeTraceMoeModal()">
+    <div class="modal-content tracemoe-modal">
+        <div class="tracemoe-header">
+            <div class="tracemoe-brand">
+                <div class="tracemoe-logo-orb">
+                    <i class="fa-solid fa-camera-retro"></i>
+                </div>
+                <div>
+                    <div class="tracemoe-eyebrow">TRACE.MOE AI ENGINE • ANILIST ENTEGRASYONLU</div>
+                    <h2 class="tracemoe-title">Görselden Anime & Sahne Bulucu</h2>
+                    <p class="tracemoe-sub">TikTok, Reels veya YouTube'da gördüğün bir sahnenin ekran görüntüsünü yükle; hangi anime, kaçıncı bölüm ve kaçıncı dakika olduğunu bulup tam o saniyeden izle!</p>
+                </div>
+            </div>
+            <button type="button" class="tracemoe-close-btn" onclick="closeTraceMoeModal()" title="Kapat">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="tracemoe-body">
+            <!-- Sol / Üst: Görsel Yükleme, Sürükle-Bırak, Ctrl+V ve URL Girişi -->
+            <div class="tracemoe-upload-panel">
+                <div id="traceMoeDropzone" class="tracemoe-dropzone"
+                     onclick="document.getElementById('traceMoeFileInput').click()"
+                     ondragover="handleTraceDragOver(event)"
+                     ondragleave="handleTraceDragLeave(event)"
+                     ondrop="handleTraceDrop(event)">
+                    <input type="file" id="traceMoeFileInput" accept="image/*" style="display:none" onchange="handleTraceFileSelect(this)">
+                    <div id="traceMoeDropzonePlaceholder" class="tracemoe-drop-placeholder">
+                        <div class="tracemoe-drop-icon">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <h4>Anime Ekran Görüntüsünü Sürükle & Bırak</h4>
+                        <p>veya bilgisayarından seçmek için tıkla • Panodan yapıştırmak için <kbd>Ctrl + V</kbd> bas</p>
+                        <div class="tracemoe-drop-badges">
+                            <span><i class="fa-solid fa-bolt"></i> %99 Doğruluk</span>
+                            <span><i class="fa-solid fa-film"></i> Canlı Sahne Videosu</span>
+                            <span><i class="fa-solid fa-play"></i> Tam Dakikasından Başlat</span>
+                        </div>
+                    </div>
+                    <div id="traceMoePreviewWrap" class="tracemoe-preview-wrap hidden" onclick="event.stopPropagation()">
+                        <img id="traceMoePreviewImg" src="" alt="Yüklenen Sahne">
+                        <div class="tracemoe-preview-actions">
+                            <button type="button" class="tm-btn-secondary" onclick="document.getElementById('traceMoeFileInput').click()">
+                                <i class="fa-solid fa-image"></i> Başka Görsel Seç
+                            </button>
+                            <button type="button" class="tm-btn-danger" onclick="resetTraceMoe()">
+                                <i class="fa-solid fa-trash"></i> Temizle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- URL ile Arama + Siyah Kenarlık Kırpma Ayarı -->
+                <div class="tracemoe-controls-row">
+                    <div class="tracemoe-url-input-wrap">
+                        <i class="fa-solid fa-link"></i>
+                        <input type="url" id="traceMoeUrlInput" placeholder="Veya doğrudan görsel URL'si yapıştır (https://... .jpg / .png)" onkeypress="if(event.key==='Enter') searchTraceMoeByUrl()">
+                        <button type="button" class="tm-url-btn" onclick="searchTraceMoeByUrl()">
+                            <i class="fa-solid fa-magnifying-glass"></i> URL ile Bul
+                        </button>
+                    </div>
+                    <label class="tracemoe-cutborders-toggle" title="TikTok/Telefon ekran görüntülerindeki siyah kenarlıkları otomatik kırparak eşleşme oranını artırır">
+                        <input type="checkbox" id="traceMoeCutBorders" checked>
+                        <span><i class="fa-solid fa-crop-simple"></i> Siyah Kenarlıkları Otomatik Kırp</span>
+                    </label>
+                </div>
+
+                <!-- Hızlı Test İçin Örnek Sahneler -->
+                <div class="tracemoe-samples-bar">
+                    <span class="tm-samples-label"><i class="fa-solid fa-flask"></i> Hemen Test Et:</span>
+                    <button type="button" class="tm-sample-chip" onclick="runTraceSample('rabbit')">
+                        ğŸ¬ Örnek Sahne Ara
+                    </button>
+                    <button type="button" class="tm-sample-chip" onclick="captureCurrentPlayerFrameForTrace()">
+                        📸 Åu An Oynatıcıdaki Sahneyi Tara
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sağ / Alt: Sonuç Alanı -->
+            <!-- Loading spinner -->
+            <div id="traceMoeLoading" class="tracemoe-loading hidden">
+                <div class="tracemoe-spinner"></div>
+                <p>Sahne analiz ediliyor...</p>
+            </div>
+            <div id="traceMoeResultsArea" class="tracemoe-results-area hidden">
+                <div class="tm-uploaded-preview-row">
+                    <div class="tm-uploaded-label"><i class="fa-solid fa-image"></i> Yukledin Gorsel</div>
+                    <img id="traceMoeUploadedImg" src="" alt="Yuklenen sahne" class="tm-uploaded-img">
+                </div>
+                <div class="tm-results-section-title"><i class="fa-solid fa-bullseye"></i> En Iyi Esleme</div>
+                <div id="traceMoeHeroMatchCard" class="tm-hero-match-card"></div>
+                <div class="tm-results-section-title tm-alt-title" style="margin-top:1.2rem;"><i class="fa-solid fa-list"></i> Diger Olasi Eslesmeler</div>
+                <div id="traceMoeAltGrid" class="tm-alt-grid"></div>
+                <!-- JS ile Top Match + Diğer Eşleşmeler buraya çizilecek -->
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="app.js?v=8.6.2"></script>
+<!-- â•Ââ•Â MODERN ANITR SOSYAL HUB MODAL â•Ââ•Â -->
+<div id="friendsModal" class="modal hidden social-hub-backdrop" onclick="if(event.target===this) closeFriendsModal()">
+    <div class="modal-content social-hub-modal social-v3-shell">
+        <!-- Hub Top Header -->
+        <div class="social-hub-header">
+            <div class="social-hub-brand">
+                <div class="social-hub-brand-icon">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                </div>
+                <div>
+                    <div class="social-hub-eyebrow">ANITR COMMUNITY NETWORK • CANLI SENKRONİZASYON</div>
+                    <h2 class="social-hub-title">Anitr Sosyal <span class="social-v3-badge">v4.0</span></h2>
+                    <p class="social-hub-subtitle">Topluluk Akışı, Arkadaşlar, Sohbet & İzleme İstatistiklerin</p>
+                </div>
+            </div>
+            
+            <div class="social-hub-header-actions">
+                <div class="social-live-pulse-pill" title="Åu an aktif topluluk üyeleri">
+                    <span class="pulse-dot"></span>
+                    <span id="socialOnlineCounterText">Canlı Akış Aktif</span>
+                </div>
+                <div id="socialHubUserPill" class="social-user-pill hidden" onclick="switchSocialTab('profile')">
+                    <img id="socialHubHeaderAvatar" src="https://placehold.co/80x80/1a1a28/8b5cf6?text=U" alt="Profil">
+                    <div class="social-user-pill-info">
+                        <span id="socialHubHeaderName" class="social-user-pill-name">@Kullanıcı</span>
+                        <span id="socialHubHeaderStatus" class="social-user-pill-status"><span class="status-dot online"></span><span id="socialHubHeaderRank">👑 Otaku</span></span>
+                    </div>
+                </div>
+                <button class="social-hub-close-btn" onclick="closeFriendsModal()" title="Kapat">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- AUTH VIEW (Giriş Yapılmadığında) -->
+        <div id="socialAuthView" class="hidden social-hub-auth-card">
+            <div class="social-auth-icon-wrap">
+                <i class="fa-solid fa-users-rays"></i>
+            </div>
+            <h3>Anitr Sosyal v3 Dünyasına Katıl</h3>
+            <p>Arkadaşlarının şu an hangi animeyi kaçıncı dakikada izlediğini görmek, VS anketlerinde oy kullanmak, gönderilere emoji tepkileri bırakmak ve birlikte izleme odalarına davet göndermek için katıl!</p>
+            <div class="social-auth-quick-box">
+                <div class="social-quick-guest-row">
+                    <input type="text" id="socialQuickGuestInput" placeholder="Hızlı kullanıcı adı seç (Örn: GojoSatoru99)..." onkeypress="if(event.key==='Enter') joinSocialQuickGuest()">
+                    <button type="button" class="btn-primary" onclick="joinSocialQuickGuest()">
+                        <i class="fa-solid fa-bolt"></i> Hemen Katıl
+                    </button>
+                </div>
+                <div class="social-auth-divider"><span>veya kayıtlı hesabınla</span></div>
+                <div class="social-auth-btns">
+                    <button class="btn-secondary" onclick="closeFriendsModal(); showAuthModal();">
+                        <i class="fa-solid fa-right-to-bracket"></i> Hesap ile Giriş Yap / Kayıt Ol
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN DASHBOARD -->
+        <div id="socialDashboardView" class="social-hub-body hidden">
+            <!-- Sidebar Navigation -->
+            <aside class="social-hub-sidebar">
+                <div class="social-nav-group">
+                    <button class="social-nav-btn active" onclick="switchSocialTab('feed')" id="stab-feed">
+                        <i class="fa-solid fa-fire-flame-curved"></i>
+                        <span>Topluluk Akışı</span>
+                    </button>
+                    <button class="social-nav-btn" onclick="switchSocialTab('friends')" id="stab-friends">
+                        <i class="fa-solid fa-user-group"></i>
+                        <span>Arkadaşlar & Uyum</span>
+                        <span id="friendsCountBadge" class="social-count-pill hidden">0</span>
+                    </button>
+                    <button class="social-nav-btn" onclick="switchSocialTab('messages')" id="stab-messages">
+                        <i class="fa-solid fa-comments"></i>
+                        <span>Sohbet / DM</span>
+                        <span id="unreadMessagesBadge" class="social-count-pill alert hidden">0</span>
+                    </button>
+                    <button class="social-nav-btn" onclick="switchSocialTab('requests')" id="stab-requests">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <span>İstekler</span>
+                        <span id="reqBadge" class="social-count-pill alert hidden">0</span>
+                    </button>
+                    <button class="social-nav-btn" onclick="switchSocialTab('search')" id="stab-search">
+                        <i class="fa-solid fa-compass"></i>
+                        <span>Üye Keşfet</span>
+                    </button>
+                    <button class="social-nav-btn" onclick="switchSocialTab('stats')" id="stab-stats">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span>İzleme İstatistikleri</span>
+                        <span class="social-count-pill hot">YENİ</span>
+                    </button>
+                    <button class="social-nav-btn" onclick="switchSocialTab('goal')" id="stab-goal">
+                        <i class="fa-solid fa-bullseye"></i>
+                        <span>Haftalık Hedef</span>
+                    </button>
+                    <button class="social-nav-btn" onclick="switchSocialTab('profile')" id="stab-profile">
+                        <i class="fa-solid fa-id-card-clip"></i>
+                        <span>Otaku Kimliğim</span>
+                    </button>
+                </div>
+
+                <!-- Mini Åu Anki Aktiviten Kartı -->
+                <div class="social-sidebar-quote-box" id="socialSidebarMiniQuote">
+                    <div class="ssq-head"><i class="fa-solid fa-bolt"></i> Åu Anki Aktiviten</div>
+                    <div class="ssq-body" id="socialSidebarCurrentAnimeText">Henüz bir bölüm açık değil</div>
+                    <button type="button" class="ssq-share-btn" onclick="shareCurrentWatchingStatusToFeed()">
+                        <i class="fa-solid fa-tower-broadcast"></i> Akışta Canlı Paylaş
+                    </button>
+                </div>
+
+                <div class="social-sidebar-footer">
+                    <button class="social-sidebar-compose-btn" onclick="switchSocialTab('feed'); focusSocialComposer();">
+                        <i class="fa-solid fa-pen-nib"></i>
+                        <span>Yeni Gönderi / Anket</span>
+                    </button>
+                    <button class="social-sidebar-logout-btn" onclick="socialLogout()">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                        <span>Çıkış</span>
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main Content Panels -->
+            <main class="social-hub-content" id="socialContentArea">
+                
+                <!-- â•Ââ•Â TAB 1: TOPLULUK AKIÅI (FEED) â•Ââ•Â -->
+                <section id="stab-content-feed" class="social-tab-pane">
+
+                    <!-- 3. Gelişmiş Gönderi & Anket Oluşturucu (Composer) -->
+                    <div class="social-composer-card">
+                        <div class="social-composer-top">
+                            <img id="composerUserAvatar" src="https://placehold.co/60x60/1a1a28/8b5cf6?text=U" class="composer-avatar" alt="">
+                            <div class="composer-input-wrap">
+                                <textarea id="socialFeedContent" class="social-composer-textarea" rows="2" placeholder="Anime dünyasıyla ilgili ne düşünüyorsun? İncelemeni, teorini veya VS anketini paylaş..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Post Kind Selection & Optional Details -->
+                        <div class="social-composer-options">
+                            <div class="social-post-type-selector">
+                                <button type="button" class="post-type-chip active" data-type="status" onclick="setSocialPostType('status')">
+                                    <i class="fa-solid fa-comment-dots"></i> Durum
+                                </button>
+                                <button type="button" class="post-type-chip" data-type="review" onclick="setSocialPostType('review')">
+                                    <i class="fa-solid fa-star"></i> İnceleme
+                                </button>
+                                <button type="button" class="post-type-chip" data-type="recommend" onclick="setSocialPostType('recommend')">
+                                    <i class="fa-solid fa-thumbs-up"></i> Öneri
+                                </button>
+                            </div>
+
+                            <div class="social-composer-actions">
+                                <label class="social-spoiler-toggle" title="Spoiler uyarısı ekle">
+                                    <input type="checkbox" id="socialFeedSpoiler">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    <span>Spoiler</span>
+                                </label>
+                                <button class="btn-primary social-submit-btn" onclick="publishSocialPost()">
+                                    <i class="fa-solid fa-paper-plane"></i> Paylaş
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Extra Details (Anime Tag, Rating & Poll Options) -->
+                        <div id="socialComposerExtra" class="social-composer-extra hidden">
+                            <div class="social-composer-field">
+                                <i class="fa-solid fa-film"></i>
+                                <input type="text" id="socialFeedAnimeTitle" placeholder="Hangi anime? (Örn: Solo Leveling, One Piece)">
+                                <button type="button" class="btn-xs-tag" onclick="fillCurrentWatchingAnime()" title="Åu an izlediğin animeyi otomatik ekle">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> Åu Anki Animeyi Ekle
+                                </button>
+                            </div>
+                            <div id="socialComposerRatingWrap" class="social-composer-field hidden">
+                                <i class="fa-solid fa-star" style="color:#fbbf24;"></i>
+                                <span style="font-size:0.85rem; color:var(--text3);">Puanın:</span>
+                                <input type="range" id="socialFeedRating" min="1" max="10" value="9" oninput="document.getElementById('ratingValDisplay').innerText = this.value + '/10'">
+                                <span id="ratingValDisplay" class="rating-display-badge">9/10</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feed Filter Bar -->
+                    <div class="social-feed-filter-bar">
+                        <div class="social-feed-filters">
+                            <button class="feed-filter-btn active" onclick="filterSocialFeed('all')" id="filter-all">
+                                <i class="fa-solid fa-globe"></i> Tümü
+                            </button>
+                            <button class="feed-filter-btn" onclick="filterSocialFeed('review')" id="filter-review">
+                                <i class="fa-solid fa-star"></i> İncelemeler
+                            </button>
+                            <button class="feed-filter-btn" onclick="filterSocialFeed('recommend')" id="filter-recommend">
+                                <i class="fa-solid fa-lightbulb"></i> Öneriler
+                            </button>
+
+                            <button class="feed-filter-btn" onclick="filterSocialFeed('status')" id="filter-status">
+                                <i class="fa-solid fa-comments"></i> Sohbetler
+                            </button>
+                        </div>
+                        <button class="feed-refresh-btn" onclick="loadSocialFeed()" title="Akışı Yenile">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                    </div>
+
+                    <!-- Feed Stream Container -->
+                    <div id="socialFeedList" class="social-feed-list">
+                        <!-- JS ile dinamik beslenecek -->
+                    </div>
+                </section>
+
+                <!-- â•Ââ•Â TAB 2: ARKADAÅLAR (FRIENDS) â•Ââ•Â -->
+                <section id="stab-content-friends" class="social-tab-pane hidden">
+                    <div class="social-pane-header">
+                        <div>
+                            <h3 class="social-pane-title"><i class="fa-solid fa-user-group"></i> Arkadaşların</h3>
+                            <p class="social-pane-desc">Arkadaşlarının ne izlediğini canlı gör, profillerine göz at veya anında sohbete başla.</p>
+                        </div>
+                        <div class="social-pane-actions">
+                            <button class="btn-secondary btn-sm" onclick="switchSocialTab('search')">
+                                <i class="fa-solid fa-user-plus"></i> Arkadaş Ekle
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Friends Search / Filter -->
+                    <div class="social-friends-toolbar">
+                        <div class="social-search-box compact">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="socialFriendsFilterInput" placeholder="Arkadaşlarımda ara..." oninput="filterLocalFriends(this.value)">
+                        </div>
+                        <div class="friends-status-pills">
+                            <span class="status-pill active" onclick="filterFriendsByPresence('all')">Tümü <b id="cntAllFriends">0</b></span>
+                            <span class="status-pill" onclick="filterFriendsByPresence('watching')"><i class="fa-solid fa-circle-play" style="color:#a855f7;"></i> İzleyenler <b id="cntWatchingFriends">0</b></span>
+                            <span class="status-pill" onclick="filterFriendsByPresence('online')"><i class="fa-solid fa-circle" style="color:#10b981;"></i> Çevrimiçi <b id="cntOnlineFriends">0</b></span>
+                        </div>
+                    </div>
+
+                    <div id="socialFriendsList" class="social-friends-grid">
+                        <!-- JS ile doldurulacak -->
+                    </div>
+                </section>
+
+                <!-- â•Ââ•Â TAB 3: ENTEGRE SOHBET / DM (MESSAGES) â•Ââ•Â -->
+                <section id="stab-content-messages" class="social-tab-pane hidden">
+                    <div class="social-integrated-chat-wrapper">
+                        <!-- Chat Contacts List -->
+                        <div class="social-chat-contacts">
+                            <div class="social-contacts-header">
+                                <h4><i class="fa-solid fa-bolt" style="color:#a855f7;"></i> Direkt Mesajlar</h4>
+                            </div>
+                            <div id="socialConversationsList" class="social-conversations-list">
+                                <!-- JS ile son konuşulan arkadaşlar listelenecek -->
+                            </div>
+                        </div>
+
+                        <!-- Active Chat Pane -->
+                        <div class="social-chat-active-pane">
+                            <!-- Empty State if no chat selected -->
+                            <div id="socialChatEmptyState" class="social-chat-empty">
+                                <i class="fa-solid fa-comments"></i>
+                                <h4>Bir sohbet seç</h4>
+                                <p>Sol taraftaki arkadaş listesinden birini seçerek anında mesajlaşabilir, anime tavsiyesi veya Birlikte İzle daveti gönderebilirsin.</p>
+                            </div>
+
+                            <!-- Real Chat Container -->
+                            <div id="socialChatActiveArea" class="social-chat-active-area hidden">
+                                <div class="social-chat-header">
+                                    <div class="social-chat-target-info">
+                                        <div class="avatar-presence-wrap">
+                                            <img id="socialActiveChatAvatar" src="" class="social-chat-target-avatar">
+                                            <span id="socialActiveChatPresenceDot" class="status-dot"></span>
+                                        </div>
+                                        <div>
+                                            <h4 id="socialActiveChatName">Kullanıcı</h4>
+                                            <small id="socialActiveChatStatus" class="social-chat-target-status">Çevrimiçi</small>
+                                        </div>
+                                    </div>
+                                    <div class="social-chat-header-btns">
+
+                                        <button class="btn-icon-subtle" onclick="openUserProfile(currentChatFriendId)" title="Profili Gör">
+                                            <i class="fa-solid fa-id-card"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="socialHubMessages" class="social-chat-messages-stream">
+                                    <!-- Mesaj balonları buraya -->
+                                </div>
+
+                                <div class="social-chat-input-bar">
+                                    <div class="chat-input-field-wrap">
+                                        <input type="text" id="socialHubChatInput" placeholder="Mesajını yaz..." onkeypress="if(event.key==='Enter') sendIntegratedChatMessage()">
+                                    </div>
+                                    <button class="social-chat-send-btn" onclick="sendIntegratedChatMessage()">
+                                        <i class="fa-solid fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- â•Ââ•Â TAB 4: İSTEKLER (REQUESTS) â•Ââ•Â -->
+                <section id="stab-content-requests" class="social-tab-pane hidden">
+                    <div class="social-pane-header">
+                        <div>
+                            <h3 class="social-pane-title"><i class="fa-solid fa-user-plus"></i> Arkadaşlık İstekleri</h3>
+                            <p class="social-pane-desc">Sana gelen ve gönderdiğin arkadaşlık davetlerini yönet.</p>
+                        </div>
+                    </div>
+
+                    <div class="social-requests-columns">
+                        <div class="requests-column">
+                            <h4 class="requests-col-title">Gelen İstekler <span id="reqBadgeInner" class="count-pill">0</span></h4>
+                            <div id="socialRequestsList" class="social-requests-list">
+                                <!-- JS ile doldurulacak -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- â•Ââ•Â TAB 5: ÜYE KEÅFET & ARA (SEARCH) â•Ââ•Â -->
+                <section id="stab-content-search" class="social-tab-pane hidden">
+                    <div class="social-pane-header">
+                        <div>
+                            <h3 class="social-pane-title"><i class="fa-solid fa-compass"></i> Toplulukta Keşfet</h3>
+                            <p class="social-pane-desc">Anime izleyen diğer Anitr kullanıcılarını bul, arkadaş ekle ve profillerini incele.</p>
+                        </div>
+                    </div>
+
+                    <div class="social-search-hero">
+                        <div class="social-big-search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="socialSearchInput" placeholder="Kullanıcı adı yazarak ara..." oninput="_debounceSocialSearch()" onkeypress="if(event.key==='Enter') searchSocialUsers()">
+                            <button class="btn-primary" onclick="searchSocialUsers()"><i class="fa-solid fa-arrow-right"></i> Ara</button>
+                        </div>
+                    </div>
+
+                    <div class="social-search-results-section">
+                        <h4 class="social-section-subhead">Arama Sonuçları</h4>
+                        <div id="socialSearchResults" class="social-user-results-grid">
+                            <p class="social-empty-hint">Kullanıcı aramak için yukarıdaki kutuya kullanıcı adı yazın.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- â•Ââ•Â TAB 6: PROFİLİM (PROFILE) â•Ââ•Â -->
+                <section id="stab-content-profile" class="social-tab-pane hidden">
+                    <div class="social-profile-card v3-id-card" id="mySocialProfileCard" data-theme="cyberpunk">
+                        <div class="social-profile-banner" id="mySocialProfileBanner">
+                            <div class="social-profile-avatar-wrap">
+                                <img id="myProfileAvatar" src="https://placehold.co/120x120/1a1a28/8b5cf6?text=U" class="social-profile-avatar" alt="Profil Resmi">
+                                <span class="profile-online-badge"><i class="fa-solid fa-check"></i></span>
+                            </div>
+                        </div>
+                        <div class="social-profile-info">
+                            <div class="profile-names-wrap">
+                                <h3 id="myProfileName" class="profile-username">@Username</h3>
+                                <p id="myProfileBio" class="profile-bio">Anime izlemeyi ve keşfetmeyi seviyorum.</p>
+                            </div>
+                            
+                            <!-- Watching Status Card -->
+                            <div class="social-profile-activity-card">
+                                <div class="activity-icon-badge">
+                                    <i class="fa-solid fa-circle-play"></i>
+                                </div>
+                                <div class="activity-details">
+                                    <span class="activity-label">Åu Anki Canlı Durum:</span>
+                                    <strong id="myProfileCurrent" class="activity-value">Henüz anime izlemiyor</strong>
+                                </div>
+                            </div>
+                                <div class="sp-customizer-col">
+                                    <label for="socialTitleSelect">Otaku Ünvanın:</label>
+                                    <select id="socialTitleSelect" class="sp-title-select" onchange="setSocialProfileCustomTitle(this.value)">
+                                        <option value="⚔ï¸ Gece Nöbetçisi Otaku">⚔ï¸ Gece Nöbetçisi Otaku</option>
+                                        <option value="🔥 Shonen Efsanesi">🔥 Shonen Efsanesi</option>
+                                        <option value="🧠 Seinen Filozofu">🧠 Seinen Filozofu</option>
+                                        <option value="🌌 Isekai Gezgini">🌌 Isekai Gezgini</option>
+                                        <option value="👑 Anime Gurmesi">👑 Anime Gurmesi</option>
+                                        <option value="ğŸ’ RomCom Koleksiyoncusu">ğŸ’ RomCom Koleksiyoncusu</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Mood / Status Updater -->
+                            <div class="social-profile-status-updater">
+                                <label for="socialStatusInput">Durum Sözün / Biyografin:</label>
+                                <div class="status-updater-input-group">
+                                    <input type="text" id="socialStatusInput" placeholder="Örn: Jujutsu Kaisen 2. sezon maratonundayım! 🔥">
+                                    <button class="btn-secondary" onclick="updateSocialBio()"><i class="fa-solid fa-floppy-disk"></i> Kaydet</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- â•â• TAB: İZLEME İSTATİSTİKLERİ â•â• -->
+                <section id="stab-content-stats" class="social-tab-pane hidden">
+                    <div class="social-pane-header">
+                        <div>
+                            <h3 class="social-pane-title"><i class="fa-solid fa-chart-pie"></i> İzleme İstatistiklerin</h3>
+                            <p class="social-pane-desc">Yerel izleme geçmişinle oluşturulan kişisel anime istatistiklerin.</p>
+                        </div>
+                    </div>
+                    <div class="social-stats-grid">
+                        <!-- Toplam sayaçlar -->
+                        <div class="stats-counter-row">
+                            <div class="stats-counter-card">
+                                <div class="stats-counter-icon" style="background:linear-gradient(135deg,#7c3aed,#a855f7)"><i class="fa-solid fa-film"></i></div>
+                                <div class="stats-counter-value" id="statsTotalEpisodes">0</div>
+                                <div class="stats-counter-label">İzlenen Bölüm</div>
+                            </div>
+                            <div class="stats-counter-card">
+                                <div class="stats-counter-icon" style="background:linear-gradient(135deg,#0ea5e9,#06b6d4)"><i class="fa-solid fa-clock"></i></div>
+                                <div class="stats-counter-value" id="statsTotalHours">0</div>
+                                <div class="stats-counter-label">İzleme Saati</div>
+                            </div>
+                            <div class="stats-counter-card">
+                                <div class="stats-counter-icon" style="background:linear-gradient(135deg,#f59e0b,#ef4444)"><i class="fa-solid fa-star"></i></div>
+                                <div class="stats-counter-value" id="statsTotalAnime">0</div>
+                                <div class="stats-counter-label">Farklı Anime</div>
+                            </div>
+                            <div class="stats-counter-card">
+                                <div class="stats-counter-icon" style="background:linear-gradient(135deg,#10b981,#059669)"><i class="fa-solid fa-fire"></i></div>
+                                <div class="stats-counter-value" id="statsCurrentStreak">0</div>
+                                <div class="stats-counter-label">Gün Serisi 🔥</div>
+                            </div>
+                        </div>
+                        <!-- Son izlenenler listesi -->
+                        <div class="stats-section-card">
+                            <div class="stats-section-title"><i class="fa-solid fa-history"></i> Son İzlenen Animeler</div>
+                            <div id="statsRecentAnimeList" class="stats-recent-list">
+                                <p class="social-empty-hint">Henüz izleme geçmişi yok. Bir bölüm izle!</p>
+                            </div>
+                        </div>
+                        <!-- En çok izlenen günler -->
+                        <div class="stats-section-card">
+                            <div class="stats-section-title"><i class="fa-solid fa-calendar-week"></i> Haftanın En Aktif Günleri</div>
+                            <div id="statsWeekdayChart" class="stats-weekday-chart">
+                                <!-- JS ile çizilecek -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- â•â• TAB: HAFTALIK HEDEF â•â• -->
+                <section id="stab-content-goal" class="social-tab-pane hidden">
+                    <div class="social-pane-header">
+                        <div>
+                            <h3 class="social-pane-title"><i class="fa-solid fa-bullseye"></i> Haftalık İzleme Hedefi</h3>
+                            <p class="social-pane-desc">Bu hafta kaç bölüm izleyeceğini belirle, hedefine ulaşınca konfeti yağar!</p>
+                        </div>
+                    </div>
+                    <div class="social-goal-wrapper">
+                        <!-- Hedef Ayarla -->
+                        <div class="goal-setup-card">
+                            <div class="goal-setup-title"><i class="fa-solid fa-sliders"></i> Hedefini Belirle</div>
+                            <div class="goal-input-row">
+                                <button type="button" class="goal-preset-btn" onclick="setWeeklyGoal(5)">5 Bölüm</button>
+                                <button type="button" class="goal-preset-btn active" onclick="setWeeklyGoal(10)">10 Bölüm</button>
+                                <button type="button" class="goal-preset-btn" onclick="setWeeklyGoal(20)">20 Bölüm</button>
+                                <button type="button" class="goal-preset-btn" onclick="setWeeklyGoal(50)">50 Bölüm</button>
+                            </div>
+                            <div class="goal-custom-row">
+                                <input type="number" id="weeklyGoalCustomInput" min="1" max="200" placeholder="Özel hedef..." class="goal-custom-input">
+                                <button type="button" class="btn-primary btn-sm" onclick="setWeeklyGoal(parseInt(document.getElementById('weeklyGoalCustomInput').value) || 10)">
+                                    <i class="fa-solid fa-check"></i> Kaydet
+                                </button>
+                            </div>
+                        </div>
+                        <!-- İlerleme -->
+                        <div class="goal-progress-card">
+                            <div class="goal-progress-header">
+                                <span class="goal-progress-label">Bu Hafta</span>
+                                <span class="goal-progress-fraction"><span id="goalCurrentCount">0</span> / <span id="goalTargetCount">10</span> bölüm</span>
+                            </div>
+                            <div class="goal-progress-bar-wrap">
+                                <div class="goal-progress-bar" id="goalProgressBar" style="width:0%"></div>
+                            </div>
+                            <div class="goal-progress-pct" id="goalProgressPct">%0 Tamamlandı</div>
+                        </div>
+                        <!-- Son 4 hafta -->
+                        <div class="goal-history-card">
+                            <div class="stats-section-title"><i class="fa-solid fa-trophy"></i> Son 4 Haftalık Performans</div>
+                            <div id="goalWeekHistory" class="goal-week-history">
+                                <!-- JS ile doldurulacak -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+
+            </main>
+        </div>
+    </div>
+</div>
+
+<!-- CHAT MODAL (STANDALONE FALLBACK) -->
+<div id="chatModal" class="modal hidden" style="z-index: 10000;" onclick="if(event.target===this) closeChatModal()">
+    <div class="modal-content" style="max-width: 500px; height: 600px; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 16px; border: 1px solid var(--border); background: var(--bg-card); box-shadow: 0 25px 60px rgba(0,0,0,0.6);">
+        <!-- Header -->
+        <div style="padding: 1.1rem 1.5rem; background: linear-gradient(135deg, rgba(232, 27, 73, 0.25), rgba(139, 92, 246, 0.2)); border-bottom: 1px solid var(--border); color: white; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <img id="chatAvatar" src="" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent);">
+                <div>
+                    <h3 id="chatUsername" style="margin: 0; font-size: 1.15rem; font-weight:700;">Username</h3>
+                    <small id="chatStatus" style="opacity: 0.8; font-size: 0.8rem; color: #10b981;"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> Çevrimiçi</small>
+                </div>
+            </div>
+            <button class="close-btn" onclick="closeChatModal()" style="color: white; font-size: 1.3rem;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        
+        <!-- Messages -->
+        <div id="chatMessages" style="flex: 1; padding: 1.2rem; overflow-y: auto; background: rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 0.8rem;">
+            <!-- JS dolduracak -->
+        </div>
+
+        <!-- Input -->
+        <div style="padding: 1rem; background: rgba(0,0,0,0.4); border-top: 1px solid var(--border); display: flex; gap: 0.6rem; align-items: center;">
+            <input type="text" id="chatInput" class="prf-input" placeholder="Mesaj yaz..." style="flex: 1;" onkeypress="if(event.key==='Enter') sendChatMessage()">
+            <button class="btn-primary" onclick="sendChatMessage()" style="border-radius: 50%; width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>
+</div>
+
+
+
+    <!-- Yapay Zeka Modal -->
+    <div id="aiModal" class="modal hidden" style="backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); background: rgba(10, 10, 12, 0.85);" onclick="if(event.target===this) closeAIModal()">
+        <div class="modal-content" style="max-width: 520px; background: rgba(20, 20, 25, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); padding: 0;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 24px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; background: rgba(232, 27, 73, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 18px;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <h2 style="font-size: 18px; font-weight: 600; margin: 0; color: white;">AI Anime Asistanı</h2>
+                </div>
+                <button class="close-btn" onclick="closeAIModal()" style="width: 32px; height: 32px; background: rgba(255,255,255,0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: none; color: var(--text3); cursor: pointer; transition: all 0.2s;"><i class="fa-solid fa-times"></i></button>
+            </div>
+            
+            <div class="modal-body" style="padding: 24px; display:flex; flex-direction:column; gap:20px;">
+                <p style="color: var(--text3); font-size: 14px; line-height: 1.6; margin: 0;">Nasıl yardımcı olabilirim? MAL listenizi analiz edip zevkinize uygun animeler bulabilir veya tamamen özel isteklerinize göre öneriler yapabilirim.</p>
+                
+                <div style="display:flex; gap:12px;">
+                    <button class="btn-primary" onclick="askAIForMAL()" style="flex:1; padding: 14px; border-radius: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--accent); color: white; border: none; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(232, 27, 73, 0.3);">
+                        <i class="fa-solid fa-list-check"></i> MAL Listemden Öner
+                    </button>
+                    <button class="btn-secondary" onclick="document.getElementById('aiCustomInputGroup').classList.toggle('hidden')" style="flex:1; padding: 14px; border-radius: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.3s;">
+                        <i class="fa-solid fa-keyboard"></i> Özel Öneri İste
+                    </button>
+                </div>
+
+                <div id="aiCustomInputGroup" class="hidden" style="display:flex; gap:12px; flex-direction:column; background: rgba(0,0,0,0.2); padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.03);">
+                    <textarea id="aiCustomPrompt" class="prf-textarea" placeholder="Örn: siberpunk temalı ve karanlık animeler öner..." style="min-height:80px; font-size:14px; background: transparent; border: none; color: white; outline: none; resize: none; width: 100%;"></textarea>
+                    <button class="btn-primary" onclick="askAICustom()" style="align-self:flex-end; padding: 10px 20px; border-radius: 10px; background: white; color: black; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        Gönder <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+
+                <div id="aiModalResult" style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); min-height: 100px; max-height: 400px; overflow-y: auto; display: none; font-size: 14px; line-height: 1.6; color: var(--text2);">
+                    <!-- Sonuçlar buraya gelecek -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END Yapay Zeka Modal -->
+
+
+<!-- INLINE SEARCH LOGIC (GUARANTEED TO RUN) -->
+<script>
+    function getRecentSearches() {
+        try { return JSON.parse(localStorage.getItem('anitr_recent_searches') || '[]'); } catch(e) { return []; }
+    }
+    function saveRecentSearch(q) {
+        if (!q || q.length < 2) return;
+        const list = getRecentSearches().filter(x => x.toLowerCase() !== q.toLowerCase());
+        list.unshift(q);
+        localStorage.setItem('anitr_recent_searches', JSON.stringify(list.slice(0, 6)));
+    }
+    function renderRecentSearches() {
+        const wrap = document.getElementById('soRecentWrap');
+        const box = document.getElementById('soRecentChips');
+        if (!wrap || !box) return;
+        const list = getRecentSearches();
+        if (!list.length) { wrap.classList.add('hidden'); return; }
+        wrap.classList.remove('hidden');
+        box.innerHTML = list.map(q => {
+            const safe = q.replace(/'/g, "\\'");
+            return `<button type="button" class="so-chip so-chip-recent" onclick="quickSearchTerm('${safe}')"><i class="fa-regular fa-clock"></i>${q}</button>`;
+        }).join('');
+    }
+    window.clearRecentSearches = function() {
+        localStorage.removeItem('anitr_recent_searches');
+        renderRecentSearches();
+    };
+    window.quickSearchTerm = function(term) {
+        const input = document.getElementById('largeSearchInput');
+        if (!input) return;
+        input.value = term;
+        saveRecentSearch(term);
+        input.dispatchEvent(new Event('input'));
+    };
+
+    let _overlaySearchTimer = null;
+    window._overlaySearchItems = [];
+
+    window.openOverlayResult = function(idx) {
+        const a = (window._overlaySearchItems || [])[idx];
+        closeSearchOverlay();
+        if (!a) return;
+        const id = a.ID || a.id || '';
+        const slug = a.Slug || a.slug || '';
+        const title = a.Title || a.title || a.name || '';
+        const titleEng = a.TitleEnglish || a.title_english || title;
+        const synopsis = (a.Synopsis || a.synopsis || '').replace(/\s+/g, ' ');
+        let img = a.ImageURL || a.image_url || a.images?.jpg?.image_url || a.Img || a.img || '';
+        if (img && img.startsWith('/')) img = 'https://raw.githubusercontent.com/FOXYorj/anitr-web-api/main' + img;
+        const typ = String(a.Type || a.type || '').toLowerCase();
+        const isMovie = !!(a.IsMovie || a.isMovie || a.TitleType === 'movie' || a.titleType === 'movie' || typ === 'movie' || typ === 'film');
+
+        if (id && slug && typeof window.loadDetails === 'function') {
+            window.loadDetails(id, slug, isMovie, title || titleEng, synopsis, img);
+        } else if (typeof window.searchAnimeByName === 'function') {
+            window.searchAnimeByName(title || titleEng, titleEng);
+        }
+    };
+
+    function openSearchOverlay() {
+        const overlay = document.getElementById('searchOverlay');
+        const input = document.getElementById('largeSearchInput');
+        renderRecentSearches();
+        if (overlay && input) {
+            overlay.classList.add('active');
+            setTimeout(() => input.focus(), 100);
+        }
+    }
+
+    function closeSearchOverlay() {
+        clearTimeout(_overlaySearchTimer);
+        const overlay = document.getElementById('searchOverlay');
+        const input = document.getElementById('largeSearchInput');
+        const suggestions = document.getElementById('largeSearchSuggestions');
+        const box = document.getElementById('searchBoxLarge');
+        const quickPanel = document.getElementById('searchQuickPanel');
+        if (overlay) overlay.classList.remove('active');
+        if (input) { input.value = ''; input.blur(); }
+        if (suggestions) {
+            suggestions.classList.remove('active');
+            suggestions.innerHTML = '<div class="empty-search-state" id="largeSearchEmpty">Aramak istediğin animeyi yaz...</div>';
+        }
+        if (box) box.classList.remove('has-results');
+        if (quickPanel) quickPanel.style.display = '';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const largeSearchInput = document.getElementById('largeSearchInput');
+        const largeSearchSuggestions = document.getElementById('largeSearchSuggestions');
+        const searchBoxLarge = document.getElementById('searchBoxLarge');
+        const searchOverlay = document.getElementById('searchOverlay');
+        const quickPanel = document.getElementById('searchQuickPanel');
+
+        let _overlaySearchAbort = null;
+        window._fastOverlaySearchCache = window._fastOverlaySearchCache || new Map();
+
+        async function fetchAniListOverlayFast(query, signal) {
+            const gql = `query ($q: String) {
+                Page(page: 1, perPage: 10) {
+                    media(search: $q, type: ANIME, sort: [SEARCH_MATCH, POPULARITY_DESC]) {
+                        id
+                        idMal
+                        title { romaji english }
+                        coverImage { large medium }
+                        averageScore
+                        format
+                        seasonYear
+                        episodes
+                        description(asHtml: false)
+                    }
+                }
+            }`;
+            const res = await fetch('https://graphql.anilist.co', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ query: gql, variables: { q: query } }),
+                signal
+            });
+            if (!res.ok) return [];
+            const json = await res.json();
+            const list = json?.data?.Page?.media || [];
+            return list.map(m => ({
+                AniID: m.id,
+                MalID: m.idMal,
+                Title: m.title?.romaji || m.title?.english || '',
+                TitleEnglish: m.title?.english || m.title?.romaji || '',
+                ImageURL: m.coverImage?.large || m.coverImage?.medium || '',
+                Score: m.averageScore ? (m.averageScore / 10).toFixed(1) : '-',
+                Type: m.format === 'MOVIE' ? 'Film' : (m.format || 'TV'),
+                IsMovie: m.format === 'MOVIE',
+                Year: m.seasonYear || '',
+                Episodes: m.episodes || '',
+                Synopsis: (m.description || '').replace(/<[^>]*>?/gm, '')
+            }));
+        }
+
+        function renderOverlayItemsList(items, query) {
+            if (!searchOverlay || !searchOverlay.classList.contains('active')) return;
+            if (!items || !items.length) {
+                window._overlaySearchItems = [];
+                largeSearchSuggestions.innerHTML = '<div class="empty-search-state">Sonuç bulunamadı.</div>';
+                return;
+            }
+            saveRecentSearch(query);
+            const sliced = items.slice(0, 10);
+            window._overlaySearchItems = sliced;
+            let html = '';
+            sliced.forEach((a, idx) => {
+                const title = a.Title || a.title || a.name || '';
+                const titleEng = a.TitleEnglish || a.title_english || title;
+                const subTitle = (titleEng && titleEng.toLowerCase() !== title.toLowerCase()) ? title : '';
+                const mainTitle = titleEng || title;
+                let img = a.ImageURL || a.image_url || a.images?.jpg?.image_url || a.Img || a.img || 'https://placehold.co/100x140/1a1a28/e8a020?text=?';
+                if (img.startsWith('/')) img = 'https://raw.githubusercontent.com/FOXYorj/anitr-web-api/main' + img;
+                const score = a.Score || a.score || '-';
+                const type = a.Type || a.type || (a.IsMovie ? 'Film' : 'TV');
+                const year = a.Year || a.year || '';
+                const hasLocal = !!(a.ID || a.id) && !!(a.Slug || a.slug);
+
+                html += `
+                    <div class="so-item" onclick="openOverlayResult(${idx})">
+                        <img src="${img}" alt="" loading="lazy">
+                        <div class="so-item-body">
+                            <div class="so-item-title">${mainTitle}${subTitle ? ` <small>${subTitle}</small>` : ''}</div>
+                            <div class="so-item-meta">
+                                <span>${type}</span>
+                                ${year ? `<i class="pc-dot"></i><span>${year}</span>` : ''}
+                                ${score && score !== '-' ? `<i class="pc-dot"></i><span class="so-score"><i class="fa-solid fa-star"></i>${score}</span>` : ''}
+                                ${hasLocal ? `<i class="pc-dot"></i><span style="color:#10b981;font-weight:700;"><i class="fa-solid fa-circle-play"></i> Hazır</span>` : ''}
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-arrow-up-right-from-square so-item-arrow"></i>
+                    </div>
+                `;
+            });
+            largeSearchSuggestions.innerHTML = html;
+        }
+
+        function mergeLocalAndAniResults(localArr, aniArr) {
+            const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9ğüşıöç]/g, '');
+            const aniMap = new Map();
+            (aniArr || []).forEach(a => {
+                if (a.Title) aniMap.set(norm(a.Title), a);
+                if (a.TitleEnglish) aniMap.set(norm(a.TitleEnglish), a);
+            });
+
+            const merged = [];
+            const seen = new Set();
+
+            (localArr || []).forEach(loc => {
+                const t = loc.Title || loc.title || loc.name || '';
+                const te = loc.TitleEnglish || loc.title_english || '';
+                const key = norm(t || te);
+                if (!key || seen.has(key)) return;
+                seen.add(key);
+
+                let match = aniMap.get(norm(t)) || aniMap.get(norm(te));
+                if (!match && aniArr && aniArr.length) {
+                    match = aniArr.find(x => {
+                        const xt = norm(x.Title);
+                        const xe = norm(x.TitleEnglish);
+                        return (xt && (xt.includes(key) || key.includes(xt))) || (xe && (xe.includes(key) || key.includes(xe)));
+                    });
+                }
+                if (match && match.Title) seen.add(norm(match.Title));
+                if (match && match.TitleEnglish) seen.add(norm(match.TitleEnglish));
+
+                merged.push({
+                    ...loc,
+                    Title: t || (match ? match.Title : ''),
+                    TitleEnglish: te || (match ? match.TitleEnglish : t),
+                    ImageURL: loc.ImageURL || loc.image_url || loc.Img || loc.img || (match ? match.ImageURL : ''),
+                    Score: loc.Score || loc.score || (match ? match.Score : '-'),
+                    Type: loc.Type || loc.type || (match ? match.Type : 'TV'),
+                    Year: loc.Year || loc.year || (match ? match.Year : ''),
+                    Synopsis: loc.Synopsis || loc.synopsis || (match ? match.Synopsis : '')
+                });
+            });
+
+            (aniArr || []).forEach(ani => {
+                const kt = norm(ani.Title);
+                const ke = norm(ani.TitleEnglish);
+                if ((kt && seen.has(kt)) || (ke && seen.has(ke))) return;
+                if (kt) seen.add(kt);
+                if (ke) seen.add(ke);
+                merged.push(ani);
+            });
+
+            return merged;
+        }
+
+        async function runOverlaySearch(query) {
+            const cacheKey = `${(typeof currentSource !== 'undefined' ? currentSource : '')}:${query.toLowerCase()}`;
+            if (window._fastOverlaySearchCache.has(cacheKey)) {
+                renderOverlayItemsList(window._fastOverlaySearchCache.get(cacheKey), query);
+                return;
+            }
+
+            if (_overlaySearchAbort) {
+                try { _overlaySearchAbort.abort(); } catch (e) {}
+            }
+            const controller = new AbortController();
+            _overlaySearchAbort = controller;
+
+            let localResults = [];
+            let aniResults = [];
+            let renderedOnce = false;
+
+            const tryRender = (isFinal = false) => {
+                if (controller.signal.aborted) return;
+                const combined = mergeLocalAndAniResults(localResults, aniResults);
+                if (combined.length > 0 || isFinal) {
+                    renderedOnce = true;
+                    if (combined.length > 0) {
+                        window._fastOverlaySearchCache.set(cacheKey, combined);
+                    }
+                    renderOverlayItemsList(combined, query);
+                }
+            };
+
+            const aniPromise = fetchAniListOverlayFast(query, controller.signal)
+                .then(res => {
+                    aniResults = res || [];
+                    if (aniResults.length > 0) tryRender(false);
+                })
+                .catch(() => {});
+
+            const localPromise = (async () => {
+                try {
+                    if (typeof fetchAPI !== 'undefined') {
+                        const src = typeof currentSource !== 'undefined' ? currentSource : '';
+                        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&source=${encodeURIComponent(src)}`, {
+                            signal: controller.signal
+                        });
+                        if (res.ok) {
+                            const json = await res.json();
+                            if (Array.isArray(json)) localResults = json;
+                        }
+                    }
+                    if (localResults.length > 0) tryRender(false);
+                } catch (e) {}
+            })();
+
+            await Promise.allSettled([aniPromise, localPromise]);
+            if (!controller.signal.aborted) {
+                tryRender(true);
+            }
+        }
+
+        if (largeSearchInput) {
+            largeSearchInput.addEventListener('input', (e) => {
+                const query = e.target.value.trim();
+                const emptyEl = document.getElementById('largeSearchEmpty');
+                if (query.length < 2) {
+                    clearTimeout(_overlaySearchTimer);
+                    if (_overlaySearchAbort) { try { _overlaySearchAbort.abort(); } catch (_) {} }
+                    largeSearchSuggestions.classList.remove('active');
+                    searchBoxLarge.classList.remove('has-results');
+                    if (emptyEl) emptyEl.style.display = 'block';
+                    if (quickPanel) quickPanel.style.display = '';
+                    return;
+                }
+                
+                if (quickPanel) quickPanel.style.display = 'none';
+                largeSearchSuggestions.classList.add('active');
+                searchBoxLarge.classList.add('has-results');
+                if (emptyEl) emptyEl.style.display = 'none';
+                
+                const cacheKey = `${(typeof currentSource !== 'undefined' ? currentSource : '')}:${query.toLowerCase()}`;
+                if (window._fastOverlaySearchCache.has(cacheKey)) {
+                    renderOverlayItemsList(window._fastOverlaySearchCache.get(cacheKey), query);
+                    return;
+                }
+
+                largeSearchSuggestions.innerHTML = '<div style="text-align:center; padding:24px; color:var(--text3); font-size:13px;"><div class="spinner" style="display:inline-block"></div><p style="margin-top:10px;">Aranıyor...</p></div>';
+                
+                clearTimeout(_overlaySearchTimer);
+                _overlaySearchTimer = setTimeout(() => runOverlaySearch(query), 160);
+            });
+
+            largeSearchInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const query = e.target.value.trim();
+                    if (query.length >= 2) {
+                        clearTimeout(_overlaySearchTimer);
+                        if (quickPanel) quickPanel.style.display = 'none';
+                        largeSearchSuggestions.classList.add('active');
+                        searchBoxLarge.classList.add('has-results');
+                        runOverlaySearch(query);
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('keydown', e => {
+            const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+            const inInput = tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable);
+            if ((e.key === '/' && !inInput) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) {
+                e.preventDefault();
+                openSearchOverlay();
+                return;
+            }
+            if (e.key === 'Escape' && searchOverlay && searchOverlay.classList.contains('active')) {
+                closeSearchOverlay();
+            }
+        });
+    });
+</script>
+
+    <!-- ABOUT PROJECT MODAL -->
+    <div id="aboutProjectModal" class="modal-overlay hidden">
+        <div class="modal-content about-modal">
+            <button class="modal-close" onclick="closeAboutProject()"><i class="fa-solid fa-xmark"></i></button>
+            <div class="about-logo-wrapper">
+                <i class="fa-solid fa-play" style="font-size: 2.5rem; color: var(--accent); margin-bottom: 0.5rem;"></i>
+                <h2 style="color: var(--text); font-weight: 800; font-size: 28px; margin-bottom: 4px;">Anitr<span style="color: var(--accent);">Web</span></h2>
+                <p style="font-size: 13px; color: var(--text3);">v1.0.0 - Açık Kaynak Anime Platformu</p>
+            </div>
+            <div class="about-profiles-horizontal">
+                <div id="ghProfileFoxy" class="gh-profile-card skeleton-card" style="min-height: 200px;">Yükleniyor...</div>
+                <div id="ghProfilePray" class="gh-profile-card skeleton-card" style="min-height: 200px;">Yükleniyor...</div>
+            </div>
+            <div id="ghReposContainer" class="gh-repos-container hidden">
+                <div class="gh-repos-header">
+                    <h3 id="ghReposTitle">Projeler</h3>
+                    <button class="btn-secondary" onclick="closeReposView()" style="padding: 6px 12px; font-size:12px;"><i class="fa-solid fa-arrow-left"></i> Geri</button>
+                </div>
+                <div id="ghReposList" class="gh-repos-list"></div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
+

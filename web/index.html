@@ -12,7 +12,7 @@
     <!-- Video.js (replaces Plyr + HLS.js) -->
     <link rel="stylesheet" href="https://vjs.zencdn.net/8.10.0/video-js.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/videojs-contrib-quality-levels@4.1.0/dist/videojs-contrib-quality-levels.min.css" onerror="this.remove()">
-    <link rel="stylesheet" href="style.css?v=9.1.0">
+    <link rel="stylesheet" href="style.css?v=9.2.0">
     <link rel="stylesheet" href="search.css?v=8.7.0">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -355,54 +355,18 @@
         <div id="continueWatching" class="home-section hidden">
             <div class="home-section-header">
                 <div class="hsh-left">
-                    <div class="hsh-icon-wrap hsh-cw-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                    <div class="hsh-icon-wrap star"><i class="fa-solid fa-clock-rotate-left"></i></div>
                     <div>
                         <h2 class="home-section-title">Kaldığın Yerden Devam Et</h2>
-                        <span class="home-section-sub">İzlemeye bıraktığın bölüm ve dakikadan anında devam et</span>
+                        <span class="home-section-sub">Kaldığın bölüm ve dakikadan devam et</span>
                     </div>
                 </div>
             </div>
-            <div class="home-carousel-wrap">
-                <button class="h-car-btn prev" onclick="scrollCarousel(this, -1)"><i class="fa-solid fa-chevron-left"></i></button>
-                <div id="cwContainer" class="home-row home-cw-row"></div>
-                <button class="h-car-btn next" onclick="scrollCarousel(this, 1)"><i class="fa-solid fa-chevron-right"></i></button>
-            </div>
+            <div id="cwContainer" class="home-row"></div>
         </div>
 
         <!-- Main Categories & Rails -->
         <div id="mainContent" class="home-content"></div>
-
-        <!-- Platform Highlights / Feature Footer Strip -->
-        <div class="home-features-strip">
-            <div class="hf-card">
-                <div class="hf-icon"><i class="fa-solid fa-database"></i></div>
-                <div class="hf-info">
-                    <h4>3.100+ Anime Arşivi</h4>
-                    <p>Anizium, AnimeciX ve AniList tek platformda</p>
-                </div>
-            </div>
-            <div class="hf-card">
-                <div class="hf-icon"><i class="fa-solid fa-film"></i></div>
-                <div class="hf-info">
-                    <h4>Ultra HD 1080p &amp; 4K</h4>
-                    <p>Yüksek bitrate ve kristal netliğinde oynatıcı</p>
-                </div>
-            </div>
-            <div class="hf-card">
-                <div class="hf-icon"><i class="fa-solid fa-headphones"></i></div>
-                <div class="hf-info">
-                    <h4>Türkçe Dublaj &amp; Altyazı</h4>
-                    <p>Anında dil değiştirme ve senkronize altyazı</p>
-                </div>
-            </div>
-            <div class="hf-card">
-                <div class="hf-icon"><i class="fa-solid fa-users"></i></div>
-                <div class="hf-info">
-                    <h4>Watch2Gether Birlikte İzle</h4>
-                    <p>Arkadaşlarınla anlık sohbetli senkronize izleme</p>
-                </div>
-            </div>
-        </div>
     </main>
 
     <!-- ════ ANIME LIST VIEW ════ -->
@@ -1520,7 +1484,7 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="app.js?v=9.1.0"></script>
+<script src="app.js?v=9.2.0"></script>
 <!-- â•Ââ•Â MODERN ANITR SOSYAL HUB MODAL â•Ââ•Â -->
 <div id="friendsModal" class="modal hidden social-hub-backdrop" onclick="if(event.target===this) closeFriendsModal()">
     <div class="modal-content social-hub-modal social-v3-shell">

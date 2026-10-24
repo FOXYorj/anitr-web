@@ -1536,11 +1536,9 @@ function renderCinematicHero() {
     const hero = cinematicHeroes[currentCinematicIndex];
     const safeTitle = (hero.title || hero.title_english || 'Bilinmiyor').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
-    // ── Dual Layer Cross-Fade Backdrop ──
+    // ── V3: Dual Layer Cross-Fade Backdrop ──
     const bgA = document.getElementById('heroBgA');
     const bgB = document.getElementById('heroBgB');
-    const legacyBg = document.getElementById('cinematicHeroBg');
-
     const nextImgUrl = hero.banner || hero.poster || '';
 
     if (bgA && bgB) {
@@ -1555,75 +1553,68 @@ function renderCinematicHero() {
             bgB.classList.remove('active');
             _activeHeroLayer = 'A';
         }
-    } else if (legacyBg) {
-        legacyBg.style.backgroundImage = `url("${nextImgUrl}")`;
     }
 
-    // ── Ambient Lighting Glow ──
+    // ── V3: Ambient Glow ──
     const ambientGlow = document.getElementById('heroAmbientGlow');
     if (ambientGlow) {
         const glowColor = hero.color || '#8b5cf6';
-        ambientGlow.style.background = `radial-gradient(circle, ${glowColor}35 0%, rgba(236,72,153,0.18) 40%, transparent 70%)`;
+        ambientGlow.style.background = `radial-gradient(ellipse at 30% 60%, ${glowColor}40 0%, rgba(236,72,153,0.12) 50%, transparent 75%)`;
     }
 
-    // ── Title & Synopsis ──
+    // ── Title ──
     const titleEl = document.getElementById('cinematicTitle');
-    const descEl = document.getElementById('cinematicDesc');
-    const badgeEl = document.getElementById('cinematicBadge');
-
     if (titleEl) {
         titleEl.textContent = hero.title || hero.title_english || 'Bilinmiyor';
-        // Add animated transition class
         titleEl.style.animation = 'none';
         void titleEl.offsetWidth;
-        titleEl.style.animation = 'heroFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both';
+        titleEl.style.animation = 'heroContentFadeUp 0.45s ease both';
     }
 
+    // ── Badge ──
+    const badgeEl = document.getElementById('cinematicBadge');
     if (badgeEl) {
-        badgeEl.innerHTML = `<i class="fa-solid fa-fire"></i> #${currentCinematicIndex + 1} Günün Trendi`;
+        badgeEl.textContent = `#${currentCinematicIndex + 1} Günün Trendi`;
     }
 
+    // ── Synopsis ──
+    const descEl = document.getElementById('cinematicDesc');
     if (descEl) {
-        const synop = hero.synopsis || 'Bu anime için henüz Türkçe açıklama eklenmedi.';
-        descEl.textContent = synop.length > 250 ? synop.slice(0, 250) + '...' : synop;
+        const synop = hero.synopsis || 'Bu anime için henüz açıklama eklenmedi.';
+        descEl.textContent = synop.length > 220 ? synop.slice(0, 220) + '...' : synop;
+        descEl.style.animation = 'none';
+        void descEl.offsetWidth;
+        descEl.style.animation = 'heroContentFadeUp 0.55s ease both';
     }
 
-    // ── Meta Chips ──
+    // ── Meta Chips — V3 style ──
     const metaEl = document.getElementById('cinematicMeta');
     if (metaEl) {
-        let metaHtml = '';
-        if (hero.score) {
-            metaHtml += `<span class="hvm-chip score"><i class="fa-solid fa-star"></i> ${hero.score}</span>`;
-        }
-        if (hero.year) {
-            metaHtml += `<span class="hvm-chip"><i class="fa-regular fa-calendar"></i> ${hero.year}</span>`;
-        }
-        if (hero.episodes) {
-            metaHtml += `<span class="hvm-chip"><i class="fa-solid fa-film"></i> ${hero.episodes} Bölüm</span>`;
-        }
-        metaHtml += `<span class="hvm-chip hd"><i class="fa-solid fa-sparkles"></i> HD 1080p</span>`;
-        metaEl.innerHTML = metaHtml;
+        const parts = [];
+        if (hero.score) parts.push(`<span class="h-meta-chip h-meta-score"><i class="fa-solid fa-star"></i> ${hero.score}</span>`);
+        if (hero.year)  parts.push(`<span class="h-meta-chip">${hero.year}</span>`);
+        if (hero.format) parts.push(`<span class="h-meta-chip">${hero.format}</span>`);
+        if (hero.episodes) parts.push(`<span class="h-meta-chip">${hero.episodes} Bölüm</span>`);
+        metaEl.innerHTML = parts.join('');
     }
 
-    // ── Genre Pills ──
+    // ── Genre Tags — V3 style ──
     const genresEl = document.getElementById('cinematicGenres');
     if (genresEl) {
         const genres = (hero.genres || []).slice(0, 4);
         if (genres.length > 0) {
             genresEl.innerHTML = genres.map(g => {
-                const gName = typeof g === 'string' ? g : g.name || '';
-                const safeG = gName.replace(/'/g, "\\'");
-                return `<button class="hvg-tag" onclick="searchAnimeByName('${safeG}')">${gName}</button>`;
+                const gName = typeof g === 'string' ? g : (g.name || '');
+                return `<span class="hero-genre-tag">${gName}</span>`;
             }).join('');
         } else {
-            genresEl.innerHTML = `<button class="hvg-tag" onclick="searchAnimeByName('${safeTitle}')">Aksiyon</button><button class="hvg-tag" onclick="searchAnimeByName('${safeTitle}')">Fantastik</button>`;
+            genresEl.innerHTML = '';
         }
     }
 
-    // ── Action Buttons ──
+    // ── Action Buttons — V3 (play + info only, clean) ──
     const actionsEl = document.getElementById('cinematicActions');
     if (actionsEl) {
-        const hasTrailer = !!hero.trailer;
         actionsEl.innerHTML = `
             <button class="hero-btn-play" onclick="searchAnimeByName('${safeTitle}')">
                 <i class="fa-solid fa-play"></i><span>Hemen İzle</span>
@@ -1631,63 +1622,30 @@ function renderCinematicHero() {
             <button class="hero-btn-info" onclick="searchAnimeByName('${safeTitle}')">
                 <i class="fa-solid fa-circle-info"></i><span>Detaylar</span>
             </button>
-            <button class="hero-btn-watchlist" onclick="toggleFavoriteFromId('${safeTitle}', this)" title="Listeme Ekle">
-                <i class="fa-solid fa-bookmark"></i><span>Listeme Ekle</span>
-            </button>
-            ${hasTrailer ? `
-            <button class="hero-btn-trailer" onclick="openTrailerModal('${hero.trailer}')" title="Fragman İzle">
+            ${hero.trailer ? `<button class="hero-btn-info" onclick="openTrailerModal('${hero.trailer}')">
                 <i class="fa-solid fa-film"></i><span>Fragman</span>
             </button>` : ''}
         `;
-    }
-
-    // ── Right Column: Interactive Mini-Preview Showcase ──
-    const sideShowcase = document.getElementById('heroSideShowcase');
-    const previewCounter = document.getElementById('heroPreviewCounter');
-
-    if (previewCounter) {
-        previewCounter.textContent = `${currentCinematicIndex + 1} / ${cinematicHeroes.length}`;
-    }
-
-    if (sideShowcase) {
-        sideShowcase.innerHTML = cinematicHeroes.slice(0, 5).map((h, i) => {
-            const isActive = i === currentCinematicIndex;
-            const cardSafeTitle = (h.title || 'Bilinmiyor').replace(/'/g, "\\'");
-            const thumb = h.poster || h.banner || '';
-            const scoreStr = h.score ? `<span class="h-prev-score"><i class="fa-solid fa-star"></i> ${h.score}</span>` : '';
-
-            return `
-            <div class="h-prev-card ${isActive ? 'active' : ''}" onclick="jumpCinematicHero(${i})">
-                <div class="h-prev-thumb-wrap">
-                    <img src="${thumb}" class="h-prev-thumb" alt="${cardSafeTitle}" loading="lazy" onerror="this.src='https://placehold.co/100x140/1a1a28/8b5cf6?text=?'">
-                    <span class="h-prev-rank">#${i + 1}</span>
-                </div>
-                <div class="h-prev-info">
-                    <div class="h-prev-title" title="${cardSafeTitle}">${h.title}</div>
-                    <div class="h-prev-meta">
-                        ${scoreStr}
-                        <span class="h-prev-playing"><i class="fa-solid fa-chart-line"></i> Yayında</span>
-                    </div>
-                </div>
-            </div>`;
-        }).join('');
+        actionsEl.style.animation = 'none';
+        void actionsEl.offsetWidth;
+        actionsEl.style.animation = 'heroContentFadeUp 0.65s ease both';
     }
 
     // ── Pagination Dots & Counter ──
     const dotsEl = document.getElementById('cinematicDots');
     const counterEl = document.getElementById('heroCounter');
-
     if (dotsEl) {
         dotsEl.innerHTML = cinematicHeroes.map((_, i) =>
-            `<div class="hero-v2-dot ${i === currentCinematicIndex ? 'active' : ''}" onclick="jumpCinematicHero(${i})" title="${i + 1}. Anime"></div>`
+            `<div class="hero-v2-dot ${i === currentCinematicIndex ? 'active' : ''}" onclick="jumpCinematicHero(${i})"></div>`
         ).join('');
     }
-
     if (counterEl) {
-        counterEl.textContent = `0${currentCinematicIndex + 1} / 0${cinematicHeroes.length}`;
+        const idx = currentCinematicIndex + 1;
+        const tot = cinematicHeroes.length;
+        counterEl.textContent = `${idx < 10 ? '0' + idx : idx} / ${tot < 10 ? '0' + tot : tot}`;
     }
 
-    // ── Reset Auto-Play Timer Fill Bar ──
+    // ── Timer Bar ──
     resetHeroTimerAnimation();
 }
 
@@ -2111,26 +2069,27 @@ async function renderContinueWatching() {
             const epKey = (h.slug || h.id) + '_s' + (h.sIdx || 0) + '_e' + (h.eIdx || 0);
             const savedSec = positions[epKey] || 0;
             const estimatedDuration = 1440;
-            const progress = Math.min(100, Math.max(5, Math.floor((savedSec / estimatedDuration) * 100)));
+            const progress = Math.min(100, Math.max(4, Math.floor((savedSec / estimatedDuration) * 100)));
             const epNum = (h.eIdx || 0) + 1;
             const resumeLabel = savedSec > 30
-                ? `${h.lastWatchedLabel || 'Bölüm ' + epNum} · ${Math.floor(savedSec/60)}:${Math.floor(savedSec%60).toString().padStart(2,'0')}`
-                : (h.lastWatchedLabel || `Bölüm ${epNum}`);
+                ? `Bölüm ${epNum} · ${Math.floor(savedSec/60)}:${Math.floor(savedSec%60).toString().padStart(2,'0')}`
+                : `Bölüm ${epNum}`;
             const safeTitle = (h.title || 'Bilinmiyor').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             const coverImg = h.kitsuThumb || h.img || 'https://placehold.co/320x180/0c0c16/8b5cf6?text=?';
 
             return `
-            <div class="h-cw-card" onclick="resumeWatch('${h.id}')">
-                <div class="h-cw-thumb-wrap">
-                    <img src="${coverImg}" alt="${safeTitle}" class="h-cw-thumb" loading="lazy" onerror="this.src='https://placehold.co/320x180/0c0c16/8b5cf6?text=?'">
-                    <div class="h-cw-play-badge"><i class="fa-solid fa-play"></i></div>
-                    <div class="h-cw-progress-bar">
-                        <div class="h-cw-progress-fill" style="width: ${progress}%;"></div>
+            <div class="cw-card" onclick="resumeWatch('${h.id}')">
+                <div class="cw-thumb-wrap">
+                    <img src="${coverImg}" alt="${safeTitle}" loading="lazy" onerror="this.src='https://placehold.co/320x180/0c0c16/8b5cf6?text=?'">
+                    <span class="cw-ep-badge">Bölüm ${epNum}</span>
+                    <div class="cw-play-overlay"><i class="fa-solid fa-play"></i></div>
+                    <div class="cw-progress-bar">
+                        <div class="cw-progress-fill" style="width: ${progress}%;"></div>
                     </div>
                 </div>
-                <div class="h-cw-info">
-                    <div class="h-cw-title" title="${safeTitle}">${h.title || 'Bilinmiyor'}</div>
-                    <div class="h-cw-sub"><i class="fa-solid fa-circle-play"></i> ${resumeLabel}</div>
+                <div class="cw-info">
+                    <div class="cw-info-title" title="${safeTitle}">${h.title || 'Bilinmiyor'}</div>
+                    <div class="cw-info-meta">${resumeLabel}</div>
                 </div>
             </div>`;
         }).join('');
