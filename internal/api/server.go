@@ -1,6 +1,7 @@
 package api
 
 import (
+	"compress/gzip"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -265,7 +267,16 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 	}
 
 	if staticFS != nil {
-		http.Handle("/", http.FileServer(staticFS))
+		fileServer := http.FileServer(staticFS)
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			p := strings.ToLower(r.URL.Path)
+			if p == "/" || strings.HasSuffix(p, ".html") || strings.HasSuffix(p, ".js") || strings.HasSuffix(p, ".css") {
+				w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+				w.Header().Set("Pragma", "no-cache")
+				w.Header().Set("Expires", "0")
+			}
+			fileServer.ServeHTTP(w, r)
+		})
 	}
 
 	// MAL Entegrasyonu (Jikan üzerinden)
@@ -332,6 +343,48 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 		}
 		respondJSON(w, list)
 	}))
+
+	http.HandleFunc("/api/mal/profile", withRecovery(func(w http.ResponseWriter, r *http.Request) {
+		username := r.URL.Query().Get("username")
+		if username == "" {
+			respondError(w, fmt.Errorf("Kullanıcı adı gerekli"), http.StatusBadRequest)
+			return
+		}
+		profileData, err := jikan.GetUserProfile(username)
+		if err != nil {
+			respondError(w, err, http.StatusBadRequest)
+			return
+		}
+		respondJSON(w, profileData)
+	}))
+
+	http.HandleFunc("/api/filler", withRecovery(func(w http.ResponseWriter, r *http.Request) {
+		malIDStr := r.URL.Query().Get("mal_id")
+		title := r.URL.Query().Get("title")
+		var malID int
+		if malIDStr != "" {
+			fmt.Sscanf(malIDStr, "%d", &malID)
+		}
+		if malID <= 0 && title != "" {
+			id, err := jikan.GetMalIDByTitle(title)
+			if err == nil {
+				malID = id
+			}
+		}
+		if malID <= 0 {
+			respondJSON(w, map[string]interface{}{"mal_id": 0, "flags": map[int]jikan.EpisodeFlags{}})
+			return
+		}
+		flags, _ := jikan.GetEpisodeFlags(malID)
+		if flags == nil {
+			flags = map[int]jikan.EpisodeFlags{}
+		}
+		respondJSON(w, map[string]interface{}{
+			"mal_id": malID,
+			"flags":  flags,
+		})
+	}))
+
 
 	http.HandleFunc("/api/mal/top", withRecovery(func(w http.ResponseWriter, r *http.Request) {
 		typeParam := r.URL.Query().Get("type")
@@ -675,6 +728,58 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 
 		w.Header().Set("Content-Type", "application/json")
 		io.Copy(w, resp.Body)
+	}))
+
+	// ── AnimeciX Katalog Endpoint ───────────────────────────────────────
+	http.HandleFunc("/api/animecix-catalog", withRecovery(func(w http.ResponseWriter, r *http.Request) {
+		page   := r.URL.Query().Get("page")
+		limit  := r.URL.Query().Get("limit")
+		search := r.URL.Query().Get("search")
+
+		if page == "" { page = "1" }
+		if limit == "" { limit = "30" }
+
+		var targetURL string
+		if search != "" {
+			// URL-encode the search query to handle Turkish chars and spaces
+			targetURL = fmt.Sprintf("https://animecix.tv/secure/search/%s?type=&limit=%s",
+				url.PathEscape(search), limit)
+		} else {
+			targetURL = fmt.Sprintf("https://animecix.tv/secure/titles?page=%s&limit=%s", page, limit)
+		}
+
+		req, err := http.NewRequest("GET", targetURL, nil)
+		if err != nil {
+			respondError(w, err, http.StatusInternalServerError)
+			return
+		}
+		req.Header.Set("User-Agent",      "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+		req.Header.Set("Accept",          "application/json")
+		req.Header.Set("Accept-Encoding", "identity") // Disable gzip so we can stream raw JSON
+		req.Header.Set("Referer",         "https://animecix.tv/")
+		req.Header.Set("Origin",          "https://animecix.tv")
+		req.Header.Set("x-e-h",           "=.a")
+
+		client := &http.Client{Timeout: 15 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			respondError(w, err, http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+
+		// Decompress if server ignored Accept-Encoding: identity
+		body := resp.Body
+		if resp.Header.Get("Content-Encoding") == "gzip" {
+			gr, gerr := gzip.NewReader(resp.Body)
+			if gerr == nil {
+				defer gr.Close()
+				body = gr
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		io.Copy(w, body)
 	}))
 
 	http.HandleFunc("/api/popular", withRecovery(func(w http.ResponseWriter, r *http.Request) {

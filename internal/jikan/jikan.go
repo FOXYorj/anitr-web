@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/prayjofir/anitr-cli/internal/helpers"
@@ -37,19 +38,26 @@ type EpisodesResponse struct {
 }
 
 var (
-	malIDCache = make(map[string]int)
+	malIDCache   = make(map[string]int)
+	malIDCacheMu sync.RWMutex
+	flagsCacheMu sync.Mutex
 )
 
 // SetMalIDCache manually sets the cache for a given title to avoid redundant/mismatched API calls.
 func SetMalIDCache(title string, malID int) {
+	malIDCacheMu.Lock()
 	malIDCache[title] = malID
+	malIDCacheMu.Unlock()
 }
 
 // GetMalIDByTitle searches Jikan API for the anime title and returns the best matched mal_id.
 func GetMalIDByTitle(title string) (int, error) {
+	malIDCacheMu.RLock()
 	if id, ok := malIDCache[title]; ok {
+		malIDCacheMu.RUnlock()
 		return id, nil
 	}
+	malIDCacheMu.RUnlock()
 
 	results, err := SearchAnime(title)
 	if err != nil || len(results) == 0 {
@@ -75,11 +83,11 @@ func GetMalIDByTitle(title string) (int, error) {
 
 	matched := MatchAnimeTitle(title, results)
 	if matched != nil {
-		malIDCache[title] = matched.MalID
+		SetMalIDCache(title, matched.MalID)
 		return matched.MalID, nil
 	}
 
-	malIDCache[title] = results[0].MalID
+	SetMalIDCache(title, results[0].MalID)
 	return results[0].MalID, nil
 }
 
@@ -150,18 +158,20 @@ func writeCache(cache map[int]map[int]EpisodeFlags) {
 // GetEpisodeFlags fetches all episodes for a given mal_id and returns a map where the key is the episode number and the value is EpisodeFlags.
 func GetEpisodeFlags(malID int) (map[int]EpisodeFlags, error) {
 	// First check cache
+	flagsCacheMu.Lock()
 	cache := readCache()
 	if flags, ok := cache[malID]; ok {
-		// Apply exceptions even for cached data in case it was cached before the exception was added
+		flagsCacheMu.Unlock()
 		applyExceptions(malID, flags)
 		return flags, nil
 	}
+	flagsCacheMu.Unlock()
 
 	flags := make(map[int]EpisodeFlags)
 	page := 1
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	for {
+	for page <= 6 {
 		apiURL := fmt.Sprintf("https://api.jikan.moe/v4/anime/%d/episodes?page=%d", malID, page)
 		resp, err := client.Get(apiURL)
 		if err != nil {
@@ -212,8 +222,11 @@ func GetEpisodeFlags(malID int) (map[int]EpisodeFlags, error) {
 	applyExceptions(malID, flags)
 
 	// Save to cache
+	flagsCacheMu.Lock()
+	cache = readCache()
 	cache[malID] = flags
 	writeCache(cache)
+	flagsCacheMu.Unlock()
 
 	return flags, nil
 }

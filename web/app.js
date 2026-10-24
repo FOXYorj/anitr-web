@@ -863,6 +863,8 @@ function saveSettings() {
     appSettings.playerDebug       = document.getElementById('settingPlayerDebug') ? document.getElementById('settingPlayerDebug').checked : false;
     appSettings.screenShake     = document.getElementById('settingScreenShake') ? document.getElementById('settingScreenShake').checked : false;
     appSettings.audioOutput       = document.getElementById('settingAudioOutput') ? document.getElementById('settingAudioOutput').value : 'default';
+    appSettings.showFillers       = document.getElementById('settingShowFillers') ? document.getElementById('settingShowFillers').checked : true;
+    if (typeof anitrFillerRender === 'function') anitrFillerRender();
     
     if (appSettings.screenShake) {
         if (typeof initScreenShake === 'function') initScreenShake();
@@ -931,6 +933,9 @@ function loadSettingsUI() {
     }
     if (document.getElementById('settingScreenShake')) {
         document.getElementById('settingScreenShake').checked = appSettings.screenShake === true;
+    }
+    if (document.getElementById('settingShowFillers')) {
+        document.getElementById('settingShowFillers').checked = appSettings.showFillers !== false;
     }
     if (document.getElementById('settingAudioOutput')) {
         document.getElementById('settingAudioOutput').value = appSettings.audioOutput || 'default';
@@ -2606,23 +2611,62 @@ function saveNote() {
 }
 
 // ── Anime List Logic ─────────────────────────────────────
+
+let _catalogSearchQuery = '';
+let _catalogSearchDebounce = null;
+
+function setCatalogSource(src) {
+    const sel = document.getElementById('catalogSourceFilter');
+    if (sel) sel.value = src;
+    document.querySelectorAll('.catalog-source-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.source === src);
+    });
+    var extra = document.getElementById('catalogExtraFilters');
+    if (extra) extra.classList.toggle('hidden', src !== 'anilist');
+    var si = document.getElementById('catalogSearchInput');
+    if (si) si.value = '';
+    _catalogSearchQuery = '';
+    var clr = document.getElementById('catalogSearchClear');
+    if (clr) clr.classList.add('hidden');
+    applyFilters();
+}
+
+function onCatalogSearch(val) {
+    _catalogSearchQuery = val.trim();
+    var clr = document.getElementById('catalogSearchClear');
+    if (clr) clr.classList.toggle('hidden', !_catalogSearchQuery);
+    clearTimeout(_catalogSearchDebounce);
+    _catalogSearchDebounce = setTimeout(function() {
+        animeListPage = 1; hasMoreAnime = true;
+        var grid = document.getElementById('animeListGrid');
+        if (grid) grid.innerHTML = '';
+        loadMoreAnime();
+    }, 350);
+}
+
+window.setCatalogSource = setCatalogSource;
+window.onCatalogSearch  = onCatalogSearch;
+
 // ── ANILIST DESTEKLİ TÜM ANİMELER SAYFASI ──────────────────────
 
 async function showAnimeListView() {
     showAnimeListViewContainer();
-    const grid = document.getElementById('animeListGrid');
+    var grid = document.getElementById('animeListGrid');
     if (grid) grid.innerHTML = '';
-    
-    animeListPage = 1;
-    hasMoreAnime = true;
-
+    animeListPage = 1; hasMoreAnime = true;
+    _catalogSearchQuery = '';
+    var si = document.getElementById('catalogSearchInput'); if (si) si.value = '';
+    var clr = document.getElementById('catalogSearchClear'); if (clr) clr.classList.add('hidden');
+    var src = (document.getElementById('catalogSourceFilter') || {}).value || 'anizium';
+    document.querySelectorAll('.catalog-source-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.source === src);
+    });
+    var extra = document.getElementById('catalogExtraFilters');
+    if (extra) extra.classList.toggle('hidden', src !== 'anilist');
     initializeFilters();
-    
-    // Yılı otomatik seçmek yerine boş bırakıyoruz
-    document.getElementById('yearFilter').value = '';
-    document.getElementById('genreFilter').value = '';
-    document.getElementById('sortFilter').value = 'POPULARITY_DESC';
-    
+    var yf = document.getElementById('yearFilter'); if (yf) yf.value = '';
+    var gf = document.getElementById('genreFilter'); if (gf) gf.value = '';
+    var sf = document.getElementById('sortFilter'); if (sf) sf.value = 'POPULARITY_DESC';
     await loadMoreAnime();
 }
 
@@ -2739,6 +2783,74 @@ async function loadMoreAnime() {
                         <i class="fa-solid fa-database" style="font-size:2rem;opacity:0.3;display:block;margin-bottom:1rem"></i>
                         Anizium'da anime bulunamadı.
                     </div>`;
+                }
+            }
+            return;
+        }
+
+        // ═══ ANİMECİX KATALOĞU ═══
+        if (catalogSource === 'animecix') {
+            const searchQ = _catalogSearchQuery || '';
+            let apiUrl;
+            if (searchQ) {
+                apiUrl = API_BASE + '/animecix-catalog?search=' + encodeURIComponent(searchQ) + '&limit=30';
+            } else {
+                apiUrl = API_BASE + '/animecix-catalog?page=' + animeListPage + '&limit=30';
+            }
+            try {
+                const res  = await fetch(apiUrl);
+                const data = await res.json();
+                if (animeListPage === 1 && grid) grid.innerHTML = '';
+                let items = []; let hasNext = false; let total = 0;
+                if (searchQ) {
+                    items   = Array.isArray(data) ? data : (data.results || data.titles || data.data || []);
+                    hasNext = false; total = items.length;
+                } else {
+                    const pag = data.pagination || {};
+                    items   = pag.data || [];
+                    hasNext = (pag.current_page || 1) < (pag.last_page || 1);
+                    total   = pag.total || 0;
+                }
+                if (items.length > 0) {
+                    hasMoreAnime = hasNext;
+                    if (counter) {
+                        counter.innerHTML = '?? AnimeciX Kataloğu: <b style="color:var(--accent-light)">' + (total || items.length) + '</b> Anime';
+                    }
+                    const html = items.map(function(m) {
+                        const title = m.name || m.title || 'Bilinmiyor';
+                        const img   = m.poster || m.backdrop || m.cover || 'https://placehold.co/200x280/0c0c16/8b5cf6?text=?';
+                        const score = m.vote_average ? m.vote_average.toFixed(1) : (m.rating ? String(m.rating) : '');
+                        const year  = m.year || m.release_year || '';
+                        const type  = m.is_movie ? 'Film' : 'Dizi';
+                        const safeTitle = title.replace(/'/g, "&#39;");
+                        return '<div class="anime-card" onclick="searchAnimeByName(\'' + safeTitle + '\')">' +
+                            '<div class="card-poster-wrap">' +
+                            '<img src="' + img + '" alt="' + safeTitle + '" class="card-poster" loading="lazy">' +
+                            (score ? '<div class="card-badge"><i class="fa-solid fa-star"></i> ' + score + '</div>' : '') +
+                            '<div class="card-hover-overlay"><button class="quick-play-btn"><i class="fa-solid fa-play"></i></button></div>' +
+                            '</div>' +
+                            '<div class="card-info" style="padding:10px;">' +
+                            '<div class="card-title" style="font-size:13px;line-height:1.3;margin-bottom:4px;" title="' + safeTitle + '">' + title + '</div>' +
+                            '<div style="font-size:11px;color:var(--text3);display:flex;justify-content:space-between;">' +
+                            '<span>' + (year || 'AnimeciX') + '</span><span>' + type + '</span></div>' +
+                            '</div></div>';
+                    }).join('');
+                    if (grid) grid.innerHTML += html;
+                    if (!searchQ) animeListPage++;
+                } else {
+                    hasMoreAnime = false;
+                    if (animeListPage === 1 && grid) {
+                        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:4rem;color:var(--text3)">' +
+                            '<i class="fa-solid fa-database" style="font-size:2.5rem;opacity:0.3;display:block;margin-bottom:1rem"></i>' +
+                            '<p>AnimeciX\'te anime bulunamadı.</p></div>';
+                    }
+                }
+            } catch(ex) {
+                console.error('[AnimeciX catalog]', ex);
+                if (animeListPage === 1 && grid) {
+                    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:4rem;color:#f87171">' +
+                        '<i class="fa-solid fa-triangle-exclamation" style="font-size:2rem;display:block;margin-bottom:1rem"></i>' +
+                        'AnimeciX bağlantı hatası: ' + ex.message + '</div>';
                 }
             }
             return;
@@ -2898,6 +3010,280 @@ window.addEventListener('scroll', () => {
     }
 });
 
+// ══════════════════════════════════════════════════════════════
+// BİLDİRİM PANELİ (Notification Panel)
+// ══════════════════════════════════════════════════════════════
+
+var _notifPanelOpen = false;
+var _notifFollowedList = JSON.parse(localStorage.getItem('anitr_notif_followed') || '[]');
+var _notifReadIds      = JSON.parse(localStorage.getItem('anitr_notif_read')     || '[]');
+var _notifAlerts       = [];           // Yeni bölüm uyarıları (AniList schedule)
+var _notifUpcoming     = [];           // Geri sayım listesi
+var _notifCurrentTab   = 'alerts';
+
+function _saveNotifFollowed() {
+    localStorage.setItem('anitr_notif_followed', JSON.stringify(_notifFollowedList));
+}
+function _saveNotifRead() {
+    localStorage.setItem('anitr_notif_read', JSON.stringify(_notifReadIds.slice(-200)));
+}
+
+/* Paneli aç / kapat */
+function toggleNotifPanel(e) {
+    if (e) e.stopPropagation();
+    var panel = document.getElementById('notifPanel');
+    if (!panel) return;
+    _notifPanelOpen = !_notifPanelOpen;
+    panel.classList.toggle('hidden', !_notifPanelOpen);
+    if (_notifPanelOpen) {
+        _notifRenderCurrentTab();
+        _notifMarkVisibleRead();
+        // Dışarı tıklayınca kapat
+        setTimeout(function() {
+            document.addEventListener('click', _notifOutsideClick, { once: true });
+        }, 10);
+    }
+}
+
+function closeNotifPanel() {
+    _notifPanelOpen = false;
+    var panel = document.getElementById('notifPanel');
+    if (panel) panel.classList.add('hidden');
+}
+
+function _notifOutsideClick(e) {
+    var wrap = document.getElementById('notifBellWrap');
+    if (wrap && !wrap.contains(e.target)) {
+        closeNotifPanel();
+    }
+}
+
+/* Sekme değiştir */
+function switchNotifTab(tab, btn) {
+    _notifCurrentTab = tab;
+    document.querySelectorAll('.notif-tab').forEach(function(b) {
+        b.classList.toggle('active', b === btn);
+    });
+    _notifRenderCurrentTab();
+}
+
+/* Mevcut sekmeyi render et */
+function _notifRenderCurrentTab() {
+    if (_notifCurrentTab === 'alerts')   _notifRenderAlerts();
+    else if (_notifCurrentTab === 'upcoming') _notifRenderUpcoming();
+    else if (_notifCurrentTab === 'followed') _notifRenderFollowed();
+}
+
+/* Yeni Bölümler sekmesi */
+function _notifRenderAlerts() {
+    var body = document.getElementById('notifPanelBody');
+    if (!body) return;
+    if (!_notifAlerts.length) {
+        body.innerHTML = '<div class="notif-empty"><i class="fa-regular fa-bell"></i><p>Yeni bölüm bildirimi yok.<br><small>Takip ettiğin animelerin yeni bölümleri burada görünecek.</small></p></div>';
+        return;
+    }
+    body.innerHTML = _notifAlerts.map(function(a) {
+        var read = _notifReadIds.indexOf(a.id) !== -1;
+        return '<div class="notif-item' + (read ? ' notif-read' : '') + '" onclick="loadDetails(\'' + a.animeId + '\',\'' + a.slug + '\',' + (a.isMovie||false) + ',\'' + (a.title||'').replace(/'/g,"&#39;") + '\',\'\',\'' + (a.img||'') + '\')">' +
+            '<div class="notif-item-img"><img src="' + (a.img || 'https://placehold.co/48x68/0c0c16/8b5cf6?text=?') + '" loading="lazy"></div>' +
+            '<div class="notif-item-info">' +
+                '<div class="notif-item-title">' + (a.title||'Bilinmiyor') + '</div>' +
+                '<div class="notif-item-ep"><i class="fa-solid fa-play"></i> ' + (a.epLabel||'Yeni Bölüm') + '</div>' +
+                '<div class="notif-item-time"><i class="fa-regular fa-clock"></i> ' + (a.timeStr||'') + '</div>' +
+            '</div>' +
+            (read ? '' : '<span class="notif-dot"></span>') +
+        '</div>';
+    }).join('');
+}
+
+/* Geri Sayım sekmesi */
+function _notifRenderUpcoming() {
+    var body = document.getElementById('notifPanelBody');
+    if (!body) return;
+    if (!_notifUpcoming.length) {
+        body.innerHTML = '<div class="notif-empty"><i class="fa-solid fa-hourglass-half"></i><p>Geri sayım yok.<br><small>Yaklaşan bölümler burada görünecek.</small></p></div>';
+        return;
+    }
+    var now = Date.now();
+    body.innerHTML = _notifUpcoming.map(function(u) {
+        var diff = u.airsAt - now;
+        var timeLeft = diff > 0 ? _notifFormatCountdown(diff) : 'Yayınlandı!';
+        return '<div class="notif-item">' +
+            '<div class="notif-item-img"><img src="' + (u.img || 'https://placehold.co/48x68/0c0c16/8b5cf6?text=?') + '" loading="lazy"></div>' +
+            '<div class="notif-item-info">' +
+                '<div class="notif-item-title">' + (u.title||'Bilinmiyor') + '</div>' +
+                '<div class="notif-item-ep"><i class="fa-solid fa-film"></i> ' + (u.epLabel||'') + '</div>' +
+                '<div class="notif-item-time"><i class="fa-solid fa-hourglass-half"></i> ' + timeLeft + '</div>' +
+            '</div></div>';
+    }).join('');
+}
+
+/* Takip edilen animeler sekmesi */
+function _notifRenderFollowed() {
+    var body = document.getElementById('notifPanelBody');
+    if (!body) return;
+    var badge = document.getElementById('notifFollowedCountBadge');
+    if (badge) badge.textContent = _notifFollowedList.length;
+    if (!_notifFollowedList.length) {
+        body.innerHTML = '<div class="notif-empty"><i class="fa-regular fa-star"></i><p>Takip ettiğin anime yok.<br><small>Anime detay sayfasında 🔔 butonuna bas.</small></p></div>';
+        return;
+    }
+    body.innerHTML = _notifFollowedList.map(function(a) {
+        return '<div class="notif-item">' +
+            '<div class="notif-item-img" style="cursor:pointer" onclick="loadDetails(\'' + a.id + '\',\'' + (a.slug||'') + '\',' + (a.isMovie||false) + ',\'' + (a.title||'').replace(/'/g,"&#39;") + '\',\'\',\'' + (a.img||'') + '\')"><img src="' + (a.img || 'https://placehold.co/48x68/0c0c16/8b5cf6?text=?') + '" loading="lazy"></div>' +
+            '<div class="notif-item-info">' +
+                '<div class="notif-item-title">' + (a.title||'Bilinmiyor') + '</div>' +
+                '<div class="notif-item-ep" style="color:var(--text3)">Takip ediliyor</div>' +
+            '</div>' +
+            '<button class="notif-unfollow-btn" title="Takibi bırak" onclick="notifUnfollow(\'' + a.id + '\',event)"><i class="fa-solid fa-xmark"></i></button>' +
+        '</div>';
+    }).join('');
+}
+
+/* Bir animeyi takibe al */
+function notifFollow(id, slug, isMovie, title, img) {
+    if (_notifFollowedList.some(function(a){ return a.id === id; })) return;
+    _notifFollowedList.unshift({ id: id, slug: slug, isMovie: isMovie, title: title, img: img });
+    _saveNotifFollowed();
+    _notifUpdateBadge();
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '<b>' + title + '</b> takibe alındı', timer: 2000, showConfirmButton: false });
+    }
+}
+
+/* Takibi bırak */
+function notifUnfollow(id, e) {
+    if (e) e.stopPropagation();
+    _notifFollowedList = _notifFollowedList.filter(function(a){ return a.id !== id; });
+    _saveNotifFollowed();
+    _notifUpdateBadge();
+    if (_notifCurrentTab === 'followed') _notifRenderFollowed();
+}
+
+/* Okundu badge'ini güncelle */
+function _notifUpdateBadge() {
+    var badge = document.getElementById('notifUnreadBadge');
+    var followed = _notifFollowedList.length;
+    var unreadAlerts = _notifAlerts.filter(function(a){ return _notifReadIds.indexOf(a.id) === -1; }).length;
+    var total = unreadAlerts;
+    if (badge) {
+        badge.textContent = total;
+        badge.classList.toggle('hidden', total === 0);
+    }
+    var followedBadge = document.getElementById('notifFollowedCountBadge');
+    if (followedBadge) followedBadge.textContent = followed;
+}
+
+/* Görünür bildirimleri okundu işaretle */
+function _notifMarkVisibleRead() {
+    if (_notifCurrentTab !== 'alerts') return;
+    var newIds = _notifAlerts.map(function(a){ return a.id; });
+    newIds.forEach(function(id){
+        if (_notifReadIds.indexOf(id) === -1) _notifReadIds.push(id);
+    });
+    _saveNotifRead();
+    _notifUpdateBadge();
+}
+
+/* Tümünü okundu işaretle */
+function markAllNotifsRead() {
+    _notifAlerts.forEach(function(a){
+        if (_notifReadIds.indexOf(a.id) === -1) _notifReadIds.push(a.id);
+    });
+    _saveNotifRead();
+    _notifUpdateBadge();
+    _notifRenderAlerts();
+}
+
+/* Masaüstü bildirim izni iste */
+function requestBrowserNotifPermission() {
+    if (!('Notification' in window)) {
+        if (typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Tarayıcın bildirim desteklemiyor', timer: 3000, showConfirmButton: false });
+        return;
+    }
+    Notification.requestPermission().then(function(perm) {
+        var btn = document.getElementById('notifPermBtn');
+        var banner = document.getElementById('notifPermBanner');
+        if (perm === 'granted') {
+            if (btn) { btn.innerHTML = '<i class="fa-solid fa-bell"></i>'; btn.title = 'Masaüstü Bildirimleri Açık'; }
+            if (banner) banner.classList.add('hidden');
+            if (typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Masaüstü bildirimleri açıldı!', timer: 2000, showConfirmButton: false });
+        } else {
+            if (typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Bildirim izni reddedildi', timer: 3000, showConfirmButton: false });
+        }
+    });
+}
+
+/* Countdown formatter */
+function _notifFormatCountdown(ms) {
+    var s = Math.floor(ms / 1000);
+    var d = Math.floor(s / 86400); s %= 86400;
+    var h = Math.floor(s / 3600);  s %= 3600;
+    var m = Math.floor(s / 60);
+    if (d > 0) return d + 'g ' + h + 's ' + m + 'dk';
+    if (h > 0) return h + 's ' + m + 'dk';
+    return m + 'dk';
+}
+
+/* AniList'ten yaklaşan bölümleri çek (sayfa yüklenince çağrılır) */
+async function _notifFetchUpcoming() {
+    try {
+        var query = `query {
+            Page(page:1,perPage:30) {
+                airingSchedules(airingAt_greater: ${Math.floor(Date.now()/1000 - 3600)}, sort: TIME) {
+                    id airingAt episode timeUntilAiring
+                    media { id title { romaji native } coverImage { medium } isAdult }
+                }
+            }
+        }`;
+        var res = await fetch('https://graphql.anilist.co', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: query })
+        });
+        var json = await res.json();
+        var schedules = (json.data && json.data.Page && json.data.Page.airingSchedules) || [];
+        _notifUpcoming = schedules.filter(function(s){ return !s.media.isAdult; }).map(function(s) {
+            return {
+                id: 'up_' + s.id,
+                title: (s.media.title.romaji || s.media.title.native || 'Bilinmiyor'),
+                img: (s.media.coverImage && s.media.coverImage.medium) || '',
+                epLabel: s.episode + '. Bölüm',
+                airsAt: s.airingAt * 1000,
+                timeLeft: s.timeUntilAiring
+            };
+        });
+        // Yaklaşan = önümüzdeki 24 saat
+        var soon = _notifUpcoming.filter(function(u){ return u.airsAt - Date.now() < 86400000 && u.airsAt > Date.now(); });
+        _notifAlerts = soon.map(function(u, idx) {
+            return {
+                id: 'al_' + u.id + '_' + idx,
+                title: u.title, img: u.img,
+                epLabel: u.epLabel,
+                timeStr: _notifFormatCountdown(Math.max(0, u.airsAt - Date.now())) + ' kaldı',
+                animeId: '', slug: '', isMovie: false
+            };
+        });
+        _notifUpdateBadge();
+    } catch(e) {
+        // Sessizce hata yut
+    }
+}
+
+// Sayfa yüklenince bildirimleri çek
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(_notifFetchUpcoming, 3000);
+    // Bildirimleri her 10 dakikada bir güncelle
+    setInterval(_notifFetchUpcoming, 600000);
+    // İzin durumuna göre buton güncelle
+    if ('Notification' in window && Notification.permission === 'granted') {
+        var btn = document.getElementById('notifPermBtn');
+        if (btn) { btn.innerHTML = '<i class="fa-solid fa-bell"></i>'; btn.title = 'Masaüstü Bildirimleri Açık'; }
+        var banner = document.getElementById('notifPermBanner');
+        if (banner) banner.classList.add('hidden');
+    }
+});
+
 // ── Global Export ────────────────────────────────────────
 window.showAnimeListView = showAnimeListView;
 window.loadHome          = loadHome;
@@ -2915,6 +3301,13 @@ window.applyFilters      = applyFilters;
 window.clearFilters      = clearFilters;
 window.openAchievementsModal = openAchievementsModal;
 window.closeAchievementsModal = closeAchievementsModal;
+window.toggleNotifPanel           = toggleNotifPanel;
+window.closeNotifPanel            = closeNotifPanel;
+window.switchNotifTab             = switchNotifTab;
+window.markAllNotifsRead          = markAllNotifsRead;
+window.requestBrowserNotifPermission = requestBrowserNotifPermission;
+window.notifFollow                = notifFollow;
+window.notifUnfollow              = notifUnfollow;
 
 // ── Watchlist / History Views ──────────────────────────────
 function showHistory() {
@@ -4033,6 +4426,9 @@ async function loadEpisodes(id, slug, seasonId, isMovie, animeTitle, synopsis, i
         `;
         epsContainer.appendChild(btn);
     });
+
+    // Filler bölüm tespiti
+    try { anitrFillerEnsure(animeTitle, seasonId); anitrFillerRender(); } catch (e) {}
 }
 
 let currentSelectedSound = '';
@@ -4205,6 +4601,7 @@ function populateSidebarEpisodes(id, slug, isMovie, animeTitle, synopsis, imgUrl
             setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
         }
     });
+    try { anitrFillerOnWatch(); } catch (e) {}
 }
 
 // Helper to toggle watched status directly from sidebar
@@ -5471,18 +5868,28 @@ let scheduleActiveDay = new Date().getDay(); // 0=Sun,1=Mon,...
 function renderScheduleDayTabs(grouped) {
     const tabsEl = document.getElementById('scheduleDayTabs');
     if (!tabsEl) return;
+    const today = new Date().getDay();
 
     tabsEl.innerHTML = SCHEDULE_DAYS_TR.map((day, idx) => {
-        const count = (grouped[idx] || []).length;
-        const isToday = idx === new Date().getDay();
+        const items = grouped[idx] || [];
+        const count = items.length;
+        const isToday = idx === today;
         const isActive = idx === scheduleActiveDay;
-        return `<button class="sched-day-tab ${isActive ? 'active' : ''} ${isToday ? 'today' : ''}"
+        const color = SCHEDULE_DAY_COLORS[idx] || '#8b5cf6';
+        // Find how many air within next 6 hours
+        const now = Date.now();
+        const soonCount = items.filter(m => {
+            const t = m.nextAiringEpisode?.timeUntilAiring;
+            return t && t > 0 && t <= 21600;
+        }).length;
+
+        return `<button class="sv2-day-tab ${isActive ? 'active' : ''} ${isToday ? 'today' : ''}"
             onclick="switchScheduleDay(${idx})"
-            style="${isActive ? `--day-color:${SCHEDULE_DAY_COLORS[idx]}` : ''}">
-            <i class="fa-solid ${SCHEDULE_DAY_ICONS[idx]}"></i>
-            <span>${day}</span>
-            ${isToday ? '<span class="sched-today-badge">Bugün</span>' : ''}
-            <span class="sched-count">${count}</span>
+            style="--dc:${color}">
+            <span class="sv2-day-name">${day}</span>
+            <span class="sv2-day-count">${count}</span>
+            ${isToday ? '<span class="sv2-today-pill">Bugün</span>' : ''}
+            ${soonCount > 0 && isToday ? `<span class="sv2-soon-dot" title="${soonCount} yakında yayında"></span>` : ''}
         </button>`;
     }).join('');
 }
@@ -5491,57 +5898,217 @@ function switchScheduleDay(dayIdx) {
     scheduleActiveDay = dayIdx;
     const container = document.getElementById('scheduleContainer');
     if (!container || !container._grouped) return;
-    renderScheduleDay(container._grouped, dayIdx);
 
-    // update tab active states
-    document.querySelectorAll('.sched-day-tab').forEach((btn, i) => {
+    document.querySelectorAll('.sv2-day-tab').forEach((btn, i) => {
+        const color = SCHEDULE_DAY_COLORS[i] || '#8b5cf6';
         btn.classList.toggle('active', i === dayIdx);
-        btn.style = i === dayIdx ? `--day-color:${SCHEDULE_DAY_COLORS[i]}` : '';
+        btn.style.setProperty('--dc', color);
     });
+
+    // Reset search when switching day
+    const si = document.getElementById('schedSearchInput');
+    if (si) si.value = '';
+    _schedSearchQ = '';
+
+    renderScheduleDay(container._grouped, dayIdx);
+    _schedUpdateSubbar(dayIdx, container._grouped);
+}
+
+var _schedSearchQ = '';
+var _schedGenreFilter = '';
+
+function _schedUpdateSubbar(dayIdx, grouped) {
+    const bar = document.getElementById('schedSubbar');
+    if (!bar) return;
+    const items = grouped[dayIdx] || [];
+    const today = new Date().getDay();
+    const dayName = SCHEDULE_DAYS_TR[dayIdx];
+    const isToday = dayIdx === today;
+
+    const soon = items.filter(m => {
+        const t = m.nextAiringEpisode?.timeUntilAiring;
+        return t && t > 0 && t <= 3600;
+    }).length;
+
+    bar.innerHTML = `
+        <div class="sv2-subbar-left">
+            <span class="sv2-subbar-day">${isToday ? '📅 Bugün' : dayName}</span>
+            <span class="sv2-subbar-count">${items.length} anime</span>
+            ${soon > 0 ? `<span class="sv2-live-badge"><span class="sv2-live-dot"></span>${soon} Yakında Yayında</span>` : ''}
+        </div>
+        <div class="sv2-subbar-right">
+            <div class="sv2-search-wrap">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="schedSearchInput" type="text" placeholder="Anime ara..." oninput="_schedOnSearch(this.value)" value="${_schedSearchQ}">
+            </div>
+            <div class="sv2-genre-wrap" id="schedGenreFilter">
+                ${_schedBuildGenreFilter(items)}
+            </div>
+        </div>`;
+}
+
+function _schedBuildGenreFilter(items) {
+    // Collect all genres
+    const genreCount = {};
+    items.forEach(m => {
+        (m.genres || []).forEach(g => {
+            genreCount[g] = (genreCount[g] || 0) + 1;
+        });
+    });
+    const topGenres = Object.entries(genreCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([g]) => g);
+
+    if (!topGenres.length) return '';
+    return `<button class="sv2-genre-btn ${!_schedGenreFilter ? 'active' : ''}" onclick="_schedSetGenre('')">Tümü</button>` +
+        topGenres.map(g =>
+            `<button class="sv2-genre-btn ${_schedGenreFilter === g ? 'active' : ''}" onclick="_schedSetGenre('${g.replace(/'/g,"&#39;")}')">${g}</button>`
+        ).join('');
+}
+
+function _schedSetGenre(g) {
+    _schedGenreFilter = g;
+    const container = document.getElementById('scheduleContainer');
+    if (!container || !container._grouped) return;
+    renderScheduleDay(container._grouped, scheduleActiveDay);
+    _schedUpdateSubbar(scheduleActiveDay, container._grouped);
+}
+
+function _schedOnSearch(val) {
+    _schedSearchQ = val.trim().toLowerCase();
+    const container = document.getElementById('scheduleContainer');
+    if (!container || !container._grouped) return;
+    renderScheduleDay(container._grouped, scheduleActiveDay);
 }
 
 function renderScheduleDay(grouped, dayIdx) {
     const grid = document.getElementById('scheduleGrid');
     if (!grid) return;
-    const items = grouped[dayIdx] || [];
+    let items = (grouped[dayIdx] || []).slice();
+
+    // Apply search filter
+    if (_schedSearchQ) {
+        items = items.filter(m => {
+            const t = (m.title?.romaji || '') + ' ' + (m.title?.english || '');
+            return t.toLowerCase().includes(_schedSearchQ);
+        });
+    }
+    // Apply genre filter
+    if (_schedGenreFilter) {
+        items = items.filter(m => (m.genres || []).includes(_schedGenreFilter));
+    }
+
+    // Sort: airing soonest first, then by popularity
+    items.sort((a, b) => {
+        const ta = a.nextAiringEpisode?.timeUntilAiring ?? Infinity;
+        const tb = b.nextAiringEpisode?.timeUntilAiring ?? Infinity;
+        if (ta !== tb) return ta - tb;
+        return (b.popularity || 0) - (a.popularity || 0);
+    });
 
     if (!items.length) {
-        grid.innerHTML = `<div class="sched-empty">
+        grid.innerHTML = `<div class="sv2-empty">
             <i class="fa-solid fa-calendar-xmark"></i>
-            <p>Bu gün için yayın bulunamadı.</p>
+            <p>${_schedSearchQ || _schedGenreFilter ? 'Arama sonucu bulunamadı.' : 'Bu gün için yayın bulunamadı.'}</p>
+            ${_schedSearchQ || _schedGenreFilter ? '<button onclick="_schedSetGenre(\'\');document.getElementById(\'schedSearchInput\').value=\'\';_schedOnSearch(\'\')">Filtreyi Temizle</button>' : ''}
         </div>`;
         return;
     }
 
+    const now = Date.now();
     grid.innerHTML = items.map(m => {
-        const title = m.title.romaji || m.title.english || 'Bilinmiyor';
-        const safeTitle = title.replace(/'/g, "&#39;");
-        const img = m.coverImage?.large || m.coverImage?.medium || 'https://placehold.co/200x280/0c0c16/8b5cf6?text=?';
-        const score = m.averageScore ? (m.averageScore / 10).toFixed(1) : null;
-        const eps = m.episodes ? `${m.episodes} Bölüm` : 'Devam Ediyor';
-        const status = (m.status === 'RELEASING' || m.status === 'Currently Airing') ? 'Yayında' : (m.status === 'FINISHED' || m.status === 'Finished Airing') ? 'Tamamlandı' : m.status || '';
-        const nextEp = m.nextAiringEpisode;
+        const title   = m.title?.romaji || m.title?.english || 'Bilinmiyor';
+        const safe    = title.replace(/'/g, "&#39;").replace(/"/g, '&quot;');
+        const img     = m.coverImage?.extraLarge || m.coverImage?.large || m.coverImage?.medium || 'https://placehold.co/200x280/0c0c16/8b5cf6?text=?';
+        const banner  = m.bannerImage || '';
+        const score   = m.averageScore ? (m.averageScore / 10).toFixed(1) : null;
+        const pop     = m.popularity  || 0;
+        const nextEp  = m.nextAiringEpisode;
         const timeUntil = nextEp ? formatTimeUntil(nextEp.timeUntilAiring) : null;
-        const nextEpNum = nextEp ? nextEp.episode : null;
-        const genres = (m.genres || []).slice(0, 2).join(' · ');
+        const nextEpNum = nextEp?.episode || null;
+        const airingAt  = nextEp?.airingAt ? new Date(nextEp.airingAt * 1000) : null;
+        const airingStr = airingAt ? airingAt.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'}) : null;
+        const genres  = (m.genres || []).slice(0, 3);
+        const studio  = m.studios?.nodes?.[0]?.name || '';
+        const format  = m.format === 'TV' ? 'TV' : m.format === 'MOVIE' ? 'Film' : m.format === 'OVA' ? 'OVA' : m.format || '';
+        const eps     = m.episodes ? `${m.episodes} Bölüm` : '∞';
+        const isFollowed = (_notifFollowedList || []).some(f => f.title === title);
 
-        return `<div class="sched-card" onclick="searchAnimeByName('${safeTitle}')">
-            <div class="sched-card-poster-wrap">
-                <img src="${img}" alt="${safeTitle}" loading="lazy" onerror="this.src='https://placehold.co/200x280/0c0c16/8b5cf6?text=?'">
-                <div class="sched-card-gradient"></div>
-                ${score ? `<div class="sched-card-score"><i class="fa-solid fa-star"></i> ${score}</div>` : ''}
-                ${timeUntil ? `<div class="sched-card-timer"><i class="fa-regular fa-clock"></i> ${timeUntil}</div>` : ''}
-                <div class="sched-card-hover">
-                    <button class="sched-play-btn"><i class="fa-solid fa-search"></i> Ara</button>
+        // Countdown urgency class
+        const secs = nextEp?.timeUntilAiring || Infinity;
+        const urgency = secs <= 3600 ? 'sv2-urgent' : secs <= 86400 ? 'sv2-soon' : '';
+
+        // Score color
+        const scoreClass = score >= 8 ? 'sv2-score-gold' : score >= 7 ? 'sv2-score-green' : 'sv2-score-gray';
+
+        return `<div class="sv2-card ${urgency}" onclick="searchAnimeByName('${safe}')">
+            <!-- Visual -->
+            <div class="sv2-card-visual">
+                ${banner ? `<div class="sv2-card-banner" style="background-image:url('${banner}')"></div>` : ''}
+                <img class="sv2-card-img" src="${img}" alt="${safe}" loading="lazy" onerror="this.src='https://placehold.co/200x280/0c0c16/8b5cf6?text=?'">
+                <div class="sv2-card-vignette"></div>
+
+                <!-- Top badges -->
+                <div class="sv2-card-top-row">
+                    ${airingStr ? `<span class="sv2-time-badge ${urgency}"><i class="fa-regular fa-clock"></i>${airingStr}</span>` : ''}
+                    <span class="sv2-format-badge">${format || 'TV'}</span>
+                </div>
+
+                <!-- Score -->
+                ${score ? `<div class="sv2-score-badge ${scoreClass}"><i class="fa-solid fa-star"></i>${score}</div>` : ''}
+
+                <!-- Countdown overlay -->
+                ${timeUntil ? `<div class="sv2-countdown-chip ${urgency}">
+                    <i class="fa-solid fa-hourglass-half"></i>
+                    <span>${timeUntil}</span>
+                    ${nextEpNum ? `<span class="sv2-ep-badge">Bölüm ${nextEpNum}</span>` : ''}
+                </div>` : ''}
+
+                <!-- Hover overlay -->
+                <div class="sv2-card-overlay">
+                    <button class="sv2-watch-btn" onclick="event.stopPropagation();searchAnimeByName('${safe}')">
+                        <i class="fa-solid fa-play"></i> İzle
+                    </button>
+                    <button class="sv2-follow-btn ${isFollowed ? 'active' : ''}"
+                        onclick="event.stopPropagation();_schedToggleFollow('${safe}','${img}')"
+                        title="${isFollowed ? 'Takipten Çık' : 'Takip Et'}">
+                        <i class="fa-${isFollowed ? 'solid' : 'regular'} fa-bell"></i>
+                    </button>
                 </div>
             </div>
-            <div class="sched-card-info">
-                <div class="sched-card-title">${title}</div>
-                ${nextEpNum ? `<div class="sched-card-ep"><i class="fa-solid fa-circle" style="font-size:6px;color:#8b5cf6"></i> Bölüm ${nextEpNum} geliyor</div>` : ''}
-                <div class="sched-card-meta">${genres || eps}</div>
+
+            <!-- Info -->
+            <div class="sv2-card-body">
+                <div class="sv2-card-title" title="${safe}">${title}</div>
+
+                ${studio ? `<div class="sv2-studio"><i class="fa-solid fa-building-columns"></i>${studio}</div>` : ''}
+
+                <div class="sv2-genres">
+                    ${genres.map(g => `<span class="sv2-genre-tag" onclick="event.stopPropagation();_schedSetGenre('${g.replace(/'/g,"&#39;")}')">${g}</span>`).join('')}
+                </div>
+
+                <div class="sv2-card-footer">
+                    <span class="sv2-eps-info"><i class="fa-solid fa-film"></i>${eps}</span>
+                    ${pop > 0 ? `<span class="sv2-pop-info"><i class="fa-solid fa-heart"></i>${pop >= 1000 ? (pop/1000).toFixed(1)+'K' : pop}</span>` : ''}
+                </div>
             </div>
         </div>`;
     }).join('');
+}
+
+function _schedToggleFollow(title, img) {
+    const existing = (_notifFollowedList || []).findIndex(f => f.title === title);
+    if (existing !== -1) {
+        notifUnfollow((_notifFollowedList || [])[existing].id || title);
+    } else {
+        notifFollow(title, '', false, title, img);
+    }
+    // Re-render cards to update bell icon state
+    const container = document.getElementById('scheduleContainer');
+    if (container && container._grouped) {
+        renderScheduleDay(container._grouped, scheduleActiveDay);
+    }
 }
 
 function formatTimeUntil(seconds) {
@@ -5560,20 +6127,31 @@ async function loadSchedule() {
 
     if (container.dataset.loaded === 'true') return;
 
-    container.innerHTML = '<div style="text-align:center;padding:4rem"><div class="spinner"></div><p style="margin-top:1rem;color:var(--text3)">AniList\'ten takvim yükleniyor...</p></div>';
+    // Modern loading state
+    container.innerHTML = `<div class="sv2-shell">
+        <div class="sv2-loading">
+            <div class="sv2-loading-orbs">
+                <span></span><span></span><span></span>
+            </div>
+            <p>AniList'ten takvim yükleniyor...</p>
+        </div>
+    </div>`;
 
     try {
-        // AniList GraphQL — Bu sezon tüm animeleri çek, yayın günlerine göre grupla
         const query = `
         query {
           Page(page: 1, perPage: 50) {
-            media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC) {
+            media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC, isAdult: false) {
               title { romaji english }
-              coverImage { large medium }
+              coverImage { extraLarge large medium }
+              bannerImage
               averageScore
               episodes
+              format
+              popularity
               status
               genres
+              studios(isMain: true) { nodes { name } }
               airingSchedule(notYetAired: false, perPage: 1) {
                 nodes { episode airingAt }
               }
@@ -5587,50 +6165,112 @@ async function loadSchedule() {
         }`;
 
         const data = await fetchAniList(query);
-        if (!data || !data.Page || !data.Page.media) throw new Error('Veri alınamadı');
+        if (!data?.Page?.media) throw new Error('Veri alınamadı');
 
         const media = data.Page.media;
-
-        // Group by airing day (0=Sun,1=Mon,... JS day order)
-        // nextAiringEpisode.airingAt is a Unix timestamp
         const grouped = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
+        let totalAiring = 0;
 
         media.forEach(m => {
             let dayIdx = -1;
-            if (m.nextAiringEpisode && m.nextAiringEpisode.airingAt) {
-                const d = new Date(m.nextAiringEpisode.airingAt * 1000);
-                dayIdx = d.getDay(); // 0=Sun
-            } else if (m.airingSchedule && m.airingSchedule.nodes && m.airingSchedule.nodes.length > 0) {
-                const d = new Date(m.airingSchedule.nodes[0].airingAt * 1000);
-                dayIdx = d.getDay();
+            if (m.nextAiringEpisode?.airingAt) {
+                dayIdx = new Date(m.nextAiringEpisode.airingAt * 1000).getDay();
+            } else if (m.airingSchedule?.nodes?.length > 0) {
+                dayIdx = new Date(m.airingSchedule.nodes[0].airingAt * 1000).getDay();
             }
-            if (dayIdx !== -1) {
-                grouped[dayIdx].push(m);
-            }
+            if (dayIdx !== -1) { grouped[dayIdx].push(m); totalAiring++; }
         });
 
-        // Build main shell
+        const today = new Date().getDay();
+        const todayCount = (grouped[today] || []).length;
+        const soonCount = (grouped[today] || []).filter(m => {
+            const t = m.nextAiringEpisode?.timeUntilAiring;
+            return t && t > 0 && t <= 21600;
+        }).length;
+        const season = _schedGetSeason();
+
+        // Build modern shell
         container.innerHTML = `
-        <div class="sched-header">
-            <div class="sched-header-text">
-                <h2><i class="fa-solid fa-calendar-week"></i> Haftalık Yayın Takvimi</h2>
-                <p>Bu sezon yayınlanan animelerin günlük yayın programı</p>
+        <div class="sv2-shell">
+            <!-- Hero Header -->
+            <div class="sv2-hero">
+                <div class="sv2-hero-bg"></div>
+                <div class="sv2-hero-content">
+                    <div class="sv2-hero-left">
+                        <div class="sv2-hero-kicker">
+                            <span class="sv2-live-dot-pulse"></span>
+                            Canlı Takvim
+                        </div>
+                        <h1 class="sv2-hero-title">
+                            <i class="fa-solid fa-calendar-week"></i>
+                            Haftalık Yayın Takvimi
+                        </h1>
+                        <p class="sv2-hero-sub">${season} · ${totalAiring} anime yayında</p>
+                    </div>
+                    <div class="sv2-hero-stats">
+                        <div class="sv2-stat-card">
+                            <span class="sv2-stat-val">${totalAiring}</span>
+                            <span class="sv2-stat-lbl">Bu Sezon</span>
+                        </div>
+                        <div class="sv2-stat-card highlight">
+                            <span class="sv2-stat-val">${todayCount}</span>
+                            <span class="sv2-stat-lbl">Bugün</span>
+                        </div>
+                        <div class="sv2-stat-card">
+                            <span class="sv2-stat-val">${soonCount}</span>
+                            <span class="sv2-stat-lbl">Yakında</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="sched-season-badge"><i class="fa-solid fa-leaf"></i> Güncel Sezon</div>
-        </div>
-        <div id="scheduleDayTabs" class="sched-day-tabs"></div>
-        <div id="scheduleGrid" class="sched-grid"></div>`;
+
+            <!-- Day tabs -->
+            <div class="sv2-tabs-row">
+                <div id="scheduleDayTabs" class="sv2-day-tabs"></div>
+            </div>
+
+            <!-- Subbar (search + genre + day summary) -->
+            <div id="schedSubbar" class="sv2-subbar"></div>
+
+            <!-- Grid -->
+            <div id="scheduleGrid" class="sv2-grid"></div>
+        </div>`;
 
         container._grouped = grouped;
         container.dataset.loaded = 'true';
+        _schedSearchQ = '';
+        _schedGenreFilter = '';
 
-        scheduleActiveDay = new Date().getDay();
+        scheduleActiveDay = today;
         renderScheduleDayTabs(grouped);
-        renderScheduleDay(grouped, scheduleActiveDay);
+        _schedUpdateSubbar(today, grouped);
+        renderScheduleDay(grouped, today);
+
+        // Live countdown tick every minute
+        if (!container._tickInterval) {
+            container._tickInterval = setInterval(() => {
+                if (document.getElementById('scheduleContainer')?.dataset.loaded === 'true') {
+                    renderScheduleDay(container._grouped, scheduleActiveDay);
+                }
+            }, 60000);
+        }
 
     } catch (err) {
-        container.innerHTML = `<div style="text-align:center;padding:4rem;color:#ef4444"><i class="fa-solid fa-triangle-exclamation" style="font-size:2rem;margin-bottom:1rem;display:block"></i>Takvim yüklenirken hata: ${err.message}</div>`;
+        container.innerHTML = `<div class="sv2-error">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <p>Takvim yüklenirken hata oluştu</p>
+            <small>${err.message}</small>
+            <button onclick="document.getElementById('scheduleContainer').dataset.loaded='';loadSchedule()">Tekrar Dene</button>
+        </div>`;
     }
+}
+
+function _schedGetSeason() {
+    const m = new Date().getMonth();
+    if (m <= 2) return '❄️ Kış Sezonu';
+    if (m <= 5) return '🌸 İlkbahar Sezonu';
+    if (m <= 8) return '☀️ Yaz Sezonu';
+    return '🍂 Sonbahar Sezonu';
 }
 /* ============================================================
    ✨ GÖRSEL ÖZELLİK 1 — FLOATING STARS (Canvas Arka Plan)
@@ -7749,6 +8389,10 @@ function _anitrRenderSettings(p, view) {
         row({ icon: 'fa-closed-captioning', label: 'Altyazı', value: showing ? (showing.label || showing.language) : 'Kapalı', chev: true, onClick: () => _anitrRenderSettings(p, 'subs') });
         row({ icon: 'fa-font', label: 'Altyazı Görünümü', chev: true, onClick: () => _anitrRenderSettings(p, 'subStyle') });
         row({ icon: 'fa-lightbulb', label: 'Ambient Light', value: (appSettings.ambientLight !== false ? 'Açık' : 'Kapalı'), chev: true, onClick: () => _anitrRenderSettings(p, 'ambient') });
+        row({ icon: 'fa-volume-high', label: 'Ses Yükselticisi', value: (appSettings.volumeBoost || 100) + '%', chev: true, onClick: () => _anitrRenderSettings(p, 'volume') });
+    } else if (view === 'volume') {
+        head('Ses Yükselticisi (Ücretsiz Boost)');
+        _anitrVolumeUI(p, wrap);
     } else if (view === 'quality') {
         head('Kalite');
         _anitrQualityState(p).items.forEach(it => row({ label: it.label, active: it.active, onClick: () => { it.apply(); _anitrRenderSettings(p, 'main'); } }));
@@ -8044,6 +8688,31 @@ function _anitrEnhancePlayer(p) {
             let idx = anchor ? kids.indexOf(anchor) : -1;
             if (idx < 0) { const sb = cb.getChild('AnitrSubSettings'); idx = sb ? kids.indexOf(sb) : kids.length; }
             cb.addChild('AnitrCinemaBtn', { name: 'AnitrCinema' }, idx);
+        }
+
+        // Ekran Görüntüsü butonu — Sinema Modunun soluna
+        if (cb && !cb.getChild('AnitrShotBtn')) {
+            if (!videojs.getComponent('AnitrShotBtn')) {
+                const BtnS = videojs.getComponent('Button');
+                class AnitrShotBtn extends BtnS {
+                    constructor(player, options) {
+                        super(player, options);
+                        this.addClass('vjs-anitr-shot');
+                        this.controlText('Ekran Görüntüsü (S)');
+                        this.el().id = 'shotBtn';
+                        this.el().innerHTML = '<i class="fa-solid fa-camera" style="font-size:15px;"></i>';
+                    }
+                    handleClick(e) { if (e) e.stopPropagation(); anitrTakeScreenshot(); }
+                }
+                videojs.registerComponent('AnitrShotBtn', AnitrShotBtn);
+            }
+            const cinemaChild = cb.getChild('AnitrCinemaBtn') || cb.getChild('AnitrCinema');
+            const cinemaEl = cb.el().querySelector('.vjs-anitr-cinema');
+            const cinemaComp = cinemaEl ? cb.children().find(c => c.el && c.el() === cinemaEl) : null;
+            const refComp = cinemaChild || cinemaComp;
+            const refIdx = refComp ? cb.children().indexOf(refComp) : -1;
+            const shotIdx = refIdx >= 0 ? refIdx : cb.children().length;
+            cb.addChild('AnitrShotBtn', { name: 'AnitrShot' }, shotIdx);
         }
 
         // Dışarı tıklayınca / ESC ile kapat
@@ -8788,3 +9457,548 @@ setInterval(() => {
         }
     }
 }, 1000);
+
+// ══════════════════════════════════════════════════════
+// TRACE.MOE — Görselden Anime Bulucu
+// ══════════════════════════════════════════════════════
+window.openTraceMoeModal = function() {
+    var existing = document.getElementById('traceMoeModal');
+    if (existing) { existing.classList.remove('hidden'); return; }
+    var modal = document.createElement('div');
+    modal.id = 'traceMoeModal';
+    modal.className = 'trace-modal-overlay';
+    modal.innerHTML = `
+        <div class="trace-modal">
+            <div class="trace-modal-header">
+                <div class="trace-modal-title"><i class="fa-solid fa-camera-retro"></i> Görselden Anime Bul</div>
+                <button class="trace-close-btn" onclick="document.getElementById('traceMoeModal').classList.add('hidden')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="trace-modal-body">
+                <div id="traceMoeDropzone" class="trace-dropzone">
+                    <i class="fa-solid fa-cloud-arrow-up trace-upload-icon"></i>
+                    <p>Ekran görüntüsünü buraya sürükle veya tıkla</p>
+                    <small>JPG, PNG, GIF desteklenir</small>
+                    <input type="file" id="traceMoeFileInput" accept="image/*" style="display:none">
+                </div>
+                <div id="traceMoeLoading" class="trace-loading hidden">
+                    <div class="spinner"></div>
+                    <span>Aranıyor...</span>
+                </div>
+                <div id="traceMoeResult" class="trace-results"></div>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+
+    var dz = document.getElementById('traceMoeDropzone');
+    var fi = document.getElementById('traceMoeFileInput');
+
+    dz.addEventListener('click', function() { fi.click(); });
+    dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('drag-over'); });
+    dz.addEventListener('dragleave', function() { dz.classList.remove('drag-over'); });
+    dz.addEventListener('drop', function(e) {
+        e.preventDefault(); dz.classList.remove('drag-over');
+        var file = e.dataTransfer.files[0];
+        if (file) doTraceMoeSearch(file);
+    });
+    fi.addEventListener('change', function() {
+        if (fi.files[0]) doTraceMoeSearch(fi.files[0]);
+    });
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) modal.classList.add('hidden');
+    });
+};
+
+async function doTraceMoeSearch(file) {
+    var loading = document.getElementById('traceMoeLoading');
+    var result  = document.getElementById('traceMoeResult');
+    var dz      = document.getElementById('traceMoeDropzone');
+    if (loading) loading.classList.remove('hidden');
+    if (result)  result.innerHTML = '';
+    if (dz)      dz.style.opacity = '0.4';
+    try {
+        var res = await fetch('https://api.trace.moe/search?anilistInfo', {
+            method: 'POST',
+            headers: { 'Content-Type': file.type },
+            body: file
+        });
+        var data = await res.json();
+        if (dz) dz.style.opacity = '1';
+        if (loading) loading.classList.add('hidden');
+        if (!data.result || data.result.length === 0) {
+            if (result) result.innerHTML = '<p style="text-align:center;color:var(--text3);padding:2rem;">Eşleşme bulunamadı.</p>';
+            return;
+        }
+        var html = data.result.slice(0, 5).map(function(r) {
+            var title = (r.anilist && (r.anilist.title.romaji || r.anilist.title.english)) || 'Bilinmiyor';
+            var ep    = r.episode ? (' • Bölüm ' + r.episode) : '';
+            var sim   = Math.round((r.similarity || 0) * 100);
+            var at    = r.from ? (' • ' + new Date(r.from * 1000).toISOString().substr(14, 5)) : '';
+            var safeT = title.replace(/'/g, "&#39;");
+            return '<div class="trace-result-card" onclick="searchAnimeByName(\'' + safeT + '\');document.getElementById(\'traceMoeModal\').classList.add(\'hidden\')">' +
+                '<div class="trace-result-video-wrap">' +
+                (r.video ? '<video src="' + r.video + '&size=l" autoplay muted loop playsinline class="trace-result-video"></video>' : '') +
+                '</div>' +
+                '<div class="trace-result-info">' +
+                '<div class="trace-result-title">' + title + '</div>' +
+                '<div class="trace-result-meta">' + ep + at + '</div>' +
+                '<div class="trace-result-sim"><span class="trace-sim-badge" style="background:' + (sim >= 90 ? '#22c55e' : sim >= 75 ? '#f59e0b' : '#ef4444') + '">' + sim + '% Eşleşme</span></div>' +
+                '<button class="trace-play-btn"><i class="fa-solid fa-play"></i> İzle</button>' +
+                '</div></div>';
+        }).join('');
+        if (result) result.innerHTML = html;
+    } catch(e) {
+        if (dz) dz.style.opacity = '1';
+        if (loading) loading.classList.add('hidden');
+        if (result) result.innerHTML = '<p style="color:#f87171;text-align:center;padding:2rem;">Hata: ' + e.message + '</p>';
+    }
+}
+
+
+// ══════════════════════════════════════════════════════
+// SHARED AUDIO GRAPH — Volume Booster & Screen Shake için
+// ══════════════════════════════════════════════════════
+function anitrAudioGraph(video) {
+    if (video._anitrGraph) return video._anitrGraph;
+    var ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    var src  = ctx.createMediaElementSource(video);
+    var gain = ctx.createGain();
+    var comp = ctx.createDynamicsCompressor();
+    var analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    src.connect(gain);
+    gain.connect(comp);
+    comp.connect(analyser);
+    analyser.connect(ctx.destination);
+    var pct = (typeof appSettings !== 'undefined' && appSettings.volumeBoost) ? appSettings.volumeBoost : 100;
+    gain.gain.value = pct / 100;
+    video._anitrGraph = { ctx: ctx, src: src, gain: gain, comp: comp, analyser: analyser };
+    return video._anitrGraph;
+}
+
+window.anitrAudioGraph = anitrAudioGraph;
+
+// ══════════════════════════════════════════════════════
+// VOLUME BOOSTER — Apply function
+// ══════════════════════════════════════════════════════
+function anitrApplyVolumeBoost(pct) {
+    appSettings.volumeBoost = pct;
+    if (window.ls) ls.set('anitr_settings', appSettings);
+    var video = document.querySelector('video');
+    if (!video) return;
+    try {
+        var graph = anitrAudioGraph(video);
+        graph.gain.gain.value = pct / 100;
+    } catch(e) { console.warn('VolumeBoost error:', e); }
+}
+
+function _anitrVolumeUI(p, wrap) {
+    var pct = appSettings.volumeBoost || 100;
+    var sliderWrap = document.createElement('div');
+    sliderWrap.style.cssText = 'padding:12px 16px;';
+    sliderWrap.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+        '<span style="font-size:13px;color:var(--text2);">Ses Seviyesi</span>' +
+        '<span id="volumeBoostLabel" style="font-size:14px;font-weight:700;color:var(--accent-light);">' + pct + '%</span>' +
+        '</div>' +
+        '<input type="range" id="volumeBoostSlider" min="50" max="300" step="10" value="' + pct + '"' +
+        ' style="width:100%;accent-color:var(--accent);cursor:pointer;">' +
+        '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:4px;">' +
+        '<span>50%</span><span style="color:var(--text2);">Normal=100%</span><span>300%</span></div>' +
+        '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
+        [50,75,100,150,200,300].map(function(v) {
+            return '<button onclick="document.getElementById(\'volumeBoostSlider\').value=' + v +
+                ';document.getElementById(\'volumeBoostLabel\').textContent=\'' + v + '%\';anitrApplyVolumeBoost(' + v + ');" ' +
+                'style="flex:1;min-width:40px;padding:5px 4px;background:' + (v === pct ? 'var(--accent)' : 'rgba(255,255,255,0.07)') +
+                ';border:1px solid var(--border);border-radius:6px;color:var(--text1);font-size:12px;cursor:pointer;">' + v + '%</button>';
+        }).join('') +
+        '</div>';
+    wrap.appendChild(sliderWrap);
+    setTimeout(function() {
+        var sl = document.getElementById('volumeBoostSlider');
+        var lb = document.getElementById('volumeBoostLabel');
+        if (sl && lb) {
+            sl.addEventListener('input', function() {
+                lb.textContent = sl.value + '%';
+                anitrApplyVolumeBoost(parseInt(sl.value));
+            });
+        }
+    }, 50);
+}
+
+// ══════════════════════════════════════════════════════
+// SCREENSHOT — Canvas capture
+// ══════════════════════════════════════════════════════
+function anitrTakeScreenshot() {
+    var video = document.querySelector('video');
+    if (!video) { showToast('Hata: Video bulunamadi'); return; }
+    try {
+        var canvas = document.createElement('canvas');
+        canvas.width  = video.videoWidth  || 1920;
+        canvas.height = video.videoHeight || 1080;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(function(blob) {
+            var url = URL.createObjectURL(blob);
+            var a   = document.createElement('a');
+            a.href  = url;
+            a.download = 'anitr-screenshot-' + Date.now() + '.png';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Ekran goruntusu kaydedildi!');
+            var flash = document.createElement('div');
+            flash.style.cssText = 'position:fixed;inset:0;background:#fff;opacity:0.4;pointer-events:none;z-index:99999;transition:opacity 0.3s;';
+            document.body.appendChild(flash);
+            setTimeout(function() { flash.style.opacity = '0'; setTimeout(function() { flash.remove(); }, 300); }, 50);
+        }, 'image/png');
+    } catch(e) {
+        showToast('Ekran goruntusu alinamadi: ' + e.message);
+    }
+}
+
+window.anitrApplyVolumeBoost = anitrApplyVolumeBoost;
+window.anitrTakeScreenshot   = anitrTakeScreenshot;
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   FILLER BÖLÜM TESPİTİ — Jikan (MyAnimeList) verisiyle
+   Ayarlar > Oynatıcı > "Filler Bölüm Göstergesi" ile açılıp kapatılır
+   ═══════════════════════════════════════════════════════════════════ */
+var _anitrFiller = { key: '', ready: false, loading: false, failed: false, fillers: new Set(), recaps: new Set(), total: 0, malId: 0 };
+var _anitrFillerMode = 'all';          // all | canon | filler
+var _anitrFillerPrevIdx = -1;
+var _anitrFillerHandled = '';
+
+function anitrFillerEnabled() {
+    return !(typeof appSettings !== 'undefined' && appSettings && appSettings.showFillers === false);
+}
+function _fillerSleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+function _fillerCacheGet(key) {
+    try {
+        var all = JSON.parse(localStorage.getItem('anitr_filler_v1') || '{}');
+        var e = all[key];
+        if (e && Date.now() - e.t < 3 * 86400000) return e;
+    } catch (e) {}
+    return null;
+}
+function _fillerCacheSet(key, val) {
+    try {
+        var all = JSON.parse(localStorage.getItem('anitr_filler_v1') || '{}');
+        all[key] = val;
+        var keys = Object.keys(all);
+        if (keys.length > 60) {
+            keys.sort(function (a, b) { return all[a].t - all[b].t; });
+            delete all[keys[0]];
+        }
+        localStorage.setItem('anitr_filler_v1', JSON.stringify(all));
+    } catch (e) {}
+}
+
+async function _jikanGetJson(url) {
+    for (var a = 0; a < 3; a++) {
+        var r = await fetch(url);
+        if (r.status === 429) { await _fillerSleep(1200 * (a + 1)); continue; }
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    }
+    throw new Error('Jikan istek limiti');
+}
+
+async function anitrFillerEnsure(title, seasonId) {
+    if (!anitrFillerEnabled() || !title) return;
+    var sNum = parseInt(seasonId) || 1;
+    if (sNum > 30) sNum = 1;
+    var key = String(title).toLowerCase().trim() + '|' + sNum;
+    if (_anitrFiller.key === key && (_anitrFiller.ready || _anitrFiller.loading)) return;
+
+    _anitrFiller = { key: key, ready: false, loading: true, failed: false, fillers: new Set(), recaps: new Set(), total: 0, malId: 0 };
+    anitrFillerRender();
+
+    try {
+        var cached = _fillerCacheGet(key);
+        var fillers, recaps, total, malId;
+        if (cached) {
+            fillers = cached.f; recaps = cached.r; total = cached.n; malId = cached.m;
+        } else {
+            var q = sNum > 1 ? title + ' season ' + sNum : title;
+            var sr = await _jikanGetJson('https://api.jikan.moe/v4/anime?q=' + encodeURIComponent(q) + '&limit=6&sfw=true');
+            var list = (sr && sr.data) || [];
+            var pick = list.find(function (x) { return x.type === 'TV'; }) || list[0];
+            if (!pick) throw new Error('MAL kaydı bulunamadı');
+            malId = pick.mal_id;
+            fillers = []; recaps = []; total = 0;
+            var page = 1, guard = 0;
+            while (guard++ < 25) {
+                await _fillerSleep(380);
+                var d = await _jikanGetJson('https://api.jikan.moe/v4/anime/' + malId + '/episodes?page=' + page);
+                (d.data || []).forEach(function (e) {
+                    var n = e.mal_id;
+                    if (n > total) total = n;
+                    if (e.filler) fillers.push(n);
+                    if (e.recap) recaps.push(n);
+                });
+                if (!(d.pagination && d.pagination.has_next_page)) break;
+                page++;
+            }
+            if (!total) throw new Error('Bölüm verisi yok');
+            _fillerCacheSet(key, { t: Date.now(), f: fillers, r: recaps, n: total, m: malId });
+        }
+        if (_anitrFiller.key !== key) return;       // arada başka animeye geçildi
+        _anitrFiller.fillers = new Set(fillers);
+        _anitrFiller.recaps = new Set(recaps);
+        _anitrFiller.total = total;
+        _anitrFiller.malId = malId;
+        _anitrFiller.ready = true;
+        _anitrFiller.loading = false;
+    } catch (err) {
+        if (_anitrFiller.key !== key) return;
+        console.warn('[Filler]', err && err.message);
+        _anitrFiller.loading = false;
+        _anitrFiller.failed = true;
+    }
+    anitrFillerRender();
+    _fillerMaybeAutoSkip();
+}
+
+function _fillerEpNum(ep, idx) { return parseInt(ep && ep.Number) || (idx + 1); }
+
+function anitrFillerType(epNum) {
+    var f = _anitrFiller;
+    if (!anitrFillerEnabled() || !f.ready) return null;
+    if (f.fillers.has(epNum)) return 'filler';
+    if (f.recaps.has(epNum)) return 'recap';
+    if (f.total && epNum > f.total) return null;
+    return 'canon';
+}
+
+function _fillerHidden(t) {
+    if (_anitrFillerMode === 'canon') return t === 'filler' || t === 'recap';
+    if (_anitrFillerMode === 'filler') return t !== 'filler' && t !== 'recap';
+    return false;
+}
+
+function _fillerBadgeHTML(t, cls) {
+    return '<span class="' + cls + ' ' + t + '">' +
+        (t === 'filler' ? '<i class="fa-solid fa-hourglass-half"></i> Filler' : '<i class="fa-solid fa-rotate-left"></i> Özet') + '</span>';
+}
+
+function anitrFillerSetMode(m) {
+    _anitrFillerMode = m;
+    anitrFillerRender();
+}
+function anitrFillerSetAutoSkip(on) {
+    try { localStorage.setItem('anitr_filler_autoskip', on ? '1' : '0'); } catch (e) {}
+    anitrFillerRender();
+}
+function _fillerAutoSkipOn() { return localStorage.getItem('anitr_filler_autoskip') === '1'; }
+
+function anitrFillerSkipToCanon() {
+    var eps = currentEpisodes || [];
+    for (var j = (typeof currentEIdx === 'number' ? currentEIdx : 0) + 1; j < eps.length; j++) {
+        var t = anitrFillerType(_fillerEpNum(eps[j], j));
+        if (t !== 'filler' && t !== 'recap') {
+            watchEpisode(currentAnime.id, currentAnime.slug, currentAnime.isMovie, eps[j], currentSIdx, j, currentAnime.title, currentAnime.synopsis, currentAnime.img);
+            return true;
+        }
+    }
+    if (typeof showToast === 'function') showToast('Sonraki canon bölüm bulunamadı.');
+    return false;
+}
+
+function _fillerMaybeAutoSkip() {
+    try {
+        if (!anitrFillerEnabled() || !_anitrFiller.ready || !_fillerAutoSkipOn()) return;
+        var wv = document.getElementById('watchView');
+        if (!wv || wv.classList.contains('hidden')) return;
+        var eps = currentEpisodes || [];
+        var idx = currentEIdx;
+        var ep = eps[idx];
+        if (!ep) return;
+        var t = anitrFillerType(_fillerEpNum(ep, idx));
+        var guardKey = _anitrFiller.key + '#' + idx;
+        if (t !== 'filler' && t !== 'recap') return;
+        if (_anitrFillerHandled === guardKey) return;
+        _anitrFillerHandled = guardKey;
+        // Sadece "bir sonraki bölüme" ilerlerken otomatik atla (kullanıcı bilerek filler seçtiyse atlama)
+        if (_anitrFillerPrevIdx >= 0 && idx === _anitrFillerPrevIdx + 1) {
+            if (typeof showToast === 'function') showToast('⏭️ Filler bölüm atlanıyor...');
+            anitrFillerSkipToCanon();
+        }
+    } catch (e) {}
+}
+
+function anitrFillerOnWatch() {
+    if (!anitrFillerEnabled()) { anitrFillerRender(); return; }
+    var prev = _anitrFillerPrevIdx;
+    var cur = (typeof currentEIdx === 'number') ? currentEIdx : -1;
+    anitrFillerEnsure(currentAnime && currentAnime.title, currentSIdx);
+    anitrFillerRender();
+    // _anitrFillerPrevIdx, _fillerMaybeAutoSkip içinde kullanılır; sonrasında güncellenir
+    _anitrFillerPrevIdx = prev;
+    _fillerMaybeAutoSkip();
+    _anitrFillerPrevIdx = cur;
+}
+
+function _fillerCounts(eps) {
+    var cnt = { canon: 0, filler: 0, recap: 0 };
+    eps.forEach(function (ep, i) {
+        var t = anitrFillerType(_fillerEpNum(ep, i));
+        if (t) cnt[t]++;
+    });
+    return cnt;
+}
+
+function anitrFillerRender() {
+    var on = anitrFillerEnabled();
+    var detailBar = document.getElementById('fillerCtrlBar');
+    var wbar = document.getElementById('watchFillerControlBar');
+    var banner = document.getElementById('watchFillerAlertBanner');
+    var cbadge = document.getElementById('watchEpisodeCanonBadge');
+    var f = _anitrFiller;
+
+    // Kapalı ya da veri yoksa her şeyi temizle
+    var clearAll = !on;
+    if (clearAll) {
+        if (detailBar) detailBar.remove();
+        if (wbar) { wbar.innerHTML = ''; wbar.classList.add('hidden'); }
+        if (banner) { banner.innerHTML = ''; banner.classList.add('hidden'); }
+        if (cbadge) cbadge.classList.add('hidden');
+        document.querySelectorAll('.ep-thumb-badge-wrap.fl, .sep2-type-badge').forEach(function (n) { n.remove(); });
+        document.querySelectorAll('.is-filler-ep').forEach(function (n) { n.classList.remove('is-filler-ep'); });
+        document.querySelectorAll('.fl-hidden').forEach(function (n) { n.classList.remove('fl-hidden'); });
+        return;
+    }
+
+    var eps = currentEpisodes || [];
+    var cnt = _fillerCounts(eps);
+    var autoOn = _fillerAutoSkipOn();
+
+    // ── Detay sayfası kontrol çubuğu ──
+    var list = document.getElementById('episodesList');
+    if (list && list.parentNode) {
+        if (f.failed || (!f.loading && !f.ready)) {
+            if (detailBar) detailBar.remove();
+        } else {
+            if (!detailBar) {
+                detailBar = document.createElement('div');
+                detailBar.id = 'fillerCtrlBar';
+                detailBar.className = 'filler-ctrl-bar';
+                list.parentNode.insertBefore(detailBar, list);
+            }
+            if (f.loading) {
+                detailBar.innerHTML = '<div class="filler-ctrl-inner"><div class="filler-ctrl-stats"><span class="filler-stat-chip recap"><i class="fa-solid fa-spinner fa-spin"></i> Filler bilgisi yükleniyor...</span></div></div>';
+            } else {
+                var pill = function (m, label) {
+                    return '<button type="button" class="filler-filter-btn' + (_anitrFillerMode === m ? ' active' : '') + '" onclick="anitrFillerSetMode(\'' + m + '\')">' + label + '</button>';
+                };
+                detailBar.innerHTML =
+                    '<div class="filler-ctrl-inner">' +
+                    '<div class="filler-ctrl-stats">' +
+                    '<span class="filler-stat-chip canon"><i class="fa-solid fa-circle-check"></i> ' + cnt.canon + ' Canon</span>' +
+                    '<span class="filler-stat-chip filler"><i class="fa-solid fa-hourglass-half"></i> ' + cnt.filler + ' Filler</span>' +
+                    (cnt.recap ? '<span class="filler-stat-chip recap"><i class="fa-solid fa-rotate-left"></i> ' + cnt.recap + ' Özet</span>' : '') +
+                    '</div>' +
+                    '<div class="filler-ctrl-actions">' +
+                    '<div class="filler-filter-pills">' + pill('all', 'Tümü') + pill('canon', 'Sadece Canon') + pill('filler', 'Filler') + '</div>' +
+                    '<label class="filler-autoskip-toggle" title="Bir sonraki bölüme geçerken filler bölümleri otomatik atla">' +
+                    '<input type="checkbox" ' + (autoOn ? 'checked' : '') + ' onchange="anitrFillerSetAutoSkip(this.checked)">' +
+                    '<span class="filler-toggle-slider"></span>' +
+                    '<span class="filler-toggle-text"><i class="fa-solid fa-forward"></i> Filler\'ı Otomatik Atla</span>' +
+                    '</label></div></div>';
+            }
+        }
+    }
+
+    // ── Detay sayfası bölüm kartları ──
+    document.querySelectorAll('#episodesList .episode-card').forEach(function (card) {
+        var idx = parseInt(card.dataset.epIdx);
+        var ep = eps[idx];
+        if (!ep) return;
+        var t = anitrFillerType(_fillerEpNum(ep, idx));
+        card.classList.toggle('is-filler-ep', t === 'filler');
+        card.classList.toggle('fl-hidden', f.ready && _fillerHidden(t));
+        var th = card.querySelector('.ep-card-thumb');
+        if (!th) return;
+        var old = th.querySelector('.ep-thumb-badge-wrap.fl');
+        if (old) old.remove();
+        if (t === 'filler' || t === 'recap') {
+            th.insertAdjacentHTML('beforeend', '<div class="ep-thumb-badge-wrap fl">' + _fillerBadgeHTML(t, 'ep-type-badge') + '</div>');
+        }
+    });
+
+    // ── İzleme sayfası yan liste ──
+    document.querySelectorAll('#watchEpisodesList .sep2-card').forEach(function (card, idx) {
+        var ep = eps[idx];
+        if (!ep) return;
+        var t = anitrFillerType(_fillerEpNum(ep, idx));
+        card.classList.toggle('is-filler-ep', t === 'filler');
+        card.classList.toggle('fl-hidden', f.ready && _fillerHidden(t) && idx !== currentEIdx);
+        var row = card.querySelector('.sep2-badges-row');
+        if (!row) {
+            var b = card.querySelector('.sep2-info > .sep2-badge');
+            if (b) {
+                row = document.createElement('div');
+                row.className = 'sep2-badges-row';
+                b.parentNode.insertBefore(row, b);
+                row.appendChild(b);
+            }
+        }
+        if (row) {
+            var o = row.querySelector('.sep2-type-badge');
+            if (o) o.remove();
+            if (t === 'filler' || t === 'recap') row.insertAdjacentHTML('beforeend', _fillerBadgeHTML(t, 'sep2-type-badge'));
+        }
+    });
+
+    // ── İzleme sayfası yan kontrol çubuğu ──
+    if (wbar) {
+        if (f.ready && eps.length) {
+            wbar.classList.remove('hidden');
+            var wp = function (m, label) {
+                return '<button type="button" class="wf-pill' + (_anitrFillerMode === m ? ' active' : '') + '" onclick="anitrFillerSetMode(\'' + m + '\')">' + label + '</button>';
+            };
+            wbar.innerHTML =
+                '<div class="watch-filler-row">' +
+                '<div class="watch-filler-pills">' + wp('all', 'Tümü') + wp('canon', 'Canon') + wp('filler', 'Filler') + '</div>' +
+                '<label class="wf-skip-label" title="Filler bölümleri otomatik atla"><input type="checkbox" ' + (autoOn ? 'checked' : '') + ' onchange="anitrFillerSetAutoSkip(this.checked)"> Atla</label>' +
+                '</div>' +
+                '<div class="watch-filler-summary"><span class="wf-sum canon">' + cnt.canon + ' canon</span><span class="wf-sum filler">' + cnt.filler + ' filler' + (cnt.recap ? ' · ' + cnt.recap + ' özet' : '') + '</span></div>';
+        } else {
+            wbar.innerHTML = '';
+            wbar.classList.add('hidden');
+        }
+    }
+
+    // ── İzleme sayfası uyarı + rozet ──
+    var curIdx = (typeof currentEIdx === 'number') ? currentEIdx : -1;
+    var curEp = eps[curIdx];
+    var ct = (curEp && f.ready) ? anitrFillerType(_fillerEpNum(curEp, curIdx)) : null;
+    if (cbadge) {
+        if (ct) {
+            cbadge.className = 'wd2-badge-canon ' + ct;
+            cbadge.innerHTML = ct === 'canon' ? '<i class="fa-solid fa-circle-check"></i> Canon'
+                : ct === 'filler' ? '<i class="fa-solid fa-hourglass-half"></i> Filler'
+                : '<i class="fa-solid fa-rotate-left"></i> Özet';
+        } else {
+            cbadge.classList.add('hidden');
+        }
+    }
+    if (banner) {
+        if (ct === 'filler' || ct === 'recap') {
+            banner.classList.remove('hidden');
+            banner.innerHTML =
+                '<div class="wfa-left"><i class="fa-solid fa-triangle-exclamation"></i>' +
+                '<span><b>' + (ct === 'filler' ? 'Filler bölüm' : 'Özet bölümü') + '</b> — ' +
+                (ct === 'filler' ? 'ana hikayeyle doğrudan bağlantısı yok.' : 'önceki bölümlerin özeti.') + '</span></div>' +
+                '<div class="wfa-actions"><button type="button" class="wfa-skip-btn" onclick="anitrFillerSkipToCanon()"><i class="fa-solid fa-forward"></i> Sonraki Canon Bölüme Geç</button></div>';
+        } else {
+            banner.innerHTML = '';
+            banner.classList.add('hidden');
+        }
+    }
+}
+
+window.anitrFillerRender = anitrFillerRender;
+window.anitrFillerSetMode = anitrFillerSetMode;
+window.anitrFillerSetAutoSkip = anitrFillerSetAutoSkip;
+window.anitrFillerSkipToCanon = anitrFillerSkipToCanon;

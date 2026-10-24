@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -23,9 +25,13 @@ type AnimeBasic struct {
 			LargeImageURL string `json:"large_image_url"`
 		} `json:"jpg"`
 	} `json:"images"`
-	Score  float64 `json:"score"`
-	Year   int     `json:"year"`
-	Aired  struct {
+	Score           float64 `json:"score"`
+	Year            int     `json:"year"`
+	WatchedEpisodes int     `json:"num_watched_episodes,omitempty"`
+	TotalEpisodes   int     `json:"anime_num_episodes,omitempty"`
+	MediaType       string  `json:"anime_media_type_string,omitempty"`
+	ListStatus      int     `json:"list_status,omitempty"`
+	Aired           struct {
 		From string `json:"from"`
 	} `json:"aired"`
 	Genres []struct {
@@ -212,9 +218,84 @@ func GetUserWatchlist(username string) ([]AnimeBasic, error) {
 }
 
 
+var (
+	userProfileCache   = make(map[string]cachedUserProfile)
+	userProfileCacheMu sync.RWMutex
+)
+
+type cachedUserProfile struct {
+	Data      map[string]interface{}
+	FetchedAt time.Time
+}
+
+// GetUserProfile fetches the full user profile, anime statistics, and favorites from Jikan v4 API.
+func GetUserProfile(username string) (map[string]interface{}, error) {
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return nil, fmt.Errorf("kullanıcı adı boş olamaz")
+	}
+
+	key := strings.ToLower(username)
+	userProfileCacheMu.RLock()
+	if cached, ok := userProfileCache[key]; ok && time.Since(cached.FetchedAt) < 5*time.Minute {
+		userProfileCacheMu.RUnlock()
+		return cached.Data, nil
+	}
+	userProfileCacheMu.RUnlock()
+
+	client := &http.Client{Timeout: 12 * time.Second}
+	apiURL := fmt.Sprintf("https://api.jikan.moe/v4/users/%s/full", url.PathEscape(username))
+
+	var resp *http.Response
+	var err error
+	for attempt := 0; attempt < 2; attempt++ {
+		req, _ := http.NewRequest("GET", apiURL, nil)
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+		resp, err = client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode == http.StatusTooManyRequests {
+			resp.Body.Close()
+			time.Sleep(1100 * time.Millisecond)
+			continue
+		}
+		break
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("MyAnimeList kullanıcısı bulunamadı: %s", username)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Jikan profil hatası (HTTP %d)", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var raw struct {
+		Data map[string]interface{} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &raw); err != nil || raw.Data == nil {
+		return nil, fmt.Errorf("Profil verisi çözümlenemedi")
+	}
+
+	userProfileCacheMu.Lock()
+	userProfileCache[key] = cachedUserProfile{
+		Data:      raw.Data,
+		FetchedAt: time.Now(),
+	}
+	userProfileCacheMu.Unlock()
+
+	return raw.Data, nil
+}
+
 // GetUserAnimeList fetches any status of a user's anime list directly from MyAnimeList
 // username: MAL username
-// status: watching, completed, onhold, dropped, plantowatch
+// status: watching, completed, onhold, dropped, plantowatch, all
 func GetUserAnimeList(username string, status string) ([]AnimeBasic, error) {
 	if username == "" {
 		return nil, fmt.Errorf("kullanıcı adı boş olamaz")
@@ -222,14 +303,17 @@ func GetUserAnimeList(username string, status string) ([]AnimeBasic, error) {
 
 	// Map status from string format to MAL internal status ID
 	malStatusMap := map[string]int{
-		"watching":    1,
-		"completed":   2,
-		"onhold":      3,
-		"dropped":     4,
-		"plantowatch": 6,
+		"watching":      1,
+		"completed":     2,
+		"onhold":        3,
+		"on_hold":       3,
+		"dropped":       4,
+		"plantowatch":   6,
+		"plan_to_watch": 6,
+		"all":           7,
 	}
-	
-	statusID, ok := malStatusMap[status]
+
+	statusID, ok := malStatusMap[strings.ToLower(status)]
 	if !ok {
 		statusID = 1 // Default to watching
 	}
@@ -240,15 +324,15 @@ func GetUserAnimeList(username string, status string) ([]AnimeBasic, error) {
 
 	for {
 		// MAL internal API allows fetching up to 300 items per request
-		url := fmt.Sprintf("https://myanimelist.net/animelist/%s/load.json?offset=%d&status=%d", username, offset, statusID)
-		
-		req, err := http.NewRequest("GET", url, nil)
+		reqURL := fmt.Sprintf("https://myanimelist.net/animelist/%s/load.json?offset=%d&status=%d", url.PathEscape(username), offset, statusID)
+
+		req, err := http.NewRequest("GET", reqURL, nil)
 		if err != nil {
 			return nil, fmt.Errorf("istek oluşturulamadı: %v", err)
 		}
 		// Mimic browser to prevent being blocked by Cloudflare/MAL
 		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-		
+
 		resp, err := client.Do(req)
 		if err != nil {
 			if offset == 0 {
@@ -256,7 +340,7 @@ func GetUserAnimeList(username string, status string) ([]AnimeBasic, error) {
 			}
 			break
 		}
-		
+
 		if resp.StatusCode == 404 || resp.StatusCode == 400 {
 			resp.Body.Close()
 			if offset == 0 {
@@ -264,7 +348,7 @@ func GetUserAnimeList(username string, status string) ([]AnimeBasic, error) {
 			}
 			break
 		}
-		
+
 		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
 			if offset == 0 {
@@ -279,12 +363,17 @@ func GetUserAnimeList(username string, status string) ([]AnimeBasic, error) {
 			break
 		}
 
-		// MAL's load.json returns an array directly
+		// MAL's load.json returns an array directly (anime_title can occasionally be numeric like 86)
 		var malData []struct {
-			AnimeID        int     `json:"anime_id"`
-			AnimeTitle     string  `json:"anime_title"`
-			AnimeImagePath string  `json:"anime_image_path"`
-			Score          float64 `json:"score"`
+			AnimeID            int         `json:"anime_id"`
+			AnimeTitle         interface{} `json:"anime_title"`
+			AnimeTitleEng      interface{} `json:"anime_title_eng"`
+			AnimeImagePath     string      `json:"anime_image_path"`
+			Score              float64     `json:"score"`
+			NumWatchedEpisodes int         `json:"num_watched_episodes"`
+			AnimeNumEpisodes   int         `json:"anime_num_episodes"`
+			AnimeMediaTypeStr  string      `json:"anime_media_type_string"`
+			Status             int         `json:"status"`
 		}
 
 		if err := json.Unmarshal(body, &malData); err != nil {
@@ -300,38 +389,45 @@ func GetUserAnimeList(username string, status string) ([]AnimeBasic, error) {
 		}
 
 		for _, item := range malData {
+			titleStr := fmt.Sprintf("%v", item.AnimeTitle)
+			titleEngStr := ""
+			if item.AnimeTitleEng != nil {
+				titleEngStr = fmt.Sprintf("%v", item.AnimeTitleEng)
+			}
 			a := AnimeBasic{
-				MalID: item.AnimeID,
-				Title: item.AnimeTitle,
-				Score: item.Score,
+				MalID:           item.AnimeID,
+				Title:           titleStr,
+				TitleEnglish:    titleEngStr,
+				Score:           item.Score,
+				WatchedEpisodes: item.NumWatchedEpisodes,
+				TotalEpisodes:   item.AnimeNumEpisodes,
+				MediaType:       item.AnimeMediaTypeStr,
+				ListStatus:      item.Status,
 			}
 			// Map image
 			img := item.AnimeImagePath
-			// Sometimes MAL returns smaller images /r/x/images, we can remove the /r/ dimensions to get high quality
-			// e.g. https://cdn.myanimelist.net/r/192x272/images/anime/1244/138851.jpg -> https://cdn.myanimelist.net/images/anime/1244/138851.jpg
 			if strings.Contains(img, "/r/") {
 				parts := strings.Split(img, "/images/")
 				if len(parts) == 2 {
 					img = "https://cdn.myanimelist.net/images/" + parts[1]
 				}
 			}
-			// Remove query parameters like ?s=...
 			if idx := strings.Index(img, "?"); idx != -1 {
 				img = img[:idx]
 			}
-			
+
 			a.Images.JPG.ImageURL = img
 			a.Images.JPG.LargeImageURL = img
-			
+
 			results = append(results, a)
 		}
 
 		// Pagination: MAL returns max 300 per page
-		if len(malData) < 300 {
+		if len(malData) < 300 || offset >= 600 {
 			break
 		}
 		offset += 300
-		time.Sleep(500 * time.Millisecond) // Be nice to the server
+		time.Sleep(350 * time.Millisecond)
 	}
 
 	return results, nil
