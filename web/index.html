@@ -12,7 +12,7 @@
     <!-- Video.js (replaces Plyr + HLS.js) -->
     <link rel="stylesheet" href="https://vjs.zencdn.net/8.10.0/video-js.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/videojs-contrib-quality-levels@4.1.0/dist/videojs-contrib-quality-levels.min.css" onerror="this.remove()">
-    <link rel="stylesheet" href="style.css?v=9.0.0">
+    <link rel="stylesheet" href="style.css?v=9.1.0">
     <link rel="stylesheet" href="search.css?v=8.7.0">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -248,44 +248,164 @@
     <!-- â•Ââ•Â HOME VIEW â•Ââ•Â -->
     <main id="homeView">
 
-        <!-- Netflix Hero Banner -->
-        <div id="cinematicHero" class="nf-hero">
-            <div id="cinematicHeroBg" class="nf-hero-bg"></div>
-            <div class="nf-hero-overlay"></div>
-            <button class="nf-hero-nav nf-nav-prev" onclick="prevCinematicHero()"><i class="fa-solid fa-chevron-left"></i></button>
-            <button class="nf-hero-nav nf-nav-next" onclick="nextCinematicHero()"><i class="fa-solid fa-chevron-right"></i></button>
-            <div class="nf-hero-content">
-                <div class="nf-hero-badge" id="cinematicBadge">ğŸ”¥ Trend</div>
-                <h1 id="cinematicTitle">Yükleniyor...</h1>
-                <div class="nf-hero-meta" id="cinematicMeta"></div>
-                <p id="cinematicDesc"></p>
-                <div class="nf-hero-actions" id="cinematicActions">
-                    <button class="btn-primary" onclick="loadRandom()"><lord-icon src="https://cdn.lordicon.com/rsbokaso.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon> Şansına Güven</button>
+        <!-- Modern Cinematic Hero Showcase -->
+        <div id="cinematicHero" class="hero-v2-showcase">
+            <!-- Dual Cross-Fade Backdrop Layers -->
+            <div id="heroBgA" class="hero-v2-bg layer-a active"></div>
+            <div id="heroBgB" class="hero-v2-bg layer-b"></div>
+            <div id="cinematicHeroBg" style="display:none;"></div>
+            
+            <!-- Ambient Lighting Glow (Dynamic Anime Palette) -->
+            <div id="heroAmbientGlow" class="hero-v2-ambient"></div>
+            <!-- Multi-layer Vignette & Bottom Blends -->
+            <div class="hero-v2-vignette"></div>
+
+            <!-- Sleek Glassmorphic Floating Nav Buttons -->
+            <button class="hero-v2-nav prev" onclick="prevCinematicHero()" title="Önceki (←)">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button class="hero-v2-nav next" onclick="nextCinematicHero()" title="Sonraki (→)">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+
+            <!-- Main Hero Grid Container -->
+            <div class="hero-v2-container">
+                <!-- Left: Big Anime Info & CTAs -->
+                <div class="hero-v2-left">
+                    <div class="hero-v2-kicker">
+                        <span class="hero-live-pill"><span class="hero-live-dot"></span><span id="cinematicBadge">🔥 Günün Trendi</span></span>
+                        <span class="hero-quality-pill"><i class="fa-solid fa-crown"></i> Özel Seçki</span>
+                        <span class="hero-audio-pill"><i class="fa-solid fa-headphones"></i> Dublaj &amp; Altyazı</span>
+                    </div>
+
+                    <h1 id="cinematicTitle" class="hero-v2-title">Anime Yükleniyor...</h1>
+
+                    <!-- Dynamic Meta Chips (Puan, Yıl, Bölüm, vb.) -->
+                    <div id="cinematicMeta" class="hero-v2-meta"></div>
+
+                    <!-- Genre Pills -->
+                    <div id="cinematicGenres" class="hero-v2-genres"></div>
+
+                    <!-- Synopsis -->
+                    <p id="cinematicDesc" class="hero-v2-desc"></p>
+
+                    <!-- Action Buttons -->
+                    <div id="cinematicActions" class="hero-v2-actions">
+                        <button class="hero-btn-play" onclick="loadRandom()">
+                            <i class="fa-solid fa-play"></i><span>Hemen İzle</span>
+                        </button>
+                        <button class="hero-btn-info" onclick="loadRandom()">
+                            <i class="fa-solid fa-circle-info"></i><span>Detaylar</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right: Interactive Mini-Preview Carousel (Desktop) -->
+                <div class="hero-v2-right">
+                    <div class="hero-preview-header">
+                        <span class="hph-title"><i class="fa-solid fa-fire-flame-curved"></i> Trend Sıralaması</span>
+                        <span class="hero-preview-counter" id="heroPreviewCounter">1 / 8</span>
+                    </div>
+                    <div class="hero-preview-list" id="heroSideShowcase"></div>
                 </div>
             </div>
-            <div class="nf-hero-dots" id="cinematicDots"></div>
-            <div class="hx-counter" id="heroCounter"></div>
-            <div class="nf-hero-progress-container" id="heroProgressContainer"></div>
+
+            <!-- Bottom Progress Timer & Dots -->
+            <div class="hero-v2-bottom-bar">
+                <div class="hero-v2-timer">
+                    <div class="hero-v2-timer-fill" id="heroTimerFill"></div>
+                </div>
+                <div class="hero-v2-controls">
+                    <div class="hero-v2-dots" id="cinematicDots"></div>
+                    <div class="hero-v2-counter" id="heroCounter"></div>
+                </div>
+            </div>
+            <!-- Backward compatibility elements for legacy scripts -->
+            <div id="heroProgressContainer" style="display:none;"></div>
         </div>
 
-        <!-- Continue Watching Row -->
-        <div id="continueWatching" class="nf-section hidden">
-            <h2 class="nf-section-title">Kaldığın Yerden Devam Et</h2>
-            <div class="nf-row-wrapper">
-                <button class="nf-row-btn nf-btn-prev" onclick="scrollCarousel(this, -1)"><i class="fa-solid fa-chevron-left"></i></button>
-                <div id="cwContainer" class="nf-row"></div>
-                <button class="nf-row-btn nf-btn-next" onclick="scrollCarousel(this, 1)"><i class="fa-solid fa-chevron-right"></i></button>
+        <!-- Quick Discovery Bar (Hızlı Keşif Şeridi) -->
+        <div class="home-quick-bar">
+            <div class="hq-container">
+                <button class="hq-chip active" onclick="homeScrollTo('sec-trending')">
+                    <i class="fa-solid fa-fire"></i><span>Trendler</span>
+                </button>
+                <button class="hq-chip" onclick="homeScrollTo('sec-top10')">
+                    <i class="fa-solid fa-trophy"></i><span>Top 10 Sıralama</span>
+                </button>
+                <button class="hq-chip" onclick="homeScrollTo('sec-seasonal')">
+                    <i class="fa-solid fa-leaf"></i><span>Yeni Sezon</span>
+                </button>
+                <button class="hq-chip" onclick="showScheduleView()">
+                    <i class="fa-solid fa-calendar-week"></i><span>Yayın Takvimi</span>
+                </button>
+                <button class="hq-chip" onclick="showAnimeListView()">
+                    <i class="fa-solid fa-layer-group"></i><span>Tüm Animeler</span>
+                </button>
+                <button class="hq-chip" onclick="loadRandom()">
+                    <i class="fa-solid fa-dice"></i><span>Rastgele Seç</span>
+                </button>
+                <button class="hq-chip" onclick="openTraceMoeModal()">
+                    <i class="fa-solid fa-camera"></i><span>Görselden Bul</span>
+                </button>
             </div>
         </div>
 
-        <!-- Main Rows (Categories) -->
-        <div id="mainContent" class="nf-content"></div>
+        <!-- Continue Watching Row (Kaldığın Yerden Devam Et) -->
+        <div id="continueWatching" class="home-section hidden">
+            <div class="home-section-header">
+                <div class="hsh-left">
+                    <div class="hsh-icon-wrap hsh-cw-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                    <div>
+                        <h2 class="home-section-title">Kaldığın Yerden Devam Et</h2>
+                        <span class="home-section-sub">İzlemeye bıraktığın bölüm ve dakikadan anında devam et</span>
+                    </div>
+                </div>
+            </div>
+            <div class="home-carousel-wrap">
+                <button class="h-car-btn prev" onclick="scrollCarousel(this, -1)"><i class="fa-solid fa-chevron-left"></i></button>
+                <div id="cwContainer" class="home-row home-cw-row"></div>
+                <button class="h-car-btn next" onclick="scrollCarousel(this, 1)"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
 
-        <!-- 3D Scroll Footer -->
+        <!-- Main Categories & Rails -->
+        <div id="mainContent" class="home-content"></div>
+
+        <!-- Platform Highlights / Feature Footer Strip -->
+        <div class="home-features-strip">
+            <div class="hf-card">
+                <div class="hf-icon"><i class="fa-solid fa-database"></i></div>
+                <div class="hf-info">
+                    <h4>3.100+ Anime Arşivi</h4>
+                    <p>Anizium, AnimeciX ve AniList tek platformda</p>
+                </div>
+            </div>
+            <div class="hf-card">
+                <div class="hf-icon"><i class="fa-solid fa-film"></i></div>
+                <div class="hf-info">
+                    <h4>Ultra HD 1080p &amp; 4K</h4>
+                    <p>Yüksek bitrate ve kristal netliğinde oynatıcı</p>
+                </div>
+            </div>
+            <div class="hf-card">
+                <div class="hf-icon"><i class="fa-solid fa-headphones"></i></div>
+                <div class="hf-info">
+                    <h4>Türkçe Dublaj &amp; Altyazı</h4>
+                    <p>Anında dil değiştirme ve senkronize altyazı</p>
+                </div>
+            </div>
+            <div class="hf-card">
+                <div class="hf-icon"><i class="fa-solid fa-users"></i></div>
+                <div class="hf-info">
+                    <h4>Watch2Gether Birlikte İzle</h4>
+                    <p>Arkadaşlarınla anlık sohbetli senkronize izleme</p>
+                </div>
+            </div>
         </div>
     </main>
 
-    <!-- â•Ââ•Â ANIME LIST VIEW â•Ââ•Â -->
+    <!-- ════ ANIME LIST VIEW ════ -->
     <main id="animeListView" class="hidden">
         <!-- ── KATALOG HEADER ── -->
         <div class="catalog-header">
@@ -1400,7 +1520,7 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="app.js?v=9.0.0"></script>
+<script src="app.js?v=9.1.0"></script>
 <!-- â•Ââ•Â MODERN ANITR SOSYAL HUB MODAL â•Ââ•Â -->
 <div id="friendsModal" class="modal hidden social-hub-backdrop" onclick="if(event.target===this) closeFriendsModal()">
     <div class="modal-content social-hub-modal social-v3-shell">
