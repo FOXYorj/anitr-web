@@ -26,7 +26,7 @@
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/videojs-contrib-quality-levels@4.1.0/dist/videojs-contrib-quality-levels.min.css" onerror="this.remove()">
 
-    <link rel="stylesheet" href="style.css?v=9.9.9">
+    <link rel="stylesheet" href="style.css?v=10.0.0">
 
     <link rel="stylesheet" href="social.css?v=9.9.5">
 
@@ -341,6 +341,7 @@
                 <button type="button" class="adrawer-item" id="aiModalBtnNav" onclick="closeNavDrawer();showAIModal()"><i class="fa-solid fa-wand-magic-sparkles"></i><span>Yapay Zeka</span></button>
 
                 <button type="button" class="adrawer-item" id="malBtnNav" onclick="closeNavDrawer();showMALView()"><i class="fa-solid fa-list-check"></i><span>MyAnimeList</span></button>
+                <button type="button" class="adrawer-item" id="aboutBtnDrawer" onclick="closeNavDrawer();showAboutView();"><i class="fa-solid fa-circle-info"></i><span>Anitr Hakkında</span></button>
 
             </div>
 
@@ -1201,6 +1202,258 @@
 
     </main>
 
+
+
+
+    <!-- ════ ABOUT VIEW (ANİTR HAKKINDA) ════ -->
+    <main id="aboutView" class="hidden about-page">
+        <!-- Ambient Glow Arka Planları -->
+        <div class="about-ambient-orb about-orb-1"></div>
+        <div class="about-ambient-orb about-orb-2"></div>
+        <div class="about-ambient-grid"></div>
+
+        <div class="about-container">
+            <!-- 1. Hero Section -->
+            <section class="about-hero">
+                <div class="about-badge">
+                    <span class="about-badge-dot"></span>
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>2026 EDITION • ANITR WEB PLATFORMU</span>
+                </div>
+                <h1 class="about-title">
+                    Anime Dünyasına Açılan <br>
+                    <span class="about-title-gradient">En Hızlı &amp; En Akıcı</span> Kapı.
+                </h1>
+                <p class="about-lead">
+                    Anitr; sıfır reklam politikası, akıllı çoklu kaynak altyapısı, özgür Türkçe çeviri ekibi seçimi,
+                    arkadaşlarınla senkronize Birlikte İzle (W2G) odaları ve sinematik ambiyans aydınlatmasıyla donatılmış
+                    yeni nesil anime izleme platformudur.
+                </p>
+                <div class="about-hero-actions">
+                    <button type="button" class="about-btn about-btn-primary" onclick="showAnimeListView();setAnavActive('anime');">
+                        <i class="fa-solid fa-play"></i><span>Animeleri Keşfet</span>
+                    </button>
+                    <button type="button" class="about-btn about-btn-secondary" onclick="showOnlineRooms();setAnavActive('together');">
+                        <i class="fa-solid fa-tv"></i><span>Birlikte İzle</span>
+                    </button>
+                    <button type="button" class="about-btn about-btn-ghost" onclick="document.getElementById('aboutFeaturesSection').scrollIntoView({behavior:'smooth'});">
+                        <i class="fa-solid fa-layer-group"></i><span>Özellikleri İncele</span>
+                    </button>
+                </div>
+
+                <!-- Hero Metrikleri -->
+                <div class="about-metrics-bar">
+                    <div class="about-metric">
+                        <span class="about-metric-val">3+</span>
+                        <span class="about-metric-lbl">Alternatif Kaynak</span>
+                    </div>
+                    <div class="about-metric-sep"></div>
+                    <div class="about-metric">
+                        <span class="about-metric-val">Seçilebilir</span>
+                        <span class="about-metric-lbl">Çeviri Grupları</span>
+                    </div>
+                    <div class="about-metric-sep"></div>
+                    <div class="about-metric">
+                        <span class="about-metric-val">Canlı W2G</span>
+                        <span class="about-metric-lbl">Senkronize İzleme</span>
+                    </div>
+                    <div class="about-metric-sep"></div>
+                    <div class="about-metric">
+                        <span class="about-metric-val">%100</span>
+                        <span class="about-metric-lbl">Reklamsız Deneyim</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Neden Anitr? (3 Büyük Değer Kartı) -->
+            <section class="about-section">
+                <div class="about-section-header">
+                    <span class="about-section-tag"><i class="fa-solid fa-star"></i> Neden Anitr?</span>
+                    <h2 class="about-section-title">Geleneksel Sitelerden Neden Farklıyız?</h2>
+                    <p class="about-section-desc">Anime keyfinizi bölen reklamları ve kısıtlamaları geride bırakın.</p>
+                </div>
+
+                <div class="about-reasons-grid">
+                    <div class="about-reason-card">
+                        <div class="about-card-glow"></div>
+                        <div class="about-reason-icon" style="--card-color: #6366f1;">
+                            <i class="fa-solid fa-bolt-lightning"></i>
+                        </div>
+                        <h3>Sıfır Reklam, Kesintisiz Akış</h3>
+                        <p>Zorunlu popup'lar, yanıltıcı indirme butonları veya video önü reklamlar yok. Tek tıkla doğrudan animeye ve yüksek kaliteli akışa odaklanırsınız.</p>
+                        <div class="about-card-pill"><i class="fa-solid fa-shield-halved"></i> %100 Saf Deneyim</div>
+                    </div>
+
+                    <div class="about-reason-card">
+                        <div class="about-card-glow"></div>
+                        <div class="about-reason-icon" style="--card-color: #8b5cf6;">
+                            <i class="fa-solid fa-language"></i>
+                        </div>
+                        <h3>Çeviri Ekibini Sen Seç</h3>
+                        <p>Farklı fansubların emeklerine saygı duyuyoruz. AnimeciX kaynağında aynı bölüm için SeiCode, Eternal, Nino Çeviri gibi dilediğin grubu seçerek izleyebilirsin.</p>
+                        <div class="about-card-pill"><i class="fa-solid fa-users"></i> Fansub Özgürlüğü</div>
+                    </div>
+
+                    <div class="about-reason-card">
+                        <div class="about-card-glow"></div>
+                        <div class="about-reason-icon" style="--card-color: #ec4899;">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        </div>
+                        <h3>Sinematik Ambiyans &amp; W2G</h3>
+                        <p>Video sahnelerinin renklerine göre odanızı aydınlatan dinamik Ambilight ışığı ve arkadaşlarınızla kilometrelerce uzakta olsanız bile aynı anda izleme keyfi.</p>
+                        <div class="about-card-pill"><i class="fa-solid fa-circle-play"></i> Yeni Nesil Oynatıcı</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Öne Çıkan Özellikler (2026 Bento Grid) -->
+            <section class="about-section" id="aboutFeaturesSection">
+                <div class="about-section-header">
+                    <span class="about-section-tag"><i class="fa-solid fa-cubes"></i> Yetenekler &amp; Araçlar</span>
+                    <h2 class="about-section-title">Anitr'da Neler Kullanabilirsin?</h2>
+                    <p class="about-section-desc">Anime izleme alışkanlığınızı zirveye taşıyan zengin özellik seti.</p>
+                </div>
+
+                <div class="about-bento-grid">
+                    <!-- Kart 1: W2G -->
+                    <div class="about-bento-item bento-large">
+                        <div class="bento-badge"><i class="fa-solid fa-tv"></i> Birlikte İzle</div>
+                        <h3>Canlı Watch Together (W2G) Odaları</h3>
+                        <p>Arkadaşlarınla anında oda kur veya var olan bir odaya katıl. Video oynatma, duraklatma ve geri sarma işlemleri milisaniyelik WebSocket ile senkronize çalışır. Dahili oda sohbetiyle anlık sohbet edin.</p>
+                        <div class="bento-tags">
+                            <span><i class="fa-solid fa-check"></i> Anlık Senkronizasyon</span>
+                            <span><i class="fa-solid fa-check"></i> Canlı Sohbet</span>
+                            <span><i class="fa-solid fa-check"></i> Kolay Oda Linki</span>
+                        </div>
+                    </div>
+
+                    <!-- Kart 2: Ambiyans & Player -->
+                    <div class="about-bento-item">
+                        <div class="bento-badge"><i class="fa-solid fa-expand"></i> Ambilight &amp; Sinema</div>
+                        <h3>Dinamik Ambiyans Işığı</h3>
+                        <p>Video karesindeki renkleri gerçek zamanlı tuval analiziyle yakalar ve oynatıcı arkasına yumuşak bir neon ışık huzmesi olarak yayar.</p>
+                    </div>
+
+                    <!-- Kart 3: Çeviri Grubu & Çoklu Kaynak -->
+                    <div class="about-bento-item">
+                        <div class="bento-badge"><i class="fa-solid fa-layer-group"></i> Çoklu Kaynak</div>
+                        <h3>AnimeciX, Anizium &amp; Çeviri Seçici</h3>
+                        <p>Bir kaynakta sorun mu var? Anında diğer kaynağa geçin. AnimeciX'te dilediğiniz çeviri ekibini tek tıkla seçin.</p>
+                    </div>
+
+                    <!-- Kart 4: Takvim -->
+                    <div class="about-bento-item">
+                        <div class="bento-badge"><i class="fa-regular fa-calendar"></i> Canlı Takvim</div>
+                        <h3>Haftalık Yayın Akışı</h3>
+                        <p>Hangi gün, hangi anime, saat kaçta yayınlanacak? Türkiye saatine göre gün gün listelenen dinamik yayın takvimi.</p>
+                    </div>
+
+                    <!-- Kart 5: AI Asistanı -->
+                    <div class="about-bento-item">
+                        <div class="bento-badge"><i class="fa-solid fa-brain"></i> Yapay Zeka</div>
+                        <h3>AI Anime Asistanı</h3>
+                        <p>Ruh halinizi veya sevdiğiniz animeleri söyleyin, yapay zeka size nokta atışı anime tavsiyeleri üretsin.</p>
+                    </div>
+
+                    <!-- Kart 6: İstatistikler & Geçmiş -->
+                    <div class="about-bento-item">
+                        <div class="bento-badge"><i class="fa-solid fa-chart-pie"></i> Kütüphane</div>
+                        <h3>Otomatik Devam &amp; İstatistikler</h3>
+                        <p>Hangi animede, kaçıncı dakikada kaldığınız otomatik saklanır. Toplam maraton sürenizi ve izleme istatistiklerinizi görün.</p>
+                    </div>
+
+                    <!-- Kart 7: Haberler -->
+                    <div class="about-bento-item">
+                        <div class="bento-badge"><i class="fa-solid fa-newspaper"></i> Haber Merkezi</div>
+                        <h3>Güncel Anime Haberleri</h3>
+                        <p>Yeni sezon duyuruları, stüdyo açıklamaları ve vizyona girecek filmler tek bir haber akışında parmaklarınızın ucunda.</p>
+                    </div>
+
+                    <!-- Kart 8: Arama -->
+                    <div class="about-bento-item">
+                        <div class="bento-badge"><i class="fa-solid fa-magnifying-glass"></i> Hızlı Arama</div>
+                        <h3>Işık Hızında Arama (Ctrl+K)</h3>
+                        <p>Binlerce anime arasında tür, yıl ve kaynak filtreleriyle saniyeler içinde aradığınız içeriği bulun.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. Ekran Görüntüleri ile Canlı Tanıtım (Interactive Mockup Showcase) -->
+            <section class="about-section">
+                <div class="about-section-header">
+                    <span class="about-section-tag"><i class="fa-solid fa-images"></i> Görsel Vitrin</span>
+                    <h2 class="about-section-title">Anitr Arayüzünü Keşfet</h2>
+                    <p class="about-section-desc">Karanlık tema, akıcı geçişler ve 2026'nın modern cam efektleri.</p>
+                </div>
+
+                <div class="about-showcase-wrapper">
+                    <!-- Sekmeler -->
+                    <div class="about-tabs">
+                        <button type="button" class="about-tab active" data-img="/assets/showcase-home.png" data-url="https://anitr.app/home" onclick="switchShowcaseTab(this, '/assets/showcase-home.png', 'https://anitr.app/home')">
+                            <i class="fa-solid fa-house"></i><span>Ana Sayfa</span>
+                        </button>
+                        <button type="button" class="about-tab" data-img="/assets/showcase-anime.png" data-url="https://anitr.app/catalog" onclick="switchShowcaseTab(this, '/assets/showcase-anime.png', 'https://anitr.app/catalog')">
+                            <i class="fa-solid fa-layer-group"></i><span>Anime Kataloğu</span>
+                        </button>
+                        <button type="button" class="about-tab" data-img="/assets/showcase-schedule.png" data-url="https://anitr.app/schedule" onclick="switchShowcaseTab(this, '/assets/showcase-schedule.png', 'https://anitr.app/schedule')">
+                            <i class="fa-regular fa-calendar"></i><span>Yayın Takvimi</span>
+                        </button>
+                        <button type="button" class="about-tab" data-img="/assets/showcase-news.png" data-url="https://anitr.app/news" onclick="switchShowcaseTab(this, '/assets/showcase-news.png', 'https://anitr.app/news')">
+                            <i class="fa-solid fa-newspaper"></i><span>Haberler</span>
+                        </button>
+                        <button type="button" class="about-tab" data-img="/assets/anitr-preview.gif" data-url="https://anitr.app/player" onclick="switchShowcaseTab(this, '/assets/anitr-preview.gif', 'https://anitr.app/player')">
+                            <i class="fa-solid fa-play"></i><span>Canlı Önizleme</span>
+                        </button>
+                    </div>
+
+                    <!-- 2026 Browser Mockup Frame -->
+                    <div class="about-mockup-frame">
+                        <div class="about-mockup-topbar">
+                            <div class="about-mockup-dots">
+                                <span></span><span></span><span></span>
+                            </div>
+                            <div class="about-mockup-url">
+                                <i class="fa-solid fa-lock"></i>
+                                <span id="aboutMockupUrlText">https://anitr.app/home</span>
+                            </div>
+                            <div class="about-mockup-actions">
+                                <i class="fa-solid fa-arrow-rotate-right"></i>
+                            </div>
+                        </div>
+                        <div class="about-mockup-content">
+                            <img id="aboutShowcaseImg" src="/assets/showcase-home.png" alt="Anitr Ekran Görüntüsü" class="about-showcase-image" loading="lazy">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. Gelecek Yol Haritası (Sade & Teaser) -->
+            <section class="about-section">
+                <div class="about-roadmap-card">
+                    <div class="about-roadmap-icon">
+                        <i class="fa-solid fa-rocket"></i>
+                    </div>
+                    <div class="about-roadmap-content">
+                        <h3>Gelecek Yol Haritası &amp; Yeni Özellikler</h3>
+                        <p>Anitr deneyimini daha da ileriye taşımak için topluluk geri bildirimleri doğrultusunda yeni geliştirmeler üzerinde titizlikle çalışıyoruz. Yeni sürpriz özellikler yakında duyurulacaktır. Takipte kalın!</p>
+                    </div>
+                    <div class="about-roadmap-status">
+                        <span class="about-status-pulse"></span>
+                        <span>Geliştirme Aşamasında</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. Alt CTA Banner -->
+            <section class="about-footer-cta">
+                <h2>Hazır mısın? Anime Maratonu Başlasın!</h2>
+                <p>Favori serilerini reklamsız, yüksek kalitede ve arkadaşlarınla senkronize izlemenin keyfini yaşa.</p>
+                <button type="button" class="about-btn about-btn-primary" onclick="showAnimeListView();setAnavActive('anime');">
+                    <i class="fa-solid fa-compass"></i><span>Anime Kataloğuna Git</span>
+                </button>
+            </section>
+        </div>
+    </main>
 
 
     <!-- â????â???? WATCH VIEW â????â???? -->
@@ -3865,7 +4118,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<script src="app.js?v=9.9.9"></script>
+<script src="app.js?v=10.0.0"></script>
 
 <!-- â????â???? MODERN ANITR SOSYAL HUB MODAL â????â???? -->
 

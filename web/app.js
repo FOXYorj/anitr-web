@@ -4740,7 +4740,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     checkMALStatus();
 
-    loadHome();
+    const _initHash = (window.location.hash || '').toLowerCase();
+    if (_initHash === '#about' || _initHash === '#hakkinda') {
+        showAboutView();
+    } else if (_initHash === '#anime' || _initHash === '#animeler') {
+        showAnimeListView();
+    } else if (_initHash === '#schedule' || _initHash === '#takvim') {
+        showScheduleView();
+    } else if (_initHash === '#news' || _initHash === '#haberler') {
+        showNewsView();
+    } else {
+        loadHome();
+    }
 
 
 
@@ -4851,6 +4862,7 @@ function clearProfileCurrentAnime() {
 }
 
 function showHomeView() {
+    const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
 
     if (window.setAnavActive) setAnavActive('home');
 
@@ -4882,6 +4894,7 @@ function showHomeView() {
 }
 
 function showAnimeListViewContainer() {
+    const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
 
     leaveW2GRoom();
 
@@ -4903,6 +4916,7 @@ function showAnimeListViewContainer() {
 }
 
 function showWatchView() {
+    const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
 
     if (window.setAnavActive) setAnavActive('animes');
 
@@ -4927,6 +4941,7 @@ function showWatchView() {
 }
 
 function showMALView() {
+    const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
 
     leaveW2GRoom();
 
@@ -4958,6 +4973,7 @@ function showMALView() {
 
 
 function showScheduleView() {
+    const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
 
     leaveW2GRoom();
 
@@ -25117,6 +25133,7 @@ function filterNewsCards(cat, btn) {
 }
 
 function showNewsView() {
+    const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
     if (typeof leaveW2GRoom === 'function') leaveW2GRoom();
     if (typeof clearProfileCurrentAnime === 'function') clearProfileCurrentAnime();
     var nv = document.getElementById('newsView');
@@ -25134,3 +25151,77 @@ function showNewsView() {
 window.showNewsView   = showNewsView;
 window.loadNewsView   = loadNewsView;
 window.filterNewsCards = filterNewsCards;
+
+
+// ══════════════════════════════════════════════════════════════════
+// ── ANITR HAKKINDA (ABOUT VIEW) 2026 ─────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+
+function showAboutView() {
+    if (typeof leaveW2GRoom === 'function') leaveW2GRoom();
+    if (typeof clearProfileCurrentAnime === 'function') clearProfileCurrentAnime();
+    
+    const abv = document.getElementById('aboutView');
+    if (abv) abv.classList.remove('hidden');
+    
+    if (typeof homeView !== 'undefined' && homeView) homeView.classList.add('hidden');
+    if (typeof animeListView !== 'undefined' && animeListView) animeListView.classList.add('hidden');
+    if (typeof watchView !== 'undefined' && watchView) watchView.classList.add('hidden');
+    if (typeof malView !== 'undefined' && malView) malView.classList.add('hidden');
+    
+    const sv = document.getElementById('scheduleView'); if (sv) sv.classList.add('hidden');
+    const nv = document.getElementById('newsView'); if (nv) nv.classList.add('hidden');
+    const hv = document.getElementById('historyView'); if (hv) hv.classList.add('hidden');
+    
+    if (typeof setAnavActive === 'function') setAnavActive('about');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    if (typeof vjsPlayer !== 'undefined' && vjsPlayer) {
+        try { vjsPlayer.dispose(); } catch(e) {}
+        vjsPlayer = null;
+    }
+}
+
+function switchShowcaseTab(btnEl, imgSrc, urlText) {
+    if (!btnEl) return;
+    document.querySelectorAll('.about-tab').forEach(b => b.classList.remove('active'));
+    btnEl.classList.add('active');
+    
+    const imgEl = document.getElementById('aboutShowcaseImg');
+    const urlEl = document.getElementById('aboutMockupUrlText');
+    
+    if (imgEl && imgSrc) {
+        imgEl.style.opacity = '0';
+        imgEl.style.transform = 'scale(0.98)';
+        setTimeout(() => {
+            imgEl.src = imgSrc;
+            imgEl.style.opacity = '1';
+            imgEl.style.transform = 'scale(1)';
+        }, 150);
+    }
+    if (urlEl && urlText) {
+        urlEl.textContent = urlText;
+    }
+}
+
+// Global Exports
+window.showAboutView = showAboutView;
+window.switchShowcaseTab = switchShowcaseTab;
+
+// Hash Router Listener
+function handleAnitrHash() {
+    const hash = (window.location.hash || '').toLowerCase();
+    if (hash === '#about' || hash === '#hakkinda') {
+        showAboutView();
+    } else if (hash === '#anime' || hash === '#animeler') {
+        if (typeof showAnimeListView === 'function') showAnimeListView();
+    } else if (hash === '#schedule' || hash === '#takvim') {
+        if (typeof showScheduleView === 'function') showScheduleView();
+    } else if (hash === '#news' || hash === '#haberler') {
+        if (typeof showNewsView === 'function') showNewsView();
+    }
+}
+window.addEventListener('hashchange', handleAnitrHash);
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(handleAnitrHash, 100);
+});
