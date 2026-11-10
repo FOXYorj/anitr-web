@@ -109,8 +109,9 @@ func enableCors(w *http.ResponseWriter, r *http.Request) {
 	} else {
 		(*w).Header().Set("Access-Control-Allow-Origin", "*")
 	}
-	(*w).Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	(*w).Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	(*w).Header().Set("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS")
+	(*w).Header().Set("Access-Control-Allow-Headers", "Content-Type, Range, If-Range, Origin, Accept, Authorization")
+	(*w).Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges, Content-Type")
 	(*w).Header().Set("Access-Control-Allow-Private-Network", "true")
 }
 
@@ -124,8 +125,9 @@ func withRecovery(handler http.HandlerFunc) http.HandlerFunc {
 		} else {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 		}
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Range, If-Range, Origin, Accept, Authorization")
+		w.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges, Content-Type")
 		w.Header().Set("Access-Control-Allow-Private-Network", "true")
 
 		if r.Method == "OPTIONS" {
@@ -156,6 +158,82 @@ func respondError(w http.ResponseWriter, err error, status int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+}
+
+// Dedicated streaming HTTP client for /api/proxy (supports HTTP Range 206, keep-alive, no body timeout)
+var proxyHTTPClient = &http.Client{
+	Timeout: 0,
+	Transport: &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          64,
+		MaxIdleConnsPerHost:   16,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 20 * time.Second,
+		DisableCompression:    true,
+	},
+}
+
+func resolveProxyURL(rawRef string, base *url.URL) string {
+	trimmed := strings.TrimSpace(rawRef)
+	if trimmed == "" || strings.HasPrefix(trimmed, "/api/proxy?") || strings.HasPrefix(trimmed, "data:") {
+		return rawRef
+	}
+	if base != nil {
+		if ref, err := base.Parse(trimmed); err == nil {
+			return "/api/proxy?url=" + url.QueryEscape(ref.String())
+		}
+	}
+	return "/api/proxy?url=" + url.QueryEscape(trimmed)
+}
+
+func rewriteM3U8LineURI(line string, base *url.URL) string {
+	const marker = `URI="`
+	var out strings.Builder
+	rest := line
+	for {
+		idx := strings.Index(rest, marker)
+		if idx < 0 {
+			out.WriteString(rest)
+			break
+		}
+		start := idx + len(marker)
+		out.WriteString(rest[:start])
+		after := rest[start:]
+		endQuote := strings.IndexByte(after, '"')
+		if endQuote < 0 {
+			out.WriteString(after)
+			break
+		}
+		uriVal := after[:endQuote]
+		out.WriteString(resolveProxyURL(uriVal, base))
+		out.WriteByte('"')
+		rest = after[endQuote+1:]
+	}
+	return out.String()
+}
+
+func rewriteM3U8Manifest(manifest string, base *url.URL) string {
+	lines := strings.Split(manifest, "\n")
+	for i, rawLine := range lines {
+		line := strings.TrimRight(rawLine, "\r")
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			lines[i] = ""
+			continue
+		}
+		if strings.HasPrefix(trimmed, "#") {
+			if strings.Contains(line, `URI="`) {
+				lines[i] = rewriteM3U8LineURI(line, base)
+			} else {
+				lines[i] = line
+			}
+			continue
+		}
+		lines[i] = resolveProxyURL(trimmed, base)
+	}
+	return strings.Join(lines, "\n")
 }
 
 // User Auth & Data System
@@ -270,10 +348,21 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 		fileServer := http.FileServer(staticFS)
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			p := strings.ToLower(r.URL.Path)
-			if p == "/" || strings.HasSuffix(p, ".html") || strings.HasSuffix(p, ".js") || strings.HasSuffix(p, ".css") {
+			if p == "/" || strings.HasSuffix(p, ".html") {
 				w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 				w.Header().Set("Pragma", "no-cache")
 				w.Header().Set("Expires", "0")
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			} else if strings.HasSuffix(p, ".js") {
+				w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+				w.Header().Set("Pragma", "no-cache")
+				w.Header().Set("Expires", "0")
+				w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+			} else if strings.HasSuffix(p, ".css") {
+				w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+				w.Header().Set("Pragma", "no-cache")
+				w.Header().Set("Expires", "0")
+				w.Header().Set("Content-Type", "text/css; charset=utf-8")
 			}
 			fileServer.ServeHTTP(w, r)
 		})
@@ -362,6 +451,7 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 		malIDStr := r.URL.Query().Get("mal_id")
 		title := r.URL.Query().Get("title")
 		var malID int
+		var lookupErr error
 		if malIDStr != "" {
 			fmt.Sscanf(malIDStr, "%d", &malID)
 		}
@@ -369,19 +459,26 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 			id, err := jikan.GetMalIDByTitle(title)
 			if err == nil {
 				malID = id
+			} else {
+				lookupErr = err
 			}
 		}
 		if malID <= 0 {
-			respondJSON(w, map[string]interface{}{"mal_id": 0, "flags": map[int]jikan.EpisodeFlags{}})
+			respondJSON(w, map[string]interface{}{
+				"mal_id":      0,
+				"flags":       map[int]jikan.EpisodeFlags{},
+				"unreachable": lookupErr != nil,
+			})
 			return
 		}
-		flags, _ := jikan.GetEpisodeFlags(malID)
+		flags, epErr := jikan.GetEpisodeFlags(malID)
 		if flags == nil {
 			flags = map[int]jikan.EpisodeFlags{}
 		}
 		respondJSON(w, map[string]interface{}{
-			"mal_id": malID,
-			"flags":  flags,
+			"mal_id":      malID,
+			"flags":       flags,
+			"unreachable": epErr != nil && len(flags) == 0,
 		})
 	}))
 
@@ -645,46 +742,131 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 
 	// API Endpoints - all wrapped in withRecovery for panic safety + guaranteed CORS
 	http.HandleFunc("/api/proxy", withRecovery(func(w http.ResponseWriter, r *http.Request) {
-		target := r.URL.Query().Get("url")
+		target := strings.TrimSpace(r.URL.Query().Get("url"))
 		if target == "" {
 			http.Error(w, "missing url", http.StatusBadRequest)
 			return
 		}
-		
-		req, err := http.NewRequest("GET", target, nil)
+
+		parsedTarget, err := url.Parse(target)
+		if err != nil || (parsedTarget.Scheme != "http" && parsedTarget.Scheme != "https") {
+			http.Error(w, "invalid url", http.StatusBadRequest)
+			return
+		}
+
+		method := http.MethodGet
+		if r.Method == http.MethodHead {
+			method = http.MethodHead
+		}
+
+		req, err := http.NewRequestWithContext(r.Context(), method, target, nil)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		
-		// Set dynamic Referer based on target URL
-		referer := "https://animecix.net/"
-		if strings.Contains(target, "anizium") || strings.Contains(target, "aniziumserver") {
+
+		hostLower := strings.ToLower(parsedTarget.Host)
+		pathLower := strings.ToLower(parsedTarget.Path)
+
+		referer := parsedTarget.Scheme + "://" + parsedTarget.Host + "/"
+		origin := ""
+
+		switch {
+		case strings.Contains(hostLower, "anizium") || strings.Contains(hostLower, "aniziumserver"):
 			referer = "https://anizium.co/"
-			req.Header.Set("Cf-Control", anizium.GenerateCfToken())
-			req.Header.Set("device", "browser")
-			req.Header.Set("language", "tr")
-			req.Header.Set("site", "main")
-			req.Header.Set("Accept", "application/json")
+			origin = "https://anizium.co"
+			if hostLower == "api.anizium.co" || strings.HasPrefix(pathLower, "/api/") {
+				req.Header.Set("Cf-Control", anizium.GenerateCfToken())
+				req.Header.Set("device", "browser")
+				req.Header.Set("language", "tr")
+				req.Header.Set("site", "main")
+				req.Header.Set("Accept", "application/json")
+			} else {
+				req.Header.Set("Accept", "*/*")
+			}
+		case strings.Contains(hostLower, "tau-video"):
+			referer = "https://tau-video.xyz/"
+			origin = "https://tau-video.xyz"
+			req.Header.Set("Accept", "*/*")
+		case strings.Contains(hostLower, "sibnet"):
+			referer = "https://video.sibnet.ru/"
+			req.Header.Set("Accept", "*/*")
+		case strings.Contains(hostLower, "animecix") || strings.Contains(hostLower, "mangacix"):
+			referer = "https://animecix.tv/"
+			origin = "https://animecix.tv"
+			req.Header.Set("Accept", "*/*")
+		default:
+			req.Header.Set("Accept", "*/*")
 		}
-		
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 		req.Header.Set("Referer", referer)
-		req.Header.Set("Origin", strings.TrimSuffix(referer, "/"))
-		
-		resp, err := http.DefaultClient.Do(req)
+		if origin != "" {
+			req.Header.Set("Origin", origin)
+		}
+		if rng := r.Header.Get("Range"); rng != "" {
+			req.Header.Set("Range", rng)
+		}
+		if ifRng := r.Header.Get("If-Range"); ifRng != "" {
+			req.Header.Set("If-Range", ifRng)
+		}
+
+		resp, err := proxyHTTPClient.Do(req)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadGateway)
 			return
 		}
 		defer resp.Body.Close()
-		
-		// Copy content type
-		if cType := resp.Header.Get("Content-Type"); cType != "" {
+
+		cType := resp.Header.Get("Content-Type")
+		cTypeLower := strings.ToLower(cType)
+
+		// Rewrite HLS .m3u8 playlists so all relative/absolute segments & keys also route through /api/proxy
+		if method == http.MethodGet && resp.StatusCode == http.StatusOK &&
+			(strings.Contains(cTypeLower, "mpegurl") || strings.HasSuffix(pathLower, ".m3u8")) {
+			rawManifest, readErr := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
+			if readErr == nil {
+				manifestStr := string(rawManifest)
+				if strings.HasPrefix(strings.TrimSpace(manifestStr), "#EXTM3U") {
+					baseURL := parsedTarget
+					if resp.Request != nil && resp.Request.URL != nil {
+						baseURL = resp.Request.URL
+					}
+					rewritten := rewriteM3U8Manifest(manifestStr, baseURL)
+					w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+					w.Header().Set("Cache-Control", "no-cache")
+					w.WriteHeader(http.StatusOK)
+					io.WriteString(w, rewritten)
+					return
+				}
+				w.Header().Set("Content-Type", cType)
+				w.WriteHeader(resp.StatusCode)
+				w.Write(rawManifest)
+				return
+			}
+		}
+
+		// Normalize MIME types for WebVTT subtitles & MP4 streams when CDN sends generic octet-stream
+		switch {
+		case strings.HasSuffix(pathLower, ".vtt"):
+			w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
+		case strings.HasSuffix(pathLower, ".mp4") && (cType == "" || strings.Contains(cTypeLower, "octet-stream")):
+			w.Header().Set("Content-Type", "video/mp4")
+		case cType != "":
 			w.Header().Set("Content-Type", cType)
 		}
-		
-		io.Copy(w, resp.Body)
+
+		for _, hdr := range []string{"Content-Length", "Content-Range", "Accept-Ranges", "ETag", "Last-Modified", "Cache-Control"} {
+			if val := resp.Header.Get(hdr); val != "" {
+				w.Header().Set(hdr, val)
+			}
+		}
+
+		w.WriteHeader(resp.StatusCode)
+		if method != http.MethodHead {
+			buf := make([]byte, 64*1024)
+			io.CopyBuffer(w, resp.Body, buf)
+		}
 	}))
 
 	http.HandleFunc("/api/sources", withRecovery(func(w http.ResponseWriter, r *http.Request) {

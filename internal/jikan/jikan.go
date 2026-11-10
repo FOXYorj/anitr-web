@@ -60,15 +60,14 @@ func GetMalIDByTitle(title string) (int, error) {
 	malIDCacheMu.RUnlock()
 
 	results, err := SearchAnime(title)
-	if err != nil || len(results) == 0 {
-		// Fallback: If title is too long, try searching with just the first 4 words
+	if err == nil && len(results) == 0 {
+		// Fallback: Only if Jikan responded empty (not on network timeout), try first 4 words
 		words := strings.Fields(title)
 		if len(words) > 4 {
 			shortTitle := strings.Join(words[:4], " ")
 			fallbackResults, fallbackErr := SearchAnime(shortTitle)
 			if fallbackErr == nil && len(fallbackResults) > 0 {
 				results = fallbackResults
-				err = nil
 			}
 		}
 	}
@@ -95,7 +94,7 @@ func GetMalIDByTitle(title string) (int, error) {
 func SearchAnime(query string) ([]AnimeBasic, error) {
 	apiURL := fmt.Sprintf("https://api.jikan.moe/v4/anime?q=%s&order_by=members&sort=desc&limit=15", url.QueryEscape(query))
 	
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: 4 * time.Second}
 	var resp *http.Response
 	var err error
 
@@ -169,7 +168,7 @@ func GetEpisodeFlags(malID int) (map[int]EpisodeFlags, error) {
 
 	flags := make(map[int]EpisodeFlags)
 	page := 1
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: 4 * time.Second}
 
 	for page <= 6 {
 		apiURL := fmt.Sprintf("https://api.jikan.moe/v4/anime/%d/episodes?page=%d", malID, page)

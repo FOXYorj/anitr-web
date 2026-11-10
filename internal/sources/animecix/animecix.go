@@ -202,25 +202,108 @@ func (a AnimeCix) GetEpisodesData(params models.EpisodeParams) ([]models.Episode
 		return nil, fmt.Errorf("'videos' verisi yok")
 	}
 
-	seen := make(map[string]bool)
-	var episodes []models.Episode
-	for i, video := range videosRaw {
+	// DEBUG: ilk video’nun tüm field’larını logla (geçici)
+	if len(videosRaw) > 0 {
+		if firstV, ok := videosRaw[0].(map[string]interface{}); ok {
+			keys := make([]string, 0, len(firstV))
+			for k := range firstV {
+				keys = append(keys, k)
+			}
+			log.Printf("[DEBUG-GROUPS] video[0] keys: %v", keys)
+			for _, k := range []string{"sound_group", "translation_name", "group", "translator", "fansub", "team", "sound", "dub_type"} {
+				if val, exists := firstV[k]; exists {
+					log.Printf("[DEBUG-GROUPS] field %q = %v", k, val)
+				}
+			}
+			// Tüm video objesini de logla
+			if jsonBytes, jerr := json.Marshal(firstV); jerr == nil {
+				log.Printf("[DEBUG-GROUPS] video[0] full: %s", string(jsonBytes))
+			}
+		}
+	}
+
+	// Tüm videoları gruplandır (aynı bölüm adı = farklı çeviri grupları)
+	type EpGroup struct {
+		URL  string `json:"url"`
+		Name string `json:"name"`
+	}
+	grouped := make(map[string][]EpGroup)
+	groupOrder := []string{}
+	seenOrder := make(map[string]bool)
+
+	for _, video := range videosRaw {
 		v, ok := video.(map[string]interface{})
 		if !ok {
 			continue
 		}
-		name, _ := v["name"].(string)
-		if seen[name] {
-			continue
+		epName, _ := v["name"].(string)
+		epUrl, _ := v["url"].(string)
+
+		// Çeviri grubu adını bul
+		groupName := ""
+		for _, k := range []string{"sound_group", "translation_name", "group", "translator", "fansub", "team"} {
+			if val, ok2 := v[k].(string); ok2 && val != "" {
+				groupName = val
+				break
+			}
 		}
-		seen[name] = true
-		episodeUrl, _ := v["url"].(string)
-		seasonNum := v["season_num"]
+		if groupName == "" {
+			for _, k := range []string{"sound", "dub"} {
+				if nested, ok2 := v[k].(map[string]interface{}); ok2 {
+					if name2, ok3 := nested["name"].(string); ok3 && name2 != "" {
+						groupName = name2
+						break
+					}
+				}
+			}
+		}
+		// "extra" fieldı uploader/grup adı olabilir
+		if groupName == "" {
+			if extraVal, ok2 := v["extra"].(string); ok2 && extraVal != "" {
+				groupName = extraVal
+			}
+		}
+
+		if !seenOrder[epName] {
+			seenOrder[epName] = true
+			groupOrder = append(groupOrder, epName)
+		}
+		grouped[epName] = append(grouped[epName], EpGroup{URL: epUrl, Name: groupName})
+	}
+
+	var episodes []models.Episode
+	for i, epName := range groupOrder {
+		groups := grouped[epName]
+		defaultUrl := ""
+		if len(groups) > 0 {
+			defaultUrl = groups[0].URL
+		}
+		groupsData := make([]map[string]string, 0, len(groups))
+		for _, g := range groups {
+			groupsData = append(groupsData, map[string]string{
+				"name": g.Name,
+				"url":  g.URL,
+			})
+		}
+		var seasonNum interface{}
+		if len(grouped[epName]) > 0 {
+			for _, rawV := range videosRaw {
+				if rv, ok2 := rawV.(map[string]interface{}); ok2 {
+					if rName, _ := rv["name"].(string); rName == epName {
+						seasonNum = rv["season_num"]
+						break
+					}
+				}
+			}
+		}
 		episode := models.Episode{
-			ID:     episodeUrl,
-			Title:  name,
+			ID:    defaultUrl,
+			Title: epName,
 			Number: i + 1,
-			Extra:  map[string]interface{}{"season_num": seasonNum},
+			Extra: map[string]interface{}{
+				"season_num": seasonNum,
+				"groups":     groupsData,
+			},
 		}
 		episodes = append(episodes, episode)
 	}
