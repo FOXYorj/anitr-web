@@ -25174,7 +25174,12 @@ function showAboutView() {
     const hv = document.getElementById('historyView'); if (hv) hv.classList.add('hidden');
     
     if (typeof setAnavActive === 'function') setAnavActive('about');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
+    
+    // Run animations after layout settles
+    setTimeout(function() {
+      if (typeof initAboutAnimations === 'function') initAboutAnimations();
+    }, 60);
     
     if (typeof vjsPlayer !== 'undefined' && vjsPlayer) {
         try { vjsPlayer.dispose(); } catch(e) {}
@@ -25225,3 +25230,48 @@ window.addEventListener('hashchange', handleAnitrHash);
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(handleAnitrHash, 100);
 });
+
+// ── About: screenshot switcher ──
+function abSwitchShot(btn, key) {
+  document.querySelectorAll('#aboutView .ab-stab').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  var paths = { home: 'anasayfa', anime: 'animeler', schedule: 'takvim', news: 'haberler' };
+  var imgs  = {
+    home:     '/assets/showcase-home.png',
+    anime:    '/assets/showcase-anime.png',
+    schedule: '/assets/showcase-schedule.png',
+    news:     '/assets/showcase-news.png'
+  };
+  var el = document.getElementById('ab-shots-img');
+  var pl = document.getElementById('ab-shots-path');
+  if (el) { el.style.opacity = '0'; setTimeout(function(){ el.src = imgs[key]; el.style.opacity = '1'; }, 230); }
+  if (pl) { pl.textContent = paths[key]; }
+}
+
+// ── About: IntersectionObserver reveal + counters ──
+function initAboutAnimations() {
+  // Reset all afu elements first
+  document.querySelectorAll('#aboutView .afu').forEach(function(el) {
+    el.classList.remove('in-view');
+  });
+  var els = document.querySelectorAll('#aboutView .afu');
+  var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) { e.target.classList.add('in-view'); obs.unobserve(e.target); }
+    });
+  }, { threshold: 0, rootMargin: '60px 0px 60px 0px' });
+  els.forEach(function(el) { obs.observe(el); });
+
+  document.querySelectorAll('#aboutView [data-count]').forEach(function(el) {
+    var target = parseInt(el.getAttribute('data-count'), 10);
+    var dur = 1200, startTime = null;
+    function step(ts) {
+      if (!startTime) startTime = ts;
+      var prog = Math.min((ts - startTime) / dur, 1);
+      var ease = 1 - Math.pow(1 - prog, 3);
+      el.textContent = Math.round(target * ease);
+      if (prog < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}
