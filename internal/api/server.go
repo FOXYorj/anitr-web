@@ -19,6 +19,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/prayjofir/anitr-cli/internal/jikan"
 	"github.com/prayjofir/anitr-cli/internal/models"
+	"github.com/prayjofir/anitr-cli/internal/sources/anihub"
 	"github.com/prayjofir/anitr-cli/internal/sources/animecix"
 	"github.com/prayjofir/anitr-cli/internal/sources/anizium"
 	"github.com/prayjofir/anitr-cli/internal/sources/aniziumfree"
@@ -29,6 +30,7 @@ var sources = map[string]models.AnimeSource{
 	"AnimeciX":     animecix.AnimeCix{},
 	"Anizium":      anizium.Anizium{},
 	"Anizium Free": aniziumfree.AniziumFree{},
+	"AniHub":       anihub.AniHub{},
 }
 
 // ── Watch2Gether (W2G) Types & State ──────────────────────
@@ -348,6 +350,15 @@ func StartServer(port string, webDir string, embeddedFS embed.FS) {
 		fileServer := http.FileServer(staticFS)
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			p := strings.ToLower(r.URL.Path)
+			if p == "/favicon.ico" {
+				if f, err := staticFS.Open("assets/anitr-logo.png"); err == nil {
+					defer f.Close()
+					w.Header().Set("Content-Type", "image/png")
+					w.Header().Set("Cache-Control", "public, max-age=86400")
+					io.Copy(w, f)
+					return
+				}
+			}
 			if p == "/" || strings.HasSuffix(p, ".html") {
 				w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 				w.Header().Set("Pragma", "no-cache")
@@ -451,35 +462,11 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 		malIDStr := r.URL.Query().Get("mal_id")
 		title := r.URL.Query().Get("title")
 		var malID int
-		var lookupErr error
 		if malIDStr != "" {
 			fmt.Sscanf(malIDStr, "%d", &malID)
 		}
-		if malID <= 0 && title != "" {
-			id, err := jikan.GetMalIDByTitle(title)
-			if err == nil {
-				malID = id
-			} else {
-				lookupErr = err
-			}
-		}
-		if malID <= 0 {
-			respondJSON(w, map[string]interface{}{
-				"mal_id":      0,
-				"flags":       map[int]jikan.EpisodeFlags{},
-				"unreachable": lookupErr != nil,
-			})
-			return
-		}
-		flags, epErr := jikan.GetEpisodeFlags(malID)
-		if flags == nil {
-			flags = map[int]jikan.EpisodeFlags{}
-		}
-		respondJSON(w, map[string]interface{}{
-			"mal_id":      malID,
-			"flags":       flags,
-			"unreachable": epErr != nil && len(flags) == 0,
-		})
+		res := jikan.GetCombinedFillerData(title, malID)
+		respondJSON(w, res)
 	}))
 
 
@@ -771,8 +758,16 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 		referer := parsedTarget.Scheme + "://" + parsedTarget.Host + "/"
 		origin := ""
 
+		isAniziumHost := strings.Contains(hostLower, "anizium") || strings.Contains(hostLower, "aniziumserver")
+		if isAniziumHost {
+			if blocked, reason := anizium.IsBlocked(); blocked {
+				http.Error(w, reason, http.StatusForbidden)
+				return
+			}
+		}
+
 		switch {
-		case strings.Contains(hostLower, "anizium") || strings.Contains(hostLower, "aniziumserver"):
+		case isAniziumHost:
 			referer = "https://anizium.co/"
 			origin = "https://anizium.co"
 			if hostLower == "api.anizium.co" || strings.HasPrefix(pathLower, "/api/") {
@@ -795,11 +790,15 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 			referer = "https://animecix.tv/"
 			origin = "https://animecix.tv"
 			req.Header.Set("Accept", "*/*")
+		case strings.Contains(hostLower, "anihub.com.tr"):
+			referer = "https://anihub.com.tr/"
+			origin = "https://anihub.com.tr"
+			req.Header.Set("Accept", "*/*")
 		default:
 			req.Header.Set("Accept", "*/*")
 		}
 
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+		req.Header.Set("User-Agent", anizium.BrowserUserAgent)
 		req.Header.Set("Referer", referer)
 		if origin != "" {
 			req.Header.Set("Origin", origin)
@@ -817,6 +816,10 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 			return
 		}
 		defer resp.Body.Close()
+
+		if isAniziumHost && (resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests) {
+			anizium.RecordHTTPBlock(resp.StatusCode, nil)
+		}
 
 		cType := resp.Header.Get("Content-Type")
 		cTypeLower := strings.ToLower(cType)
@@ -850,6 +853,8 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 		switch {
 		case strings.HasSuffix(pathLower, ".vtt"):
 			w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
+		case strings.HasSuffix(pathLower, ".m4s"):
+			w.Header().Set("Content-Type", "video/iso.segment")
 		case strings.HasSuffix(pathLower, ".mp4") && (cType == "" || strings.Contains(cTypeLower, "octet-stream")):
 			w.Header().Set("Content-Type", "video/mp4")
 		case cType != "":
@@ -877,7 +882,26 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 		respondJSON(w, names)
 	}))
 
+	var (
+		aniziumTopCacheMu sync.RWMutex
+		aniziumTopCache   = make(map[string]struct {
+			body      []byte
+			expiresAt time.Time
+		})
+	)
+
+	http.HandleFunc("/api/anizium-reset", withRecovery(func(w http.ResponseWriter, r *http.Request) {
+		anizium.ResetBlock()
+		respondJSON(w, map[string]interface{}{"ok": true, "message": "Anizium engel durumu sıfırlandı."})
+	}))
+
+	http.HandleFunc("/api/anizium-status", withRecovery(func(w http.ResponseWriter, r *http.Request) {
+		blocked, reason := anizium.IsBlocked()
+		respondJSON(w, map[string]interface{}{"ip_banned": blocked, "reason": reason})
+	}))
+
 	http.HandleFunc("/api/animes", withRecovery(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("API: %s %s", r.Method, r.URL.String())
 		page := r.URL.Query().Get("page")
 		if page == "" {
 			page = "1"
@@ -886,30 +910,71 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 		if platform == "" {
 			platform = "all"
 		}
+		cacheKey := platform + "|" + page
+		aniziumTopCacheMu.RLock()
+		if c, ok := aniziumTopCache[cacheKey]; ok && time.Now().Before(c.expiresAt) {
+			aniziumTopCacheMu.RUnlock()
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(c.body)
+			return
+		}
+		aniziumTopCacheMu.RUnlock()
+
+		if blocked, reason := anizium.IsBlocked(); blocked {
+			respondJSON(w, map[string]interface{}{
+				"ip_banned":  true,
+				"error_code": 1006,
+				"error":      reason,
+			})
+			return
+		}
+
+		anizium.WaitRateLimit()
 		targetURL := fmt.Sprintf("https://api.anizium.co/page/top?platform=%s&page=%s", platform, page)
 		req, err := http.NewRequest("GET", targetURL, nil)
 		if err != nil {
 			respondError(w, err, http.StatusInternalServerError)
 			return
 		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+		req.Header.Set("User-Agent", anizium.BrowserUserAgent)
 		req.Header.Set("Referer", "https://anizium.co/animes?platform=all")
 		req.Header.Set("Origin", "https://anizium.co")
 		req.Header.Set("Cf-Control", anizium.GenerateCfToken())
 		req.Header.Set("device", "browser")
 		req.Header.Set("language", "tr")
 		req.Header.Set("site", "main")
-		req.Header.Set("Accept", "application/json")
+		req.Header.Set("Accept", "application/json, text/plain, */*")
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := anizium.SharedHTTPClient.Do(req)
 		if err != nil {
 			respondError(w, err, http.StatusBadGateway)
 			return
 		}
 		defer resp.Body.Close()
 
+		bodyBytes, readErr := io.ReadAll(io.LimitReader(resp.Body, 4*1024*1024))
+		if anizium.RecordHTTPBlock(resp.StatusCode, bodyBytes) {
+			_, reason := anizium.IsBlocked()
+			respondJSON(w, map[string]interface{}{
+				"ip_banned":  true,
+				"error_code": 1006,
+				"status":     resp.StatusCode,
+				"error":      reason,
+			})
+			return
+		}
+
+		if readErr == nil && resp.StatusCode == http.StatusOK && len(bodyBytes) > 10 {
+			aniziumTopCacheMu.Lock()
+			aniziumTopCache[cacheKey] = struct {
+				body      []byte
+				expiresAt time.Time
+			}{body: bodyBytes, expiresAt: time.Now().Add(10 * time.Minute)}
+			aniziumTopCacheMu.Unlock()
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		io.Copy(w, resp.Body)
+		w.Write(bodyBytes)
 	}))
 
 	// ── AnimeciX Katalog Endpoint ───────────────────────────────────────
@@ -962,6 +1027,34 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 
 		w.Header().Set("Content-Type", "application/json")
 		io.Copy(w, body)
+	}))
+
+	// ── AniHub Katalog Endpoint ─────────────────────────────────────────
+	http.HandleFunc("/api/anihub-catalog", withRecovery(func(w http.ResponseWriter, r *http.Request) {
+		pageStr := r.URL.Query().Get("page")
+		limitStr := r.URL.Query().Get("limit")
+		search := r.URL.Query().Get("search")
+
+		page := 1
+		limit := 30
+		if pageStr != "" {
+			fmt.Sscanf(pageStr, "%d", &page)
+		}
+		if limitStr != "" {
+			fmt.Sscanf(limitStr, "%d", &limit)
+		}
+
+		items, total, hasMore, err := anihub.FetchCatalogPage(page, limit, search)
+		if err != nil {
+			respondError(w, err, http.StatusBadGateway)
+			return
+		}
+		respondJSON(w, map[string]interface{}{
+			"items":   items,
+			"total":   total,
+			"hasMore": hasMore,
+			"page":    page,
+		})
 	}))
 
 	http.HandleFunc("/api/popular", withRecovery(func(w http.ResponseWriter, r *http.Request) {
@@ -1058,6 +1151,7 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 	}))
 
 	http.HandleFunc("/api/seasons", withRecovery(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("API: %s %s", r.Method, r.URL.String())
 		idStr := r.URL.Query().Get("id")
 		slug := r.URL.Query().Get("slug")
 		srcName := r.URL.Query().Get("source")
@@ -1087,6 +1181,7 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 	}))
 
 	http.HandleFunc("/api/episodes", withRecovery(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("API: %s %s", r.Method, r.URL.String())
 		idStr := r.URL.Query().Get("id")
 		seasonIdStr  := r.URL.Query().Get("season_id")
 		seasonNumStr := r.URL.Query().Get("season_num")
@@ -1126,6 +1221,7 @@ http.HandleFunc("/api/mal/watchlist", withRecovery(func(w http.ResponseWriter, r
 	}))
 
 	http.HandleFunc("/api/watch", withRecovery(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("API: %s %s", r.Method, r.URL.String())
 		url := r.URL.Query().Get("url")
 		slug := r.URL.Query().Get("slug")
 		idStr := r.URL.Query().Get("id")

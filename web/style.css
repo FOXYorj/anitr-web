@@ -21687,3 +21687,123 @@ a.prf2-qchip:hover, button.prf2-qchip:hover {
   font-size: clamp(1.9rem, 5vw, 3.2rem); font-weight: 800;
   letter-spacing: -.03em; color: #f0f0f8; margin: 0;
 }
+
+/* ═══ FILLER & YARI FILLER (MIXED CANON/FILLER) GELİŞMİŞ STİLLERİ ═══ */
+.filler-stat-chip.mixed {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(245, 158, 11, 0.18));
+    border: 1px solid rgba(192, 132, 252, 0.45);
+    color: #e9d5ff;
+}
+
+.watch-filler-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    padding: 4px 2px;
+}
+.watch-filler-loading i {
+    color: #a855f7;
+}
+
+.watch-filler-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 0.71rem;
+    font-weight: 700;
+}
+
+.wf-sum {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.wf-sum.canon { color: #6ee7b7; }
+.wf-sum.mixed { color: #d8b4fe; }
+.wf-sum.filler { color: #fcd34d; }
+
+.ep-type-badge.mixed,
+.sep2-type-badge.mixed {
+    background: linear-gradient(135deg, rgba(147, 51, 234, 0.94), rgba(217, 119, 6, 0.94));
+    border: 1px solid rgba(233, 213, 255, 0.65);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(147, 51, 234, 0.35);
+}
+
+.sep2-type-badge {
+    font-size: 0.66rem;
+    padding: 2px 7px;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.sep2-thumb-filler-tag {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    z-index: 4;
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    pointer-events: none;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+}
+.sep2-thumb-filler-tag.filler {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(234, 88, 12, 0.95));
+    border: 1px solid rgba(253, 224, 71, 0.6);
+    color: #fff;
+}
+.sep2-thumb-filler-tag.mixed {
+    background: linear-gradient(135deg, rgba(147, 51, 234, 0.95), rgba(217, 119, 6, 0.95));
+    border: 1px solid rgba(233, 213, 255, 0.6);
+    color: #fff;
+}
+.sep2-thumb-filler-tag.recap {
+    background: rgba(14, 165, 233, 0.92);
+    border: 1px solid rgba(125, 211, 252, 0.6);
+    color: #fff;
+}
+
+.episode-card.is-mixed-ep {
+    border-color: rgba(168, 85, 247, 0.35) !important;
+}
+.episode-card.is-mixed-ep:hover {
+    border-color: rgba(245, 158, 11, 0.6) !important;
+}
+
+.sep2-card.is-mixed-ep {
+    border-left: 3px solid #a855f7 !important;
+    background: linear-gradient(90deg, rgba(168, 85, 247, 0.08), rgba(245, 158, 11, 0.04));
+}
+.sep2-card.is-recap-ep {
+    border-left: 3px solid #0ea5e9 !important;
+    background: rgba(14, 165, 233, 0.05);
+}
+
+.wd2-badge-canon.mixed {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.22), rgba(245, 158, 11, 0.2)) !important;
+    border: 1px solid rgba(192, 132, 252, 0.5) !important;
+    color: #e9d5ff !important;
+}
+
+.watch-filler-alert.mixed {
+    background: linear-gradient(135deg, rgba(147, 51, 234, 0.18), rgba(245, 158, 11, 0.14));
+    border-color: rgba(192, 132, 252, 0.48);
+    box-shadow: 0 8px 24px rgba(147, 51, 234, 0.16);
+}
+.watch-filler-alert.mixed .wfa-left {
+    color: #f3e8ff;
+}
+.watch-filler-alert.mixed .wfa-left i {
+    color: #c084fc;
+}

@@ -1,231 +1,62 @@
 package aniziumfree
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"math/rand"
-	"net/http"
-	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
-	"sync"
-	"time"
 
-	"github.com/prayjofir/anitr-cli/internal"
 	"github.com/prayjofir/anitr-cli/internal/config"
 	"github.com/prayjofir/anitr-cli/internal/helpers"
 	"github.com/prayjofir/anitr-cli/internal/models"
 	"github.com/prayjofir/anitr-cli/internal/sources/anizium"
 )
 
-// AniziumFree — hesap gerektirmeyen Anizium kaynağı.
+// AniziumFree — hesap gerektirmeyen Anizium kaynağı (IP Ban & Circuit Breaker Korumalı).
 type AniziumFree struct{}
 
 func (a AniziumFree) Source() string { return "Anizium Free" }
-
-// ── CF Token ──────────────────────────────────────────────────────────────────
-
-func xorEncrypt(text, key string) string {
-	tb := []byte(text)
-	kb := []byte(key)
-	res := make([]byte, len(tb))
-	for i, b := range tb {
-		res[i] = b ^ kb[i%len(kb)]
-	}
-	return fmt.Sprintf("%x", res)
-}
-
-func randomString(n int) string {
-	letters := []rune("abcdefghijklmnopqrstuvwxyz0123456789")
-	s := make([]rune, n)
-	for i := range s {
-		s[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(s)
-}
-
-func generateCfToken() string {
-	tokenKey := "hlxjl1c2w281ax473rt1ofgrvhyjvi"
-	loc, err := time.LoadLocation("Europe/Istanbul")
-	if err != nil {
-		loc = time.UTC
-	}
-	now := time.Now().In(loc)
-	dayName := strings.ToLower(now.Format("Monday"))
-	key := fmt.Sprintf("%s_%s", tokenKey, dayName)
-	randStr := randomString(6)
-	tMap := map[string]int64{randStr: now.UnixNano() / int64(time.Millisecond)}
-	tBytes, _ := json.Marshal(tMap)
-	return xorEncrypt(string(tBytes), key)
-}
-
-func baseHeaders() map[string]string {
-	return map[string]string{
-		"Accept":     "application/json",
-		"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-		"Cf-Control": generateCfToken(),
-		"device":     "browser",
-		"language":   "tr",
-		"site":       "main",
-	}
-}
 
 func getConfigPath() string {
 	return filepath.Join(helpers.ConfigDir(), "config.json")
 }
 
-var configFree = internal.Config{
-	BaseUrl: "https://api.anizium.co/",
-}
+// ── Arama (Anizium önbelleğini, circuit-breaker'ı ve rate-limiter'ı paylaşır) ──
 
-// ── Arama ──────────────────────────────────────────────────────────────────────
-
-func (a AniziumFree) GetSearchData(query string) (result []models.Anime, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Printf("Anizium Free Search Panic: %v\n", r)
-			result = []models.Anime{}
-			err = nil
-		}
-	}()
-	
-	searchURL := fmt.Sprintf("%spage/search?value=%s&page=1", configFree.BaseUrl, url.QueryEscape(query))
-	data, err := internal.GetJson(searchURL, baseHeaders())
-	if err != nil {
-		return []models.Anime{}, nil
-	}
-	dataMap, ok := data.(map[string]interface{})
-	if !ok {
-		return []models.Anime{}, nil
-	}
-
-	if isErr, ok := dataMap["isError"].(bool); ok && isErr {
-		return []models.Anime{}, nil
-	}
-
-	// Anizium API bazen 'page' altında bazen direkt 'data' altında sonuç döner
-	var itemsRaw []interface{}
-	if pageMap, ok := dataMap["page"].(map[string]interface{}); ok {
-		itemsRaw, _ = pageMap["data"].([]interface{})
-	} else if dataRaw, ok := dataMap["data"].([]interface{}); ok {
-		itemsRaw = dataRaw
-	}
-
-	if itemsRaw == nil {
-		return []models.Anime{}, nil
-	}
-
-	for _, item := range itemsRaw {
-		itemMap, ok := item.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		title, _ := itemMap["name"].(string)
-		slug, _ := itemMap["sef"].(string)
-		poster, _ := itemMap["poster"].(string)
-		animeType, _ := itemMap["type"].(string)
-		
-		synopsis, _ := itemMap["overview"].(string)
-		if synopsis == "" {
-			synopsis, _ = itemMap["description"].(string)
-		}
-		if synopsis == "" {
-			synopsis, _ = itemMap["synopsis"].(string)
-		}
-
-		var id int
-		if idStr, ok := itemMap["ID"].(string); ok {
-			fmt.Sscanf(idStr, "%d", &id)
-		} else if idF, ok := itemMap["ID"].(float64); ok {
-			id = int(idF)
-		}
-		var tmdbID int
-		if tmdbStr, ok := itemMap["tmdb_id"].(string); ok {
-			fmt.Sscanf(tmdbStr, "%d", &tmdbID)
-		} else if tmdbF, ok := itemMap["tmdb_id"].(float64); ok {
-			tmdbID = int(tmdbF)
-		}
-
-		extra := map[string]interface{}{"tmdb_id": tmdbID}
-		result = append(result, models.Anime{
-			Title:     title,
-			Slug:      &slug,
-			ID:        &id,
-			ImageURL:  poster,
-			Synopsis:  synopsis,
-			Type:      &animeType,
-			TitleType: &animeType,
-			Extra:     extra,
-		})
-	}
-	return result, nil
+func (a AniziumFree) GetSearchData(query string) ([]models.Anime, error) {
+	return anizium.Anizium{}.GetSearchData(query)
 }
 
 // ── GetAnimeByID ──────────────────────────────────────────────────────────────
 
 func (a AniziumFree) GetAnimeByID(id string) (*models.Anime, error) {
-	urlStr := fmt.Sprintf("%sanime/get?id=%s", configFree.BaseUrl, id)
-	data, err := internal.GetJson(urlStr, baseHeaders())
-	if err != nil {
-		return nil, err
+	numID, err := strconv.Atoi(strings.TrimSpace(id))
+	if err != nil || !anizium.IsValidAniziumID(numID) {
+		return nil, fmt.Errorf("geçersiz Anizium ID: %s", id)
 	}
-	dataMap, _ := data.(map[string]interface{})
-	itemMap, _ := dataMap["data"].(map[string]interface{})
-	title, _ := itemMap["name"].(string)
-	synopsis, _ := itemMap["overview"].(string)
-	if synopsis == "" {
-		synopsis, _ = itemMap["description"].(string)
-	}
-	if synopsis == "" {
-		synopsis, _ = itemMap["synopsis"].(string)
-	}
-	return &models.Anime{Title: title, Synopsis: synopsis}, nil
+	return anizium.Anizium{}.GetAnimeByID(id)
 }
 
 // ── Sezon ──────────────────────────────────────────────────────────────────────
 
 func (a AniziumFree) GetSeasonsData(params models.SeasonParams) ([]models.Season, error) {
-	if params.Id == nil {
-		return nil, fmt.Errorf("anime id gerekli")
-	}
-	urlStr := fmt.Sprintf("%sanime/get?id=%d", configFree.BaseUrl, *params.Id)
-	data, err := internal.GetJson(urlStr, baseHeaders())
-	if err != nil {
-		return nil, err
-	}
-	dataMap, _ := data.(map[string]interface{})
-	animeData, _ := dataMap["data"].(map[string]interface{})
-	seasonsRaw, _ := animeData["seasons"].([]interface{})
-
-	var numbers []int
-	for _, sRaw := range seasonsRaw {
-		sMap, ok := sRaw.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		if n, ok := sMap["number"].(float64); ok {
-			numbers = append(numbers, int(n))
-		}
-	}
-	count := len(numbers)
-	isMovie := animeData["type"] == "movie"
-	return []models.Season{{Seasons: &numbers, Count: &count, IsMovie: &isMovie}}, nil
+	return anizium.Anizium{}.GetSeasonsData(params)
 }
 
 // ── Bölümler ───────────────────────────────────────────────────────────────────
 
 func (a AniziumFree) GetEpisodesData(params models.EpisodeParams) ([]models.Episode, error) {
-	if params.SeasonID == nil {
-		return nil, fmt.Errorf("anime id gerekli")
+	if params.SeasonID == nil || !anizium.IsValidAniziumID(*params.SeasonID) {
+		return []models.Episode{}, nil
 	}
-	urlStr := fmt.Sprintf("%sanime/get?id=%d", configFree.BaseUrl, *params.SeasonID)
-	data, err := internal.GetJson(urlStr, baseHeaders())
+	dataMap, err := anizium.FetchAnimeGetCached(*params.SeasonID)
 	if err != nil {
-		return nil, err
+		return []models.Episode{}, err
 	}
-	dataMap, _ := data.(map[string]interface{})
-	animeData, _ := dataMap["data"].(map[string]interface{})
+	animeData, ok := dataMap["data"].(map[string]interface{})
+	if !ok {
+		return []models.Episode{}, nil
+	}
 
 	var tmdbID int
 	if tmdbStr, ok := animeData["tmdb_id"].(string); ok {
@@ -236,7 +67,6 @@ func (a AniziumFree) GetEpisodesData(params models.EpisodeParams) ([]models.Epis
 
 	seasonsRaw, _ := animeData["seasons"].([]interface{})
 
-	// SeasonNum = 0-tabanlı sezon index. -1 = hepsini döndür.
 	targetSeasonIdx := -1
 	if params.SeasonNum != nil {
 		targetSeasonIdx = *params.SeasonNum
@@ -296,20 +126,6 @@ func (a AniziumFree) GetEpisodesData(params models.EpisodeParams) ([]models.Epis
 	return epList, nil
 }
 
-// ── CDN Probe (Paralel) ────────────────────────────────────────────────────────
-
-var cdnServers = []string{
-	"https://a.aniziumserver.sbs", "https://a.aniziumserver.site",
-	"https://f.aniziumserver.sbs", "https://f.aniziumserver.site",
-	"https://k.aniziumserver.sbs", "https://k.aniziumserver.site",
-	"https://r.aniziumserver.sbs", "https://r.aniziumserver.site",
-	"https://u.aniziumserver.sbs", "https://u.aniziumserver.site",
-	"https://x.aniziumserver.sbs", "https://x.aniziumserver.site",
-}
-
-var cdnQualities = []string{"2160p", "1440p", "1080p", "720p", "480p"}
-var cdnSounds = []string{"original", "trdub", "endub", "trsub"}
-
 func buildLabel(quality, sound string) string {
 	soundLabel := map[string]string{
 		"original": "Japonca",
@@ -326,127 +142,70 @@ func buildLabel(quality, sound string) string {
 	return quality
 }
 
-func qualLabel(q string) string {
-	switch q {
-	case "2160p":
-		return "4K"
-	case "1440p":
-		return "2K"
-	default:
-		return q
-	}
-}
-
-type probeResult struct {
-	qualIdx  int
-	soundIdx int
-	src      anizium.AnimeVideoSource
-}
-
-// probeCDNParallel — tüm kalite+ses kombinasyonlarını sunuculara paralel HEAD ile tarar.
-func probeCDNParallel(tmdbSlug string, seasonNum, episodeNum int, isMovie bool) []anizium.AnimeVideoSource {
-	resultCh := make(chan probeResult, len(cdnQualities)*len(cdnSounds))
-	var wg sync.WaitGroup
-
-	for qi, qual := range cdnQualities {
-		for si, sound := range cdnSounds {
-			wg.Add(1)
-			go func(qi, si int, qual, sound string) {
-				defer wg.Done()
-				client := &http.Client{Timeout: 5 * time.Second}
-				for _, srv := range cdnServers {
-					var streamURL string
-					if isMovie {
-						streamURL = fmt.Sprintf("%s/%s/%s-%s/master.m3u8", srv, tmdbSlug, qual, sound)
-					} else {
-						streamURL = fmt.Sprintf("%s/%s/%d/%d/%s-%s/master.m3u8",
-							srv, tmdbSlug, seasonNum, episodeNum, qual, sound)
-					}
-					req, err := http.NewRequest("HEAD", streamURL, nil)
-					if err != nil {
-						continue
-					}
-					req.Header.Set("User-Agent", "Mozilla/5.0")
-					resp, err := client.Do(req)
-					if err == nil && resp.StatusCode == 200 {
-						ql := qualLabel(qual)
-						resultCh <- probeResult{
-							qualIdx:  qi,
-							soundIdx: si,
-							src: anizium.AnimeVideoSource{
-								Label:   buildLabel(ql, sound),
-								URL:     streamURL,
-								Quality: ql,
-								Sound:   sound,
-							},
-						}
-						return
-					}
-				}
-			}(qi, si, qual, sound)
-		}
-	}
-
-	go func() {
-		wg.Wait()
-		close(resultCh)
-	}()
-
-	total := len(cdnQualities) * len(cdnSounds)
-	ordered := make([]*anizium.AnimeVideoSource, total)
-	for r := range resultCh {
-		idx := r.qualIdx*len(cdnSounds) + r.soundIdx
-		src := r.src
-		ordered[idx] = &src
-	}
-	var results []anizium.AnimeVideoSource
-	for _, src := range ordered {
-		if src != nil {
-			results = append(results, *src)
-		}
-	}
-	return results
-}
-
-// ── Altyazı ───────────────────────────────────────────────────────────────────
+// ── Altyazı & Kaynak (/anime/source) ──────────────────────────────────────────
 
 type freeSubResult struct {
+	videos      []anizium.AnimeVideoSource
 	subtitles   []anizium.AnimeSubtitle
 	nextEp      *anizium.AnimeNextEpisode
 	openingTime *anizium.AnimeOpeningTime
 	endingTime  *anizium.AnimeOpeningTime
+	err         error
 }
 
 func fetchSourceNoAuth(animeAPIID, seasonNum, episodeNum int) freeSubResult {
+	if !anizium.IsValidAniziumID(animeAPIID) {
+		return freeSubResult{}
+	}
+	if blocked, reason := anizium.IsBlocked(); blocked {
+		return freeSubResult{err: fmt.Errorf("%s", reason)}
+	}
+
 	apiURL := fmt.Sprintf(
 		"https://api.anizium.co/anime/source?id=%d&site=main&plan=standart&season=%d&episode=%d&server=1",
 		animeAPIID, seasonNum, episodeNum,
 	)
-	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("GET", apiURL, nil)
+	result, err := anizium.DoJSONGet(apiURL, anizium.GetHeaders())
 	if err != nil {
-		return freeSubResult{}
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "Mozilla/5.0")
-	req.Header.Set("Cf-Control", generateCfToken())
-	req.Header.Set("device", "browser")
-	req.Header.Set("language", "tr")
-	req.Header.Set("site", "main")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return freeSubResult{}
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return freeSubResult{}
+		return freeSubResult{err: err}
 	}
 
 	var out freeSubResult
+
+	if groupsRaw, ok := result["groups"].([]interface{}); ok {
+		for _, gRaw := range groupsRaw {
+			g, ok := gRaw.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			soundCode, _ := g["group"].(string)
+			if itemsRaw, ok := g["items"].([]interface{}); ok {
+				for _, iRaw := range itemsRaw {
+					item, ok := iRaw.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					link, _ := item["link"].(string)
+					if link == "" {
+						continue
+					}
+					qualityF, _ := item["quality"].(float64)
+					qLabel := fmt.Sprintf("%dp", int(qualityF))
+					if int(qualityF) == 2160 {
+						qLabel = "4K"
+					} else if int(qualityF) == 1440 {
+						qLabel = "2K"
+					}
+					out.videos = append(out.videos, anizium.AnimeVideoSource{
+						Label:   buildLabel(qLabel, soundCode),
+						URL:     link,
+						Quality: qLabel,
+						Sound:   soundCode,
+					})
+				}
+			}
+		}
+	}
 
 	if subsRaw, ok := result["subtitles"].([]interface{}); ok {
 		for _, subRaw := range subsRaw {
@@ -505,16 +264,14 @@ func fetchSourceNoAuth(animeAPIID, seasonNum, episodeNum int) freeSubResult {
 // ── GetWatchData ───────────────────────────────────────────────────────────────
 
 func (a AniziumFree) GetWatchData(params models.WatchParams) ([]models.Watch, error) {
-	if params.Id == nil {
-		return nil, fmt.Errorf("anime id eksik")
+	if params.Id == nil || !anizium.IsValidAniziumID(*params.Id) {
+		return nil, fmt.Errorf("geçersiz Anizium anime id")
 	}
 
-	urlStr := fmt.Sprintf("%sanime/get?id=%d", configFree.BaseUrl, *params.Id)
-	data, err := internal.GetJson(urlStr, baseHeaders())
+	dataMap, err := anizium.FetchAnimeGetCached(*params.Id)
 	if err != nil {
 		return nil, err
 	}
-	dataMap, _ := data.(map[string]interface{})
 	animeData, ok := dataMap["data"].(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("anime data eksik")
@@ -568,10 +325,6 @@ func (a AniziumFree) GetWatchData(params models.WatchParams) ([]models.Watch, er
 
 	seasonNum := seasonIdx + 1
 	episodeNum := episodeIdx + 1
-	isMovie := false
-	if animeData["type"] == "movie" {
-		isMovie = true
-	}
 
 	if seasonsRaw, ok := animeData["seasons"].([]interface{}); ok {
 		flatCounter := 0
@@ -627,54 +380,19 @@ func (a AniziumFree) GetWatchData(params models.WatchParams) ([]models.Watch, er
 		preferredQuality = appCfg.PreferredQuality
 	}
 
-	type videoRes struct {
-		sources []anizium.AnimeVideoSource
-	}
-	videoCh := make(chan videoRes, 1)
-	subCh := make(chan freeSubResult, 1)
-
-	go func() {
-		videoCh <- videoRes{probeCDNParallel(tmdbSlug, seasonNum, episodeNum, isMovie)}
-	}()
-	go func() {
-		if animeAPIID > 0 {
-			raw := fetchSourceNoAuth(animeAPIID, seasonNum, episodeNum)
-			if len(raw.subtitles) > 0 {
-				knownSub := raw.subtitles[0]
-				discovered := DiscoverAndDownloadSubtitles(knownSub.Link, knownSub.Group)
-				seen := map[string]bool{}
-				var merged []anizium.AnimeSubtitle
-				for _, d := range discovered {
-					if !seen[d.Group] {
-						seen[d.Group] = true
-						merged = append(merged, anizium.AnimeSubtitle{
-							Group: d.Group,
-							Link:  d.URL,
-							Label: d.Label,
-						})
-					}
-				}
-				for _, s := range raw.subtitles {
-					if !seen[s.Group] {
-						seen[s.Group] = true
-						merged = append(merged, s)
-					}
-				}
-				raw.subtitles = merged
+	var subResult freeSubResult
+	if animeAPIID > 0 {
+		subResult = fetchSourceNoAuth(animeAPIID, seasonNum, episodeNum)
+		if subResult.err != nil {
+			if blocked, reason := anizium.IsBlocked(); blocked {
+				return nil, fmt.Errorf("%s", reason)
 			}
-			subCh <- raw
-		} else {
-			subCh <- freeSubResult{}
 		}
-	}()
+	}
 
-	videoResult := <-videoCh
-	subResult := <-subCh
-
-	apiVideos := videoResult.sources
-
+	apiVideos := subResult.videos
 	if len(apiVideos) == 0 {
-		return nil, fmt.Errorf("CDN'de video bulunamadı (tmdb=%s sezon=%d bolum=%d)", tmdbSlug, seasonNum, episodeNum)
+		return nil, fmt.Errorf("Anizium Free bu bölüm için video akışı döndürmedi (WAF/IP koruması için CDN taraması kapalı; AnimeciX veya AniHub kullanın)")
 	}
 
 	qualityOrder := map[string]int{"4K": 5, "2K": 4, "1080p": 3, "720p": 2, "480p": 1}
@@ -766,7 +484,6 @@ func (a AniziumFree) GetWatchData(params models.WatchParams) ([]models.Watch, er
 			Link:  s.Link,
 		})
 	}
-	// Türkçe altyazıyı TRCaption olarak ata (URL olarak)
 	for _, s := range watchSubtitles {
 		if s.Group == "tr" {
 			trCaption = &s.Link
@@ -795,7 +512,7 @@ func (a AniziumFree) GetWatchData(params models.WatchParams) ([]models.Watch, er
 		}
 	}
 
-	w := models.Watch{
+	return []models.Watch{{
 		Urls:        urls,
 		Labels:      labels,
 		TRCaption:   trCaption,
@@ -804,6 +521,5 @@ func (a AniziumFree) GetWatchData(params models.WatchParams) ([]models.Watch, er
 		NextEpisode: nextEpisode,
 		Opening:     opening,
 		Ending:      ending,
-	}
-	return []models.Watch{w}, nil
+	}}, nil
 }

@@ -172,75 +172,105 @@
         ['poll', 'fa-square-poll-horizontal', 'Anket']
     ];
     var NAVS = [
-        ['feed', 'fa-fire-flame-curved', 'Akış'],
-        ['friends', 'fa-user-group', 'Arkadaşlar'],
-        ['chat', 'fa-comments', 'Sohbet'],
-        ['discover', 'fa-compass', 'Keşfet'],
-        ['pulse', 'fa-bolt-lightning', 'Nabız'],
-        ['requests', 'fa-user-plus', 'İstekler']
+        ['feed', 'Akış'],
+        ['friends', 'Arkadaşlar'],
+        ['chat', 'Sohbet'],
+        ['discover', 'Keşfet'],
+        ['pulse', 'Nabız'],
+        ['requests', 'İstekler']
     ];
+
+    function showPageView(which) {
+        if (typeof closeDrawer === 'function') { try { closeDrawer(); } catch (_) {} }
+        if (typeof closeNavDrawer === 'function') { try { closeNavDrawer(); } catch (_) {} }
+        ['homeView', 'animeListView', 'watchView', 'malView', 'scheduleView', 'newsView', 'aboutView', 'historyView', 'statsView', 'downloadsView', 'aiView', 'profileView'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        });
+        if (typeof vjsPlayer !== 'undefined' && vjsPlayer && typeof vjsPlayer.pause === 'function') {
+            try { vjsPlayer.pause(); } catch (_) {}
+        }
+        if (which === 'sv5') {
+            closeLobby();
+            var s = $('#sv5');
+            if (s) s.classList.add('open');
+            if (window.setAnavActive) window.setAnavActive('community');
+        } else if (which === 'wt5') {
+            closeHub();
+            var w = $('#wt5');
+            if (w) w.classList.add('open');
+            if (window.setAnavActive) window.setAnavActive('together');
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
     function buildHub() {
         if ($('#sv5')) return;
         var root = document.createElement('div');
         root.id = 'sv5';
+        root.className = 'soc-page';
         root.innerHTML =
-            '<div class="sv5-shell" role="dialog" aria-label="Anitr Sosyal">' +
-              '<div class="sv5-top">' +
-                '<div class="sv5-brand"><div class="sv5-brand-ico"><i class="fa-solid fa-satellite-dish"></i></div>' +
-                  '<div><h2>Anitr Sosyal</h2><small>Topluluk akışı, anketler, arkadaşlar ve canlı sohbet</small></div></div>' +
-                '<div class="sv5-top-right"><span class="sv5-live"><i></i><span id="sv5Live">1 çevrimiçi</span></span>' +
-                  '<button class="sv5-close" data-act="close" aria-label="Kapat"><i class="fa-solid fa-xmark"></i></button></div>' +
+            '<div class="sv5-shell" aria-label="Anitr Sosyal">' +
+              '<header class="sv5-top">' +
+                '<div class="sv5-brand">' +
+                  '<p class="cat-eyebrow">Topluluk</p>' +
+                  '<h1 class="cat-title">Anitr Sosyal</h1>' +
+                  '<p class="cat-count">İnceleme, öneri, anket ve arkadaşlarınla anlık etkileşim</p>' +
+                '</div>' +
+                '<div class="sv5-top-right">' +
+                  '<span class="sv5-live"><i></i><span id="sv5Live">1 çevrimiçi</span></span>' +
+                  '<div class="sv5-me" data-act="myprofile" id="sv5Me"></div>' +
+                '</div>' +
+              '</header>' +
+              '<div class="sv5-rail" id="sv5Rail">' +
+                '<div class="sv5-nav-tabs" id="sv5NavTabs">' +
+                  '<span class="sv5-nav-ink" id="sv5NavInk"></span>' +
+                  NAVS.map(function (n) {
+                      return '<button class="sv5-nav" data-tab="' + n[0] + '"><span>' + n[1] + '</span><b class="sv5-badge sv5-hidden" id="sv5b-' + n[0] + '">0</b></button>';
+                  }).join('') +
+                '</div>' +
+                '<div class="sv5-rail-right">' +
+                  '<button class="sv5-nav sv5-nav-w2g" data-act="rooms"><span>Birlikte İzle</span><b class="sv5-badge sv5-hidden" id="sv5b-rooms">0</b><i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;opacity:.6"></i></button>' +
+                '</div>' +
               '</div>' +
               '<div class="sv5-body" id="sv5Body">' +
-                '<aside class="sv5-rail" id="sv5Rail">' +
-                  NAVS.map(function (n) {
-                      return '<button class="sv5-nav" data-tab="' + n[0] + '"><i class="fa-solid ' + n[1] + '"></i><span>' + n[2] + '</span><b class="sv5-badge sv5-hidden" id="sv5b-' + n[0] + '">0</b></button>';
-                  }).join('') +
-                  '<div class="sv5-rail-sep"></div>' +
-                  '<button class="sv5-nav" data-act="rooms"><i class="fa-solid fa-tv"></i><span>Birlikte İzle</span><b class="sv5-badge sv5-hidden" id="sv5b-rooms">0</b></button>' +
-                  '<div class="sv5-rail-foot"><div class="sv5-me" data-act="myprofile" id="sv5Me"></div></div>' +
-                '</aside>' +
-                '<main class="sv5-main" id="sv5Main">' +
+                '<div class="sv5-main" id="sv5Main">' +
                   '<section class="sv5-pane" data-pane="feed" id="sv5-pane-feed"></section>' +
                   '<section class="sv5-pane" data-pane="friends" id="sv5-pane-friends"></section>' +
                   '<section class="sv5-pane pane-chat" data-pane="chat" id="sv5-pane-chat"></section>' +
                   '<section class="sv5-pane" data-pane="discover" id="sv5-pane-discover"></section>' +
                   '<section class="sv5-pane" data-pane="pulse" id="sv5-pane-pulse"></section>' +
                   '<section class="sv5-pane" data-pane="requests" id="sv5-pane-requests"></section>' +
-                '</main>' +
+                '</div>' +
                 '<aside class="sv5-side" id="sv5Side"></aside>' +
               '</div>' +
             '</div>';
-        document.body.appendChild(root);
+        (document.getElementById('app') || document.body).appendChild(root);
 
         root.addEventListener('click', onHubClick);
-        root.addEventListener('mousedown', function (e) { if (e.target === root) closeHub(); });
         root.addEventListener('input', onHubInput);
         root.addEventListener('keydown', onHubKey);
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') {
-                if ($('#sv5.open')) closeHub();
-                else if ($('#wt5.open')) closeLobby();
-            }
-        });
+        window.addEventListener('resize', function () { moveNavInk(); moveGlide(); });
         buildFeedShell();
     }
 
+    function moveNavInk() {
+        var wrap = $('#sv5NavTabs'), ink = $('#sv5NavInk');
+        var act = wrap && $('.sv5-nav.active[data-tab]', wrap);
+        if (!wrap || !ink || !act) return;
+        ink.style.width = act.offsetWidth + 'px';
+        ink.style.transform = 'translateX(' + (act.offsetLeft - 4) + 'px)';
+    }
+
     function openHub(tab) {
-        if (typeof closeDrawer === 'function') { try { closeDrawer(); } catch (_) {} }
-        if (typeof closeNavDrawer === 'function') { try { closeNavDrawer(); } catch (_) {} }
-        closeLobby();
         buildHub();
-        var root = $('#sv5');
-        void root.offsetWidth;
-        root.classList.add('open');
-        if (window.setAnavActive) window.setAnavActive('community');
+        showPageView('sv5');
         initRealtime();
         ensureLobby();
         renderMe();
         syncComposerAuth();
         switchTab(tab || S.tab || 'feed');
+        setTimeout(moveNavInk, 30);
         if (me()) loadRelations().then(function () { loadInbox(); });
     }
     function closeHub() {
@@ -249,21 +279,21 @@
         if (S.threadTimer) { clearInterval(S.threadTimer); S.threadTimer = null; }
     }
     function authPromptHtml(title, desc) {
-        return '<div class="sv5-auth"><div class="big"><i class="fa-solid fa-users-rays"></i></div>' +
+        return '<div class="sv5-auth">' +
             '<h3>' + esc(title || 'Anitr Sosyal\'e katıl') + '</h3><p>' + esc(desc || 'Arkadaş eklemek, anlık sohbet etmek ve istekleri yönetmek için hesabına giriş yap.') + '</p>' +
-            '<button class="sv5-btn primary" data-act="login" style="height:44px;padding:0 26px;font-size:14px"><i class="fa-solid fa-right-to-bracket"></i> Giriş Yap / Kayıt Ol</button></div>';
+            '<button class="sv5-btn primary" data-act="login" style="height:40px;padding:0 22px;font-size:13px">Giriş Yap / Kayıt Ol</button></div>';
     }
     function renderMe() {
         var box = $('#sv5Me');
         if (!box) return;
         if (!me()) {
-            box.innerHTML = '<span class="sv5-avatar" style="width:36px;height:36px;font-size:14px;--av-bg:linear-gradient(135deg,#4f46e5,#06b6d4)"><i class="fa-solid fa-user"></i></span><div><b>Misafir</b><small>Giriş yap / Kayıt ol</small></div>';
+            box.innerHTML = '<span class="sv5-avatar" style="width:32px;height:32px;font-size:12px;--av-bg:rgba(255,255,255,.08)"><i class="fa-regular fa-user"></i></span><div><b>Misafir</b><small>Giriş yap</small></div>';
             return;
         }
         loadProfiles([me()]).then(function () {
-            if (me()) box.innerHTML = av(me(), 36, true) + '<div><b>@' + esc(me()) + '</b><small>Profilini aç</small></div>';
+            if (me()) box.innerHTML = av(me(), 32, true) + '<div><b>@' + esc(me()) + '</b><small>Profil</small></div>';
         });
-        box.innerHTML = av(me(), 36, true) + '<div><b>@' + esc(me()) + '</b><small>Profilini aç</small></div>';
+        box.innerHTML = av(me(), 32, true) + '<div><b>@' + esc(me()) + '</b><small>Profil</small></div>';
     }
     function syncComposerAuth() {
         var comp = $('#sv5ComposerWrap'), gbar = $('#sv5GuestBar');
@@ -273,18 +303,17 @@
     }
 
     function lockShellScroll() {
-        ['.sv5-shell', '#sv5Body', '#sv5-pane-chat', '#sv5-chat', '#sv5Thread'].forEach(function (sel) {
+        ['#sv5-pane-chat', '#sv5-chat', '#sv5Thread'].forEach(function (sel) {
             var el = $(sel);
             if (el) { el.scrollTop = 0; el.scrollLeft = 0; }
         });
-        var main = $('#sv5Main');
-        if (main && main.classList.contains('chat-mode')) { main.scrollTop = 0; main.scrollLeft = 0; }
     }
 
     function switchTab(t) {
         S.tab = t;
         $$('.sv5-nav[data-tab]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === t); });
         $$('.sv5-pane').forEach(function (p) { p.classList.toggle('active', p.getAttribute('data-pane') === t); });
+        moveNavInk();
         var chat = t === 'chat' && !!me();
         $('#sv5Main').classList.toggle('chat-mode', chat);
         $('#sv5Body').classList.toggle('no-side', chat);
@@ -297,7 +326,6 @@
         else if (t === 'pulse') renderPulse();
         else if (t === 'requests') { if (!me()) $('#sv5-pane-requests').innerHTML = authPromptHtml('Arkadaşlık İstekleri', 'Gelen ve gönderilen arkadaşlık isteklerini yönetmek için giriş yap.'); else renderRequests(); }
         renderSide();
-        var main = $('#sv5Main'); if (main) main.scrollTop = 0;
         lockShellScroll();
     }
 
@@ -315,11 +343,11 @@
         var u = el.getAttribute('data-u');
         var id = el.getAttribute('data-id');
         switch (act) {
-            case 'close': closeHub(); break;
-            case 'login': closeHub(); if (typeof openAuthModal === 'function') openAuthModal(); else if (typeof showAuthModal === 'function') showAuthModal(); break;
-            case 'rooms': closeHub(); openLobby(); break;
+            case 'close': if (typeof showHomeView === 'function') showHomeView(); else closeHub(); break;
+            case 'login': if (typeof openAuthModal === 'function') openAuthModal(); else if (typeof showAuthModal === 'function') showAuthModal(); break;
+            case 'rooms': openLobby(); break;
             case 'myprofile':
-                if (!me()) { closeHub(); if (typeof openAuthModal === 'function') openAuthModal(); else if (typeof showAuthModal === 'function') showAuthModal(); }
+                if (!me()) { if (typeof openAuthModal === 'function') openAuthModal(); else if (typeof showAuthModal === 'function') showAuthModal(); }
                 else if (typeof showProfileModal === 'function') showProfileModal();
                 break;
             case 'profile': if (typeof openUserProfile === 'function') openUserProfile(u); break;
@@ -390,31 +418,30 @@
     function buildFeedShell() {
         var pane = $('#sv5-pane-feed');
         pane.innerHTML =
-            '<div class="sv5-phead"><div><h3><i class="fa-solid fa-fire-flame-curved"></i> Topluluk Akışı</h3><p>İnceleme, öneri, VS anketi ve anlık durumlarını paylaş</p></div>' +
-            '<button class="sv5-btn sm" data-act="refresh"><i class="fa-solid fa-arrows-rotate"></i> Yenile</button></div>' +
             '<div class="sv5-guest-bar sv5-hidden" id="sv5GuestBar">' +
-              '<div><b><i class="fa-solid fa-sparkles" style="color:#c4b5fd"></i> Anitr Topluluğuna Hoş Geldin!</b>Gönderi paylaşmak, anketlerde oy kullanmak ve mesajlaşmak için giriş yap.</div>' +
-              '<button class="sv5-btn primary sm" data-act="login"><i class="fa-solid fa-right-to-bracket"></i> Giriş Yap / Kayıt Ol</button>' +
+              '<div><b>Topluluk Akışı</b>Paylaşım yapmak, anketlerde oy kullanmak ve mesajlaşmak için hesabına giriş yap.</div>' +
+              '<button class="sv5-btn primary sm" data-act="login">Giriş Yap</button>' +
             '</div>' +
             '<div class="sv5-composer" id="sv5ComposerWrap">' +
               '<div class="sv5-comp-row"><div id="sv5CompAv"></div>' +
-                '<textarea id="sv5Text" class="sv5-input" rows="2" maxlength="600" placeholder="Ne izliyorsun? Düşüncelerini, teorini ya da anket sorusunu yaz..."></textarea></div>' +
+                '<textarea id="sv5Text" class="sv5-input" rows="2" maxlength="600" placeholder="Ne izliyorsun? İncelemeni, önerini veya anket sorusunu yaz..."></textarea></div>' +
               '<div class="sv5-poll-maker sv5-hidden" id="sv5PollMaker">' +
-                '<input id="sv5Poll1" class="sv5-input" placeholder="1. Seçenek (Örn: Gojo Satoru)" maxlength="60">' +
-                '<input id="sv5Poll2" class="sv5-input" placeholder="2. Seçenek (Örn: Ryomen Sukuna)" maxlength="60">' +
+                '<input id="sv5Poll1" class="sv5-input" placeholder="1. Seçenek" maxlength="60">' +
+                '<input id="sv5Poll2" class="sv5-input" placeholder="2. Seçenek" maxlength="60">' +
                 '<input id="sv5Poll3" class="sv5-input" placeholder="3. Seçenek (isteğe bağlı)" maxlength="60">' +
                 '<input id="sv5Poll4" class="sv5-input" placeholder="4. Seçenek (isteğe bağlı)" maxlength="60">' +
               '</div>' +
-              '<div class="sv5-comp-extra"><input id="sv5Anime" class="sv5-input" placeholder="Hangi anime? (isteğe bağlı)" maxlength="80">' +
-                '<button class="sv5-btn" data-act="attach" title="Şu an izlediğin animeyi ekle"><i class="fa-solid fa-wand-magic-sparkles"></i> İzlediğimi ekle</button></div>' +
+              '<div class="sv5-comp-extra"><input id="sv5Anime" class="sv5-input" placeholder="İlgili anime adı (isteğe bağlı)" maxlength="80">' +
+                '<button class="sv5-btn" data-act="attach" title="Şu an izlediğin animeyi ekle"><i class="fa-solid fa-film"></i> İzlediğimi ekle</button></div>' +
               '<div class="sv5-comp-bar"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
                 '<div class="sv5-kinds" id="sv5Kinds"><span class="sv5-kinds-glide" id="sv5Glide"></span>' +
-                  KINDS.map(function (k) { return '<button class="sv5-kind' + (k[0] === S.kind ? ' active' : '') + '" data-act="kind" data-kind="' + k[0] + '"><i class="fa-solid ' + k[1] + '"></i>' + k[2] + '</button>'; }).join('') +
+                  KINDS.map(function (k) { return '<button class="sv5-kind' + (k[0] === S.kind ? ' active' : '') + '" data-act="kind" data-kind="' + k[0] + '">' + k[2] + '</button>'; }).join('') +
                 '</div><span class="sv5-stars sv5-hidden" id="sv5Stars"></span>' +
-                '<label class="sv5-spoiler-tg"><input type="checkbox" id="sv5Spoiler"> <i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b"></i> Spoiler</label></div>' +
-                '<button class="sv5-btn primary" data-act="publish"><i class="fa-solid fa-paper-plane"></i> Paylaş</button></div>' +
+                '<label class="sv5-spoiler-tg"><input type="checkbox" id="sv5Spoiler"> Spoiler</label></div>' +
+                '<button class="sv5-btn primary" data-act="publish">Paylaş</button></div>' +
             '</div>' +
-            '<div class="sv5-filters" id="sv5Filters"></div>' +
+            '<div class="sv5-feed-toolbar"><div class="sv5-filters" id="sv5Filters"></div>' +
+            '<button class="sv5-btn sm" data-act="refresh"><i class="fa-solid fa-rotate-right"></i> Yenile</button></div>' +
             '<div id="sv5NewPill"></div>' +
             '<div class="sv5-feed" id="sv5Feed"><div class="sv5-loading"><span class="sv5-spin"></span></div></div>';
         paintFilters(); paintStars(); syncComposerAuth();
@@ -442,14 +469,14 @@
     function paintFilters() {
         var el = $('#sv5Filters'); if (!el) return;
         var F = [
-            ['all', 'fa-globe', 'Tümü'],
-            ['friends', 'fa-user-group', 'Arkadaşlarım'],
-            ['review', 'fa-star', 'İncelemeler'],
-            ['recommend', 'fa-thumbs-up', 'Öneriler'],
-            ['poll', 'fa-square-poll-horizontal', 'Anketler'],
-            ['status', 'fa-comment-dots', 'Durumlar']
+            ['all', 'Tümü'],
+            ['friends', 'Arkadaşlarım'],
+            ['review', 'İncelemeler'],
+            ['recommend', 'Öneriler'],
+            ['poll', 'Anketler'],
+            ['status', 'Durumlar']
         ];
-        el.innerHTML = F.map(function (f) { return '<button class="sv5-chip' + (S.filter === f[0] ? ' active' : '') + '" data-act="filter" data-f="' + f[0] + '"><i class="fa-solid ' + f[1] + '"></i>' + f[2] + '</button>'; }).join('');
+        el.innerHTML = F.map(function (f) { return '<button class="sv5-chip' + (S.filter === f[0] ? ' active' : '') + '" data-act="filter" data-f="' + f[0] + '">' + f[1] + '</button>'; }).join('');
     }
     function attachCurrent() {
         var a = (typeof currentAnime !== 'undefined' && currentAnime && currentAnime.title) ? currentAnime : null;
@@ -1004,10 +1031,10 @@
             }).join('') + '</div>' : '<div style="font-size:12.5px;color:var(--sv-mute)">Henüz yeterli veri yok.</div>';
         }
         if (lBox) {
-            var medals = ['🥇', '🥈', '🥉'];
             lBox.innerHTML = topUsers.length ? '<div style="display:flex;flex-direction:column;gap:7px">' + topUsers.map(function (u, idx) {
+                var numStr = idx < 9 ? '0' + (idx + 1) : String(idx + 1);
                 return '<div class="sv5-rank-row" data-act="profile" data-u="' + esc(u) + '">' +
-                    '<span class="sv5-rank-num">' + (medals[idx] || (idx + 1)) + '</span>' +
+                    '<span class="sv5-rank-num">' + numStr + '</span>' +
                     av(u, 30, true) +
                     '<div style="min-width:0;flex:1"><b style="font-size:12.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@' + esc(u) + '</b></div>' +
                     '<span class="sv5-rank-pts">' + scores[u] + ' puan</span></div>';
@@ -1239,7 +1266,7 @@
     var W = {
         lobby: null, lobbyReady: null, rtRooms: [], dbRooms: [], rooms: [], room: null,
         applying: 0, following: 0, pendingSeek: null, tickTimer: null, hbTimer: null,
-        unread: 0, lastEp: '', pwPlain: ''
+        unread: 0, lastEp: '', pwPlain: '', filter: 'all', q: ''
     };
     var REACTS = ['😂', '😭', '🔥', '😱', '❤️', '👏'];
 
@@ -1315,100 +1342,203 @@
         if ($('#wt5')) return;
         var root = document.createElement('div');
         root.id = 'wt5';
+        root.className = 'w2g-page';
         root.innerHTML =
-            '<div class="wt5-shell" role="dialog" aria-label="Birlikte İzle">' +
-              '<div class="wt5-hero"><div><h2><span class="ic"><i class="fa-solid fa-tv"></i></span> Birlikte İzle</h2>' +
-                '<p>Arkadaşlarınla aynı anda izle: oynat, durdur ve ileri sar herkeste eşzamanlı olur. Canlı sohbet ve tepkilerle sinema keyfi.</p></div>' +
-                '<div class="wt5-hero-actions"><div class="wt5-join-code"><input id="wt5Code" class="sv5-input" placeholder="Oda adı ile katıl" maxlength="40"><button class="sv5-btn" data-wt="joincode">Katıl</button></div>' +
-                  '<button class="sv5-btn" data-wt="refresh" title="Odaları yenile"><i class="fa-solid fa-arrows-rotate"></i></button>' +
-                  '<button class="sv5-btn primary" data-wt="toggleform"><i class="fa-solid fa-plus"></i> Oda Kur</button>' +
-                  '<button class="sv5-close" data-wt="close"><i class="fa-solid fa-xmark"></i></button></div></div>' +
+            '<div class="wt5-shell" aria-label="Birlikte İzle">' +
+              '<header class="wt5-hero">' +
+                '<div class="wt5-hero-left">' +
+                  '<p class="cat-eyebrow">Birlikte İzle</p>' +
+                  '<h1 class="cat-title">İzleme Odaları</h1>' +
+                  '<p class="cat-count"><b id="wt5Count">0</b> aktif oda<span class="cat-count-src" id="wt5ViewerTotal">Canlı senkron</span></p>' +
+                '</div>' +
+                '<div class="wt5-hero-actions">' +
+                  '<div class="wt5-join-code"><input id="wt5Code" class="sv5-input" placeholder="Oda adı ile katıl..." maxlength="40"><button class="sv5-btn" data-wt="joincode">Katıl</button></div>' +
+                  '<button class="sv5-btn primary" data-wt="toggleform"><i class="fa-solid fa-plus"></i> Yeni Oda Kur</button>' +
+                '</div>' +
+              '</header>' +
+              '<div id="wt5ActiveBar"></div>' +
               '<div class="wt5-body">' +
                 '<div class="wt5-form" id="wt5Form">' +
+                  '<div class="wt5-form-head">' +
+                    '<div><h3>Yeni İzleme Odası</h3><p>Oda ayarlarını belirle; kurduktan sonra istediğin animeyi açabilirsin.</p></div>' +
+                    '<div class="wt5-presets">' +
+                      '<button type="button" class="sv5-chip" data-wt="preset" data-v="Cuma Maratonu">Cuma Maratonu</button>' +
+                      '<button type="button" class="sv5-chip" data-wt="preset" data-v="Gece Seansı">Gece Seansı</button>' +
+                      '<button type="button" class="sv5-chip" data-wt="preset" data-v="Sezon Finali">Sezon Finali</button>' +
+                    '</div>' +
+                  '</div>' +
                   '<div class="wt5-form-grid">' +
                     '<div class="wt5-field"><label>Oda adı</label><input id="wt5Name" class="sv5-input" placeholder="Örn: Cuma Gecesi Maratonu" maxlength="28"></div>' +
-                    '<div class="wt5-field"><label>Şifre (isteğe bağlı)</label><input id="wt5Pw" class="sv5-input" type="password" placeholder="Boş bırakırsan herkes katılır" maxlength="24"></div>' +
-                    '<div class="wt5-field"><label>Oynatma kontrolü</label><div class="wt5-seg" id="wt5Ctl"><button class="active" data-wt="ctl" data-v="all">Herkes</button><button data-wt="ctl" data-v="host">Sadece ben</button></div></div>' +
-                    '<div class="wt5-field"><label>Şu an izlenen</label><div class="wt5-nowplaying" id="wt5Now"></div></div>' +
+                    '<div class="wt5-field"><label>Şifre (isteğe bağlı)</label><input id="wt5Pw" class="sv5-input" type="password" placeholder="Boş bırakırsan herkese açık" maxlength="24"></div>' +
+                    '<div class="wt5-field"><label>Oynatma kontrolü</label><div class="wt5-seg" id="wt5Ctl"><button type="button" class="active" data-wt="ctl" data-v="all">Herkes</button><button type="button" data-wt="ctl" data-v="host">Sadece Host</button></div></div>' +
+                    '<div class="wt5-field"><label>Başlangıç içeriği</label><div class="wt5-nowplaying" id="wt5Now"></div></div>' +
                   '</div>' +
-                  '<div class="wt5-form-actions"><button class="sv5-btn" data-wt="toggleform">Vazgeç</button><button class="sv5-btn primary" data-wt="create"><i class="fa-solid fa-check"></i> Odayı Kur</button></div>' +
+                  '<div class="wt5-form-actions"><button type="button" class="sv5-btn" data-wt="toggleform">Vazgeç</button><button type="button" class="sv5-btn primary" data-wt="create">Odayı Başlat</button></div>' +
                 '</div>' +
-                '<div class="wt5-sub"><span>Aktif odalar <b id="wt5Count">0</b></span><span><i class="fa-solid fa-bolt" style="color:#34d399"></i> Supabase Realtime · Canlı Senkron</span></div>' +
+                '<div class="wt5-toolbar">' +
+                  '<div class="wt5-filters" id="wt5Filters">' +
+                    '<button type="button" class="sv5-chip active" data-wt="wfilter" data-f="all">Tümü</button>' +
+                    '<button type="button" class="sv5-chip" data-wt="wfilter" data-f="open">Şifresiz</button>' +
+                    '<button type="button" class="sv5-chip" data-wt="wfilter" data-f="friends">Arkadaşlarım</button>' +
+                  '</div>' +
+                  '<div class="wt5-toolbar-right">' +
+                    '<div class="wt5-search"><i class="fa-solid fa-magnifying-glass"></i><input id="wt5Search" placeholder="Oda veya anime ara..."></div>' +
+                    '<button type="button" class="sv5-btn sm" data-wt="refresh" title="Odaları yenile"><i class="fa-solid fa-rotate-right"></i> Yenile</button>' +
+                  '</div>' +
+                '</div>' +
                 '<div class="wt5-rooms" id="wt5Rooms"></div>' +
+                '<div class="wt5-steps">' +
+                  '<div class="wt5-step"><span>01</span><div><b>Oda Kur veya Katıl</b><p>Açık odalardan birine gir ya da şifreli/şifresiz kendi odanı oluştur.</p></div></div>' +
+                  '<div class="wt5-step"><span>02</span><div><b>Bölümü Başlat</b><p>Katalogdan herhangi bir anime bölümünü açtığında odadaki herkes otomatik yönlendirilir.</p></div></div>' +
+                  '<div class="wt5-step"><span>03</span><div><b>Senkron İzle & Sohbet Et</b><p>Duraklatma, oynatma ve ileri sarma işlemleri sağ alttaki canlı oda paneliyle eşzamanlı çalışır.</p></div></div>' +
+                '</div>' +
               '</div>' +
             '</div>';
-        document.body.appendChild(root);
-        root.addEventListener('mousedown', function (e) { if (e.target === root) closeLobby(); });
+        (document.getElementById('app') || document.body).appendChild(root);
         root.addEventListener('click', onLobbyClick);
-        root.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.id === 'wt5Code') joinFromCode(); });
+        root.addEventListener('input', function (e) {
+            if (e.target && e.target.id === 'wt5Search') {
+                W.q = e.target.value.trim();
+                renderRooms();
+            }
+        });
+        root.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && e.target.id === 'wt5Code') joinFromCode();
+            else if (e.key === 'Enter' && e.target.id === 'wt5Name') createRoom();
+        });
     }
     function nowPlayingInfo() {
         var a = (typeof currentAnime !== 'undefined' && currentAnime && currentAnime.title) ? currentAnime : null;
-        var wv = $('#watchView');
-        if (a && wv && !wv.classList.contains('hidden')) return a;
-        return null;
+        return a;
     }
     function paintNow() {
         var el = $('#wt5Now'); if (!el) return;
         var a = nowPlayingInfo();
         el.innerHTML = a ? (a.img ? '<img src="' + esc(a.img) + '" alt="">' : '') + '<div><b style="color:#fff;display:block">' + esc(a.title) + '</b><span>Oda bu animeyle başlayacak</span></div>'
-            : '<i class="fa-solid fa-film" style="font-size:22px;color:#6ee7b7"></i><div>Şu an bir bölüm açık değil.<br><span>Odayı kurduktan sonra bir bölüm aç; herkes seninle izler.</span></div>';
+            : '<i class="fa-solid fa-film" style="font-size:16px;color:rgba(255,255,255,.45)"></i><div>Henüz bölüm seçilmedi.<br><span>Odayı kurduktan sonra katalogdan bir bölüm açabilirsin.</span></div>';
+    }
+    function paintActiveBar() {
+        var bar = $('#wt5ActiveBar'); if (!bar) return;
+        var R = W.room;
+        if (!R) { bar.innerHTML = ''; return; }
+        var n = Object.keys(R.members || {}).length || 1;
+        var ep = R.ep || curEpisode();
+        bar.innerHTML =
+            '<div class="wt5-active-banner">' +
+              '<div class="wt5-ab-left">' +
+                '<span class="wt5-ab-dot"></span>' +
+                '<div><b>Aktif Odan: ' + esc(R.name) + '</b>' +
+                  '<small>' + (R.isHost ? 'Host sensin' : 'Host: @' + esc(R.host)) + ' · ' + n + ' izleyici · ' +
+                  (ep && ep.title ? esc(ep.title + (ep.label ? ' (' + ep.label + ')' : '')) : 'Henüz anime açılmadı') + '</small>' +
+                '</div>' +
+              '</div>' +
+              '<div class="wt5-ab-actions">' +
+                (ep && ep.title ? '<button type="button" class="sv5-btn primary sm" data-wt="gowatch"><i class="fa-solid fa-play"></i> Oynatıcıya Dön</button>' : '') +
+                '<button type="button" class="sv5-btn sm" data-wt="pickanime"><i class="fa-solid fa-compass"></i> Katalogdan Anime Seç</button>' +
+                '<button type="button" class="sv5-btn sm" data-wt="copyroom"><i class="fa-regular fa-copy"></i> Kodu Kopyala</button>' +
+                '<button type="button" class="sv5-btn danger sm" data-wt="leaveroom">Odadan Ayrıl</button>' +
+              '</div>' +
+            '</div>';
     }
     function openLobby(opts) {
-        closeHub();
         buildLobby();
-        var root = $('#wt5');
-        void root.offsetWidth;
-        root.classList.add('open');
-        if (window.setAnavActive) window.setAnavActive('together');
+        showPageView('wt5');
         paintNow();
+        paintActiveBar();
         renderRooms();
         ensureLobby().then(function () { renderRooms(); });
         if (me()) { initRealtime(); loadRelations(); }
-        if (opts && opts.create) { $('#wt5Form').classList.add('open'); setTimeout(function () { $('#wt5Name').focus(); }, 200); }
+        if (opts && opts.create) { $('#wt5Form').classList.add('open'); setTimeout(function () { $('#wt5Name').focus(); }, 150); }
     }
     function closeLobby() { var r = $('#wt5'); if (r) r.classList.remove('open'); }
 
     function renderRooms() {
         var box = $('#wt5Rooms'); if (!box) return;
         var cnt = $('#wt5Count'); if (cnt) cnt.textContent = W.rooms.length;
-        if (!W.rooms.length) {
-            box.innerHTML = '<div class="sv5-empty"><i class="fa-solid fa-door-open"></i><strong>Şu an aktif oda yok</strong>İlk odayı sen kur ve arkadaşlarını davet et!</div>';
+        var vtot = $('#wt5ViewerTotal');
+        if (vtot) {
+            var totalU = W.rooms.reduce(function (s, r) { return s + (r.users || 1); }, 0);
+            vtot.textContent = W.rooms.length ? (totalU + ' canlı izleyici') : 'Canlı senkron';
+        }
+        paintActiveBar();
+        var friendNames = S.friends.map(function (f) { return f.username; });
+        var qv = (W.q || '').toLowerCase();
+        var filtered = W.rooms.filter(function (r) {
+            if (W.filter === 'open' && r.hasPw) return false;
+            if (W.filter === 'friends') {
+                var isFr = friendNames.indexOf(r.host) !== -1 || (r.members || []).some(function (m) { return friendNames.indexOf(m) !== -1; });
+                if (!isFr) return false;
+            }
+            if (qv) {
+                var hay = ((r.name || '') + ' ' + (r.animeTitle || '') + ' ' + (r.host || '')).toLowerCase();
+                if (hay.indexOf(qv) === -1) return false;
+            }
+            return true;
+        });
+        if (!filtered.length) {
+            box.innerHTML = '<div class="sv5-empty">' +
+                '<strong>' + (W.rooms.length ? 'Filtreye uygun oda bulunamadı' : 'Şu an aktif izleme odası yok') + '</strong>' +
+                '<span>' + (W.rooms.length ? 'Arama terimini veya filtreyi değiştirmeyi dene.' : 'Yeni bir oda kurarak arkadaşlarını davet edebilir ve eşzamanlı izlemeye başlayabilirsin.') + '</span>' +
+                (!W.rooms.length ? '<div style="margin-top:14px"><button type="button" class="sv5-btn primary" data-wt="toggleform"><i class="fa-solid fa-plus"></i> İlk Odayı Kur</button></div>' : '') +
+                '</div>';
             return;
         }
         var names = [];
-        W.rooms.forEach(function (r) { names.push(r.host); (r.members || []).forEach(function (m) { names.push(m); }); });
-        loadProfiles(names).then(function () { /* avatarlar gelince yeniden çizme */ if (box.getAttribute('data-av') !== String(Object.keys(profCache).length)) { box.setAttribute('data-av', String(Object.keys(profCache).length)); paintRooms(box); } });
-        paintRooms(box);
+        filtered.forEach(function (r) { names.push(r.host); (r.members || []).forEach(function (m) { names.push(m); }); });
+        loadProfiles(names).then(function () { if (box.getAttribute('data-av') !== String(Object.keys(profCache).length)) { box.setAttribute('data-av', String(Object.keys(profCache).length)); paintRooms(box, filtered); } });
+        paintRooms(box, filtered);
     }
-    function paintRooms(box) {
+    function paintRooms(box, list) {
+        var rooms = list || W.rooms;
         var friendNames = S.friends.map(function (f) { return f.username; });
-        box.innerHTML = W.rooms.map(function (r, i) {
+        box.innerHTML = rooms.map(function (r, i) {
             var mine = W.room && W.room.id === r.id;
             var fr = friendNames.indexOf(r.host) !== -1 || (r.members || []).some(function (m) { return friendNames.indexOf(m) !== -1; });
             var members = (r.members || []).slice(0, 4);
-            return '<div class="wt5-card sv5-rise' + (mine ? ' mine' : fr ? ' friend' : '') + '" style="--i:' + Math.min(i, 8) + '">' +
-                '<div class="wt5-cover">' + (r.animeImg ? '<img src="' + esc(r.animeImg) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
-                '<span class="wt5-live"><i></i> CANLI</span><span class="wt5-viewers"><i class="fa-solid fa-users"></i> ' + (r.users || 1) + '</span>' +
-                (r.hasPw ? '<span class="wt5-lock"><i class="fa-solid fa-lock"></i></span>' : '') + '</div>' +
-                '<div class="wt5-info"><h4>' + esc(r.name) + '</h4>' +
-                '<div class="wt5-anime"><i class="fa-solid fa-play"></i>' + esc(r.animeTitle ? (r.animeTitle + (r.epLabel ? ' · ' + r.epLabel : '')) : 'Henüz bir anime seçilmedi') + '</div>' +
-                '<div class="wt5-foot"><div class="wt5-host">' + av(r.host, 26, false) + '<span>Host <b>@' + esc(r.host) + '</b></span></div>' +
-                '<div class="wt5-members">' + members.map(function (m) { return av(m, 24, false); }).join('') + '</div>' +
-                (mine ? '<button class="sv5-btn sm" disabled>Buradasın</button>' : '<button class="sv5-btn green sm" data-wt="join" data-room="' + esc(r.name) + '"><i class="fa-solid fa-right-to-bracket"></i> Katıl</button>') + '</div></div>' +
-                (fr && !mine ? '<span class="wt5-fbadge"><i class="fa-solid fa-user-group"></i> Arkadaşın odada</span>' : '') + '</div>';
+            return '<article class="wt5-card sv5-rise' + (mine ? ' mine' : fr ? ' friend' : '') + '" style="--i:' + Math.min(i, 8) + '">' +
+                '<div class="wt5-cover">' + (r.animeImg ? '<img src="' + esc(r.animeImg) + '" alt="" loading="lazy" onerror="this.remove()">' : '<div class="wt5-cover-ph"><i class="fa-solid fa-tv"></i></div>') +
+                '<span class="wt5-live"><i></i> CANLI</span><span class="wt5-viewers"><i class="fa-regular fa-user"></i> ' + (r.users || 1) + '</span>' +
+                (r.hasPw ? '<span class="wt5-lock" title="Şifreli oda"><i class="fa-solid fa-lock"></i></span>' : '') +
+                (fr && !mine ? '<span class="wt5-fbadge">Arkadaşın odada</span>' : '') +
+                '</div>' +
+                '<div class="wt5-info"><div class="wt5-info-top"><h4>' + esc(r.name) + '</h4></div>' +
+                '<div class="wt5-anime">' + esc(r.animeTitle ? (r.animeTitle + (r.epLabel ? ' · ' + r.epLabel : '')) : 'Anime seçilmesi bekleniyor') + '</div>' +
+                '<div class="wt5-foot"><div class="wt5-host">' + av(r.host, 24, false) + '<span>@' + esc(r.host) + '</span></div>' +
+                '<div class="wt5-members">' + members.map(function (m) { return av(m, 22, false); }).join('') + '</div>' +
+                (mine ? '<button type="button" class="sv5-btn sm" disabled>Odadasın</button>' : '<button type="button" class="sv5-btn primary sm" data-wt="join" data-room="' + esc(r.name) + '">Katıl</button>') + '</div></div>' +
+                '</article>';
         }).join('');
     }
     function onLobbyClick(e) {
         var el = e.target.closest('[data-wt]'); if (!el) return;
         var a = el.getAttribute('data-wt');
-        if (a === 'close') closeLobby();
-        else if (a === 'refresh') { fetchDbRooms(); toast('🔄 Aktif odalar güncellendi'); }
-        else if (a === 'toggleform') { $('#wt5Form').classList.toggle('open'); paintNow(); }
+        if (a === 'close') { if (typeof showHomeView === 'function') showHomeView(); else closeLobby(); }
+        else if (a === 'refresh') { fetchDbRooms(); toast('Aktif odalar güncellendi'); }
+        else if (a === 'toggleform') {
+            var fm = $('#wt5Form');
+            if (fm) {
+                fm.classList.toggle('open');
+                paintNow();
+                if (fm.classList.contains('open')) setTimeout(function () { var n = $('#wt5Name'); if (n) n.focus(); }, 100);
+            }
+        }
+        else if (a === 'preset') {
+            var inp = $('#wt5Name');
+            if (inp) { inp.value = el.getAttribute('data-v') || ''; inp.focus(); }
+        }
+        else if (a === 'wfilter') {
+            W.filter = el.getAttribute('data-f') || 'all';
+            $$('#wt5Filters [data-wt="wfilter"]').forEach(function (b) { b.classList.toggle('active', b === el); });
+            renderRooms();
+        }
         else if (a === 'ctl') { $$('#wt5Ctl button').forEach(function (b) { b.classList.toggle('active', b === el); }); }
         else if (a === 'create') createRoom();
         else if (a === 'join') joinRoomByName(el.getAttribute('data-room'));
         else if (a === 'joincode') joinFromCode();
+        else if (a === 'pickanime') { if (typeof showAnimeListView === 'function') showAnimeListView(); }
+        else if (a === 'gowatch') { if (typeof showWatchView === 'function') showWatchView(); }
+        else if (a === 'copyroom') { if (W.room) { try { navigator.clipboard.writeText(W.room.name); toast('Oda adı kopyalandı: ' + W.room.name); } catch (_) {} } }
+        else if (a === 'leaveroom') { leaveRoom(true); renderRooms(); }
     }
     function joinFromCode() { var v = ($('#wt5Code').value || '').trim(); if (!v) { toast('Oda adını yaz.'); return; } joinRoomByName(v); }
 
@@ -1435,8 +1565,6 @@
         return 'x' + (h >>> 0).toString(16);
     }
     function curEpisode() {
-        var wv = $('#watchView');
-        if (!wv || wv.classList.contains('hidden')) return null;
         if (typeof currentAnime === 'undefined' || !currentAnime || !currentAnime.title) return null;
         var ep = (typeof currentEpisode !== 'undefined' && currentEpisode) ? currentEpisode : null;
         var sI = typeof currentSIdx === 'number' ? currentSIdx : 0, eI = typeof currentEIdx === 'number' ? currentEIdx : 0;
@@ -1476,10 +1604,16 @@
         var pw = await hashPw(name, pwPlain);
         W.pwPlain = pwPlain || '';
         await enterRoom({ id: id, name: name, host: nick, pw: pw, control: ctl, createdAt: Date.now() }, nick, true);
-        closeLobby();
+        var fm = $('#wt5Form'); if (fm) fm.classList.remove('open');
         var hasEp = !!curEpisode();
-        toast(hasEp ? '🎬 Oda kuruldu! Arkadaşlarını davet edebilirsin.' : '🎬 Oda hazır! Bir bölüm aç; katılanlar seninle birlikte izler.', 4200);
-        if (hasEp) announceEpisode(true);
+        toast(hasEp ? 'Oda kuruldu. Arkadaşlarını davet edebilirsin.' : 'Oda hazır. Katalogdan bir bölüm açtığında herkes seninle izler.', 4200);
+        if (hasEp) {
+            if (typeof showWatchView === 'function') showWatchView();
+            announceEpisode(true);
+        } else {
+            paintActiveBar();
+            renderRooms();
+        }
     }
     async function joinRoomByName(name, pwTry) {
         if (!name) return;
@@ -1494,18 +1628,23 @@
             var pw = pwTry;
             if (!pw) {
                 if (typeof Swal !== 'undefined') {
-                    var r = await Swal.fire({ title: '🔒 ' + meta.name, text: 'Bu oda şifreli.', input: 'password', inputPlaceholder: 'Oda şifresi', showCancelButton: true, confirmButtonText: 'Katıl', cancelButtonText: 'İptal', confirmButtonColor: '#10b981', background: '#12141f', color: '#fff' });
+                    var r = await Swal.fire({ title: meta.name, text: 'Bu oda şifreli.', input: 'password', inputPlaceholder: 'Oda şifresi', showCancelButton: true, confirmButtonText: 'Katıl', cancelButtonText: 'İptal', confirmButtonColor: '#8b5cf6', background: '#12141f', color: '#fff' });
                     pw = r.isConfirmed ? r.value : null;
                 } else pw = window.prompt('Oda şifresi:');
                 if (pw == null) return;
             }
             var h = await hashPw(meta.name, pw);
-            if (h !== meta.pw) { toast('❌ Şifre yanlış.'); return; }
+            if (h !== meta.pw) { toast('Şifre yanlış.'); return; }
         }
         var nick = await getNick(); if (!nick) return;
         await enterRoom({ id: meta.id, name: meta.name, host: meta.host, pw: meta.pw, control: meta.control || 'all', createdAt: meta.at }, nick, false);
-        closeLobby();
-        toast('🎬 ' + meta.name + ' odasına katıldın!');
+        toast(meta.name + ' odasına katıldın.');
+        if (meta.animeTitle || curEpisode()) {
+            if (typeof showWatchView === 'function') showWatchView();
+        } else {
+            paintActiveBar();
+            renderRooms();
+        }
     }
 
     /* — Oda kanalı — */

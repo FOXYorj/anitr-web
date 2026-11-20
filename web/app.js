@@ -154,7 +154,7 @@ let currentSourceKey  = currentSource.replace(/\s+/g, '_');
 
 // Sadece desteklenen kaynaklar: AnimeciX, Anizium, Anizium Free
 
-const VALID_SOURCES = ['AnimeciX', 'Anizium', 'Anizium Free'];
+const VALID_SOURCES = ['AnimeciX', 'Anizium', 'Anizium Free', 'AniHub'];
 
 // Kaynak değiştiğinde kaldığı yerden devam et verilerini ayır
 
@@ -2063,23 +2063,14 @@ const _PRF2_BANNERS = [
 
 
 const _PRF2_MOODS = [
-
-    { e: '🍿', t: 'Anime maratonunda' },
-
-    { e: '🔥', t: 'Yeni bölüm bekliyor' },
-
-    { e: '⚔️', t: 'Shonen zirvesinde' },
-
-    { e: '🌙', t: 'Gece vardiyası' },
-
-    { e: '☕', t: 'Slice of Life keyfi' },
-
-    { e: '😭', t: 'Duygusal hasarlı' },
-
-    { e: '🎧', t: 'Anime OST dinliyor' },
-
-    { e: '💤', t: 'Şimdilik AFK' }
-
+    { e: '01', t: 'Anime maratonunda' },
+    { e: '02', t: 'Yeni bölüm bekliyor' },
+    { e: '03', t: 'Sezon serilerini takip ediyor' },
+    { e: '04', t: 'Gece kuşağı izleyicisi' },
+    { e: '05', t: 'Slice of Life molasında' },
+    { e: '06', t: 'Final bölüm etkisinde' },
+    { e: '07', t: 'Anime OST dinliyor' },
+    { e: '08', t: 'Şimdilik dışarıda (AFK)' }
 ];
 
 
@@ -2472,68 +2463,87 @@ function _prfBindInputsOnce() {
 
 
 
-function showProfileModal() {
-
-    _prf2ViewingTargetUser = null;
-
-    var shell = document.getElementById('prf2Shell');
-
-    if (shell) {
-
-        shell.classList.remove('is-visitor-mode', 'is-self-preview');
-
+function _movePrfTabInk() {
+    var bar = document.getElementById('prf2TabsBar');
+    var ink = document.getElementById('prfTabsInk');
+    if (!bar || !ink) return;
+    var activeBtn = bar.querySelector('.prf2-tab.active');
+    if (!activeBtn || activeBtn.offsetParent === null) {
+        ink.style.width = '0px';
+        return;
     }
-
-    var visAct = document.getElementById('prf2VisitorActions');
-
-    if (visAct) { visAct.innerHTML = ''; visAct.classList.add('hidden'); }
-
-    loadProfileUI();
-
-    switchPrf2Tab('overview');
-
-    document.getElementById('profileModal').classList.remove('hidden');
-
-    if (typeof currentUser !== 'undefined' && currentUser) {
-
-        _prfFetchKudosCount(currentUser);
-
-    }
-
+    ink.style.width = activeBtn.offsetWidth + 'px';
+    ink.style.transform = 'translateX(' + activeBtn.offsetLeft + 'px)';
 }
 
+function _openProfilePageView() {
+    if (typeof closeDrawer === 'function') { try { closeDrawer(); } catch (_) {} }
+    if (typeof closeNavDrawer === 'function') { try { closeNavDrawer(); } catch (_) {} }
+    if (typeof _closeSocialPages === 'function') _closeSocialPages();
+    ['homeView', 'animeListView', 'watchView', 'malView', 'scheduleView', 'newsView', 'aboutView', 'historyView', 'statsView', 'downloadsView', 'aiView'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+    var modal = document.getElementById('profileModal');
+    if (modal) modal.classList.add('hidden');
+    if (typeof leaveW2GRoom === 'function') leaveW2GRoom();
+    if (typeof vjsPlayer !== 'undefined' && vjsPlayer) {
+        try { vjsPlayer.dispose(); } catch (_) {}
+        vjsPlayer = null;
+    }
+    var pv = document.getElementById('profileView');
+    if (pv) pv.classList.remove('hidden');
+    if (window.setAnavActive) window.setAnavActive('profile');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    requestAnimationFrame(_movePrfTabInk);
+    setTimeout(_movePrfTabInk, 80);
+}
 
+function showProfileModal() {
+    _prf2ViewingTargetUser = null;
+    var shell = document.getElementById('prf2Shell');
+    if (shell) {
+        shell.classList.remove('is-visitor-mode', 'is-self-preview');
+    }
+    var pv = document.getElementById('profileView');
+    if (pv) pv.classList.remove('is-visitor-view');
+    var eb = document.getElementById('prfPageEyebrow');
+    var mt = document.getElementById('prfPageMainTitle');
+    var st = document.getElementById('prfPageSubTitle');
+    if (eb) eb.textContent = 'KULLANICI PROFİLİ / OTAKU KİMLİĞİ';
+    if (mt) mt.textContent = 'Profil & Koleksiyon Vitrini';
+    if (st) st.textContent = 'Kişisel izleme kimliğin, vitrin serilerin, başarımların ve hesap tercihlerin.';
+    var visAct = document.getElementById('prf2VisitorActions');
+    if (visAct) { visAct.innerHTML = ''; visAct.classList.add('hidden'); }
+    loadProfileUI();
+    _openProfilePageView();
+    switchPrf2Tab('overview');
+    if (typeof currentUser !== 'undefined' && currentUser) {
+        _prfFetchKudosCount(currentUser);
+    }
+}
 
 function closeProfileModal() {
-
     var modal = document.getElementById('profileModal');
-
     if (modal) modal.classList.add('hidden');
-
     var shell = document.getElementById('prf2Shell');
-
     if (shell) shell.classList.remove('is-visitor-mode', 'is-self-preview');
-
+    var pv = document.getElementById('profileView');
+    if (pv) pv.classList.remove('is-visitor-view');
     _prf2ViewingTargetUser = null;
-
+    if (pv && !pv.classList.contains('hidden')) {
+        showHomeView();
+    }
 }
 
-
-
 window.switchPrf2Tab = function(tabId, btnEl) {
-
     document.querySelectorAll('#prf2TabsBar .prf2-tab').forEach(function(b) {
-
         b.classList.toggle('active', btnEl ? (b === btnEl) : (b.getAttribute('data-ptab') === tabId));
-
     });
-
     document.querySelectorAll('#prf2Content .prf2-pane').forEach(function(p) {
-
         p.classList.toggle('active', p.getAttribute('data-ppane') === tabId);
-
     });
-
+    requestAnimationFrame(_movePrfTabInk);
 };
 
 
@@ -2726,9 +2736,8 @@ function _prfRenderHeaderChips(p) {
 
     var chips = [];
 
-    var prefMap = { sub: '🇯🇵 Altyazı', dub: '🎙️ Dublaj', both: '⚡ Altyazı & Dublaj' };
-
-    var timeMap = { night: '🌙 Gece İzleyicisi', day: '☀️ Gündüz', weekend: '🍿 Maratoncu' };
+    var prefMap = { sub: 'Altyazı Tercihli', dub: 'Dublaj Tercihli', both: 'Altyazı & Dublaj' };
+    var timeMap = { night: 'Gece Kuşağı', day: 'Gündüz Kuşağı', weekend: 'Hafta Sonu Maratonu' };
 
     if (p.watchPref && prefMap[p.watchPref]) chips.push('<span class="prf2-qchip">' + prefMap[p.watchPref] + '</span>');
 
@@ -2827,12 +2836,13 @@ function _prfRenderStatsAndAchievements(stats, p) {
     var xpFill = document.getElementById('prf2XpFill');
 
     if (lvlEl)  lvlEl.textContent  = stats.level;
-
     if (tierEl) tierEl.textContent = stats.tierName;
-
     if (xpTxt)  xpTxt.textContent  = stats.xp + ' / ' + stats.nextXp + ' XP';
-
     if (xpFill) xpFill.style.width = stats.xpPct + '%';
+    var topLvl = document.getElementById('prfTopLevelDisp');
+    var topTier = document.getElementById('prfTopTierDisp');
+    if (topLvl) topLvl.textContent = 'Seviye ' + stats.level;
+    if (topTier) topTier.textContent = stats.tierName;
 
 
 
@@ -2930,28 +2940,18 @@ function _prfRenderStatsAndAchievements(stats, p) {
 
     if (achGrid) {
 
-        achGrid.innerHTML = achs.map(function(a) {
-
+        achGrid.innerHTML = achs.map(function(a, idx) {
             var ok = a.cur >= a.max;
-
             var bp = Math.min(100, Math.round((a.cur / a.max) * 100));
-
+            var numStr = String(idx + 1).padStart(2, '0');
             return '<div class="prf2-ach-card' + (ok ? ' unlocked' : '') + '">' +
-
-                '<div class="prf2-ach-ico">' + a.icon + '</div>' +
-
+                '<div class="prf2-ach-ico">' + numStr + '</div>' +
                 '<div class="prf2-ach-body">' +
-
-                    '<strong>' + _prfEsc(a.title) + (ok ? ' ✓' : '') + '</strong>' +
-
-                    '<small>' + _prfEsc(a.desc) + ' (' + Math.min(a.cur, a.max) + '/' + a.max + ')</small>' +
-
+                    '<div class="prf2-ach-top"><strong>' + _prfEsc(a.title) + '</strong><span class="prf2-ach-stat">' + Math.min(a.cur, a.max) + ' / ' + a.max + (ok ? ' · TAMAMLANDI' : '') + '</span></div>' +
+                    '<small>' + _prfEsc(a.desc) + '</small>' +
                     '<div class="prf2-ach-bar"><div style="width:' + bp + '%"></div></div>' +
-
                 '</div>' +
-
             '</div>';
-
         }).join('');
 
     }
@@ -4187,9 +4187,8 @@ async function saveProfile() {
 
 
     if (typeof loadSocialProfile === 'function') loadSocialProfile();
-
-    closeProfileModal();
-
+    loadProfileUI();
+    switchPrf2Tab('overview');
 }
 
 
@@ -4861,7 +4860,17 @@ function clearProfileCurrentAnime() {
 
 }
 
+function _closeSocialPages() {
+    if (typeof closeFriendsModal === 'function') closeFriendsModal();
+    if (typeof closeW2GModal === 'function') closeW2GModal();
+    ['statsView', 'historyView', 'downloadsView', 'aiView', 'aboutView', 'profileView'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+}
+
 function showHomeView() {
+    _closeSocialPages();
     const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
 
     if (window.setAnavActive) setAnavActive('home');
@@ -4894,6 +4903,7 @@ function showHomeView() {
 }
 
 function showAnimeListViewContainer() {
+    _closeSocialPages();
     const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
 
     leaveW2GRoom();
@@ -4916,6 +4926,7 @@ function showAnimeListViewContainer() {
 }
 
 function showWatchView() {
+    _closeSocialPages();
     const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
 
     if (window.setAnavActive) setAnavActive('animes');
@@ -4941,38 +4952,36 @@ function showWatchView() {
 }
 
 function showMALView() {
+    if (typeof closeNavDrawer === 'function') { try { closeNavDrawer(); } catch (_) {} }
+    if (typeof closePgModal === 'function') { try { closePgModal(); } catch (_) {} }
+    _closeSocialPages();
     const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
-
     leaveW2GRoom();
-
     clearProfileCurrentAnime();
+    if (typeof setAmbientBackground === 'function') setAmbientBackground(null);
 
     malView.classList.remove('hidden');
-
     homeView.classList.add('hidden');
-
     animeListView.classList.add('hidden');
-
     watchView.classList.add('hidden');
-
     const sv = document.getElementById('scheduleView'); if (sv) sv.classList.add('hidden');
     const nv2 = document.getElementById('newsView'); if (nv2) nv2.classList.add('hidden');
 
+    if (window.setAnavActive) setAnavActive('mal');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (typeof vjsPlayer !== 'undefined' && vjsPlayer) { try { vjsPlayer.dispose(); } catch (e) {} vjsPlayer = null; }
 
     checkMALStatus();
-
-    if (malUser) {
-
-        loadMALList();
-
+    renderMALPage(false);
+    if (malUser && (!_malState.items[_malState.tab] || !_malState.items[_malState.tab].length)) {
+        loadMALList(_malState.tab);
     }
-
 }
 
 
 
 function showScheduleView() {
+    _closeSocialPages();
     const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
 
     leaveW2GRoom();
@@ -5049,22 +5058,172 @@ function toggleTheme() {
 
 
 
-// ── Toast ─────────────────────────────────────────────────
+// ── Toast (2026 Geniş & Animasyonlu Bildirim Sistemi) ─────────────────────────
 
-function showToast(msg, duration = 3000) {
+function _parseToastMeta(rawMsg, opts) {
+    opts = opts || {};
+    let text = String(rawMsg == null ? '' : rawMsg).trim();
 
+    // Baştaki emojileri ayıkla
+    const leadMatch = text.match(/^([⏩▶⏸🎬⚡✅✨💾📋🪪❌⚠️💡🔒🔓👋👏💖📨✉️📡🔄🔔🗑️🎯🔍🖼️⚙️]+)\s*/u);
+    const leadEmoji = leadMatch ? leadMatch[1] : '';
+    if (leadMatch) {
+        text = text.slice(leadMatch[0].length).trim();
+    }
+
+    const low = text.toLowerCase();
+    let kind = opts.kind || 'info';
+    let kicker = opts.kicker || 'ANITR BİLDİRİM';
+    let iconHtml = '<i class="fa-solid fa-bell"></i>';
+    let action = opts.action || null;
+
+    const isResume = leadEmoji.includes('⏩') || low.includes('devam ediliyor') || low.includes('kaldığı yerden');
+    const isPlayer = leadEmoji.includes('🎬') || leadEmoji.includes('▶') || leadEmoji.includes('⏸') || leadEmoji.includes('⚡') ||
+                     low.includes('oynat') || low.includes('atlandı') || low.includes('bölüm açılıyor');
+    const isError  = leadEmoji.includes('❌') || low.includes('başarısız') || low.includes('hata') || low.includes('ulaşılamadı') ||
+                     low.includes('bulunamadı') || low.includes('alınamadı') || low.includes('geçersiz') || low.includes('yanlış');
+    const isWarn   = leadEmoji.includes('⚠️') || leadEmoji.includes('💡') || leadEmoji.includes('🔒') ||
+                     low.includes('gereklidir') || low.includes('en fazla') || low.includes('giriş yap');
+    const isSocial = leadEmoji.includes('👋') || leadEmoji.includes('👏') || leadEmoji.includes('💖') ||
+                     leadEmoji.includes('📨') || leadEmoji.includes('✉️') || leadEmoji.includes('📡') ||
+                     low.includes('arkadaş') || low.includes('davet') || low.includes('odasına') || low.includes('alkış') || low.includes('eşitlen');
+    const isSuccess = leadEmoji.includes('✅') || leadEmoji.includes('✨') || leadEmoji.includes('💾') ||
+                      leadEmoji.includes('📋') || leadEmoji.includes('🪪') ||
+                      low.includes('kaydedildi') || low.includes('eklendi') || low.includes('oluşturuldu') ||
+                      low.includes('kopyalandı') || low.includes('indirildi') || low.includes('yayınlandı') || low.includes('güncellendi');
+
+    if (isResume) {
+        kind = 'resume';
+        kicker = 'OYNATICI · KALDIĞIN YER';
+        iconHtml = '<i class="fa-solid fa-forward-fast"></i>';
+        if (!action) {
+            action = {
+                label: 'Başa Sar',
+                icon: 'fa-rotate-left',
+                onClick: function () {
+                    try {
+                        if (typeof vjsPlayer !== 'undefined' && vjsPlayer && typeof vjsPlayer.currentTime === 'function') {
+                            vjsPlayer.currentTime(0);
+                            vjsPlayer.play();
+                        } else {
+                            const v = document.querySelector('.video-container-page video, video');
+                            if (v) { v.currentTime = 0; v.play(); }
+                        }
+                        showToast('🎬 00:00 · Bölüm baştan başlatıldı', 2600);
+                    } catch (_) {}
+                }
+            };
+        }
+    } else if (isError) {
+        kind = 'error';
+        kicker = 'BİLDİRİM · UYARI';
+        iconHtml = '<i class="fa-solid fa-circle-exclamation"></i>';
+    } else if (isWarn) {
+        kind = 'warn';
+        kicker = 'BİLGİLENDİRME';
+        iconHtml = '<i class="fa-solid fa-triangle-exclamation"></i>';
+    } else if (isSocial) {
+        kind = 'social';
+        kicker = 'ANITR SOSYAL';
+        iconHtml = '<i class="fa-solid fa-user-group"></i>';
+    } else if (isPlayer) {
+        kind = 'player';
+        kicker = 'OYNATICI';
+        iconHtml = '<i class="fa-solid fa-play"></i>';
+    } else if (isSuccess) {
+        kind = 'success';
+        kicker = 'İŞLEM TAMAMLANDI';
+        iconHtml = '<svg class="an-toast-svg-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+    }
+
+    // Güvenli HTML + Zaman damgası (Örn: 25:11) vurgulama
+    const escText = text.replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+    const formattedHtml = escText.replace(/\b(\d{1,2}:\d{2}(?::\d{2})?)\b/g, '<span class="an-toast-time">$1</span>');
+
+    return { kind: kind, kicker: kicker, iconHtml: iconHtml, html: formattedHtml || escText, action: action };
+}
+
+function hideToast() {
     const t = document.getElementById('toast');
+    if (!t) return;
+    clearTimeout(t._timer);
+    clearTimeout(t._hideTimer);
+    t.classList.remove('is-open', 'is-bump');
+    t.classList.add('is-leaving');
+    t._hideTimer = setTimeout(() => {
+        t.classList.remove('is-leaving');
+        t.classList.add('hidden');
+    }, 280);
+}
 
+function showToast(msg, duration = 3600, opts = {}) {
+    const t = document.getElementById('toast');
     if (!t) return;
 
-    t.textContent = msg;
-
-    t.classList.remove('hidden');
+    const dur = Math.max(2400, Number(duration) || 3600);
+    const meta = _parseToastMeta(msg, opts);
+    const wasOpen = !t.classList.contains('hidden') && !t.classList.contains('is-leaving');
 
     clearTimeout(t._timer);
+    clearTimeout(t._hideTimer);
 
-    t._timer = setTimeout(() => t.classList.add('hidden'), duration);
+    t.className = 'toast an-toast kind-' + meta.kind;
+    t.style.setProperty('--toast-dur', dur + 'ms');
 
+    t.innerHTML =
+        '<div class="an-toast-glow"></div>' +
+        '<div class="an-toast-ico">' + meta.iconHtml + '</div>' +
+        '<div class="an-toast-body">' +
+            '<div class="an-toast-kicker"><span class="an-toast-dot"></span>' + meta.kicker + '</div>' +
+            '<div class="an-toast-msg">' + meta.html + '</div>' +
+        '</div>' +
+        '<div class="an-toast-right">' +
+            (meta.action ? '<button type="button" class="an-toast-act" id="anToastActBtn">' + (meta.action.icon ? '<i class="fa-solid ' + meta.action.icon + '"></i>' : '') + '<span>' + meta.action.label + '</span></button>' : '') +
+            '<button type="button" class="an-toast-close" id="anToastCloseBtn" aria-label="Kapat"><i class="fa-solid fa-xmark"></i></button>' +
+        '</div>' +
+        '<div class="an-toast-bar"><span class="an-toast-bar-fill"></span></div>';
+
+    const closeBtn = t.querySelector('#anToastCloseBtn');
+    if (closeBtn) {
+        closeBtn.onclick = function (e) {
+            e.stopPropagation();
+            hideToast();
+        };
+    }
+    const actBtn = t.querySelector('#anToastActBtn');
+    if (actBtn && meta.action && typeof meta.action.onClick === 'function') {
+        actBtn.onclick = function (e) {
+            e.stopPropagation();
+            meta.action.onClick();
+        };
+    }
+
+    // Fare üzerindeyken sayacı duraklat
+    let remaining = dur;
+    let startedAt = Date.now();
+    t.onmouseenter = function () {
+        clearTimeout(t._timer);
+        remaining = Math.max(800, remaining - (Date.now() - startedAt));
+        t.classList.add('is-paused');
+    };
+    t.onmouseleave = function () {
+        startedAt = Date.now();
+        t.classList.remove('is-paused');
+        clearTimeout(t._timer);
+        t._timer = setTimeout(hideToast, remaining);
+    };
+
+    void t.offsetWidth;
+    t.classList.add('is-open');
+    if (wasOpen) {
+        t.classList.remove('is-bump');
+        void t.offsetWidth;
+        t.classList.add('is-bump');
+    }
+
+    t._timer = setTimeout(hideToast, dur);
 }
 
 
@@ -5981,38 +6140,20 @@ window.openAnimeCard = async function(title) {
 
     try {
 
-        // Try backend first with current source
-
         const src = typeof currentSource !== 'undefined' ? currentSource : 'AnimeciX';
-
-        let results = await fetchAPI('/search?q=' + encodeURIComponent(title) + '&source=' + encodeURIComponent(src));
-
-        
-
-        // If not found, try fallback source
-
-        if ((!results || results.length === 0) && src === 'AnimeciX') {
-
-            results = await fetchAPI('/search?q=' + encodeURIComponent(title) + '&source=Anizium');
-
-        } else if ((!results || results.length === 0) && src === 'Anizium') {
-
-            results = await fetchAPI('/search?q=' + encodeURIComponent(title) + '&source=AnimeciX');
-
-        }
-
-
-
-        if (results && results.length > 0) {
-
-            const a = results[0];
-
-            hideLoader();
-
-            loadDetails(a.ID || a.id || '', a.Slug || a.slug || '', !!(a.IsMovie || a.isMovie || a.TitleType === 'movie'), a.Title || a.title || title, a.Synopsis || a.synopsis || '', a.ImageURL || a.Img || a.img || '');
-
-            return;
-
+        const tryOrder = [src, ...['AnimeciX', 'AniHub'].filter(s => s !== src)];
+        for (const trySrc of tryOrder) {
+            const results = await fetchAPI('/search?q=' + encodeURIComponent(title) + '&source=' + encodeURIComponent(trySrc));
+            if (Array.isArray(results) && results.length > 0) {
+                const a = results[0];
+                currentSource = trySrc;
+                currentSourceKey = trySrc.replace(/\s+/g, '_');
+                currentSourceHistoryKey = 'anitr_history_' + currentSourceKey;
+                currentSourcePositionsKey = 'anitr_positions_' + currentSourceKey;
+                hideLoader();
+                loadDetails(a.ID || a.id || '', a.Slug || a.slug || '', !!(a.IsMovie || a.isMovie || a.TitleType === 'movie'), a.Title || a.title || title, a.Synopsis || a.synopsis || '', a.ImageURL || a.Img || a.img || '');
+                return;
+            }
         }
 
     } catch(e) {}
@@ -6891,6 +7032,44 @@ function closeTrailerModal() {
 
 
 
+function _hasValidSeasons(arr) {
+    if (!Array.isArray(arr) || !arr.length) return false;
+    return arr.some(s => (Array.isArray(s.Seasons) && s.Seasons.length > 0) || s.Number !== undefined || (s.Count && s.Count > 0));
+}
+
+async function _fetchSeasonsWithFallback(id, slug, title) {
+    const cleanSlug = (slug && slug !== 'null' && slug !== 'undefined') ? slug : '';
+    const qs = (id ? 'id=' + id : '') + (cleanSlug ? '&slug=' + encodeURIComponent(cleanSlug) : '') + '&source=' + encodeURIComponent(currentSource);
+    let seasonsData = await fetchAPI('/seasons?' + qs);
+    if (_hasValidSeasons(seasonsData)) {
+        return { id, slug: cleanSlug, seasons: seasonsData, switched: false };
+    }
+    if (title) {
+        const candidates = ['AnimeciX', 'AniHub'].filter(s => s !== currentSource);
+        for (const altSrc of candidates) {
+            if (altSrc === currentSource) continue;
+            try {
+                const res = await fetchAPI('/search?q=' + encodeURIComponent(title) + '&source=' + encodeURIComponent(altSrc));
+                if (Array.isArray(res) && res.length > 0) {
+                    const hit = res[0];
+                    const nId = hit.ID || hit.id || '';
+                    const nSlug = hit.Slug || hit.slug || '';
+                    const altQs = (nId ? 'id=' + nId : '') + (nSlug ? '&slug=' + encodeURIComponent(nSlug) : '') + '&source=' + encodeURIComponent(altSrc);
+                    const altSeasons = await fetchAPI('/seasons?' + altQs);
+                    if (_hasValidSeasons(altSeasons)) {
+                        currentSource = altSrc;
+                        currentSourceKey = altSrc.replace(/\s+/g, '_');
+                        currentSourceHistoryKey = 'anitr_history_' + currentSourceKey;
+                        currentSourcePositionsKey = 'anitr_positions_' + currentSourceKey;
+                        return { id: nId || id, slug: nSlug || cleanSlug, seasons: altSeasons, switched: true };
+                    }
+                }
+            } catch (_) {}
+        }
+    }
+    return { id, slug: cleanSlug, seasons: seasonsData || [], switched: false };
+}
+
 // ── Quick Play (Yeni Özellik 2) ───────────────────────────
 
 async function quickPlay(id, slug, isMovie, title, synopsis, img) {
@@ -6913,14 +7092,16 @@ async function quickPlay(id, slug, isMovie, title, synopsis, img) {
 
 
 
-    const qs = (id ? 'id=' + id : '') + (slug && slug !== 'null' && slug !== 'undefined' ? '&slug=' + encodeURIComponent(slug) : '') + '&source=' + encodeURIComponent(currentSource);
+    const resolved = await _fetchSeasonsWithFallback(id, slug, title);
+    id = resolved.id;
+    slug = resolved.slug;
+    const seasonsData = resolved.seasons;
 
-    const seasonsData = await fetchAPI('/seasons?' + qs);
-
-    if (!seasonsData || !Array.isArray(seasonsData) || !seasonsData.length) {
+    if (!_hasValidSeasons(seasonsData)) {
 
         showToast('❌ Bölümler alınamadı, detay sayfası açılıyor...');
 
+        window._skipNextSeasonsFetch = true;
         loadDetails(id, slug, isMovie, title, synopsis, img);
 
         return;
@@ -7105,747 +7286,1135 @@ window.openPgModal = openPgModal;
 
 
 
-function showWatchlist() {
-
-    closePgModal();
-
-    const list = getWatchlist();
-
-    
-
-    const grid = list.length
-
-        ? list.map((a, idx) => {
-
-            const t = (a.title || 'Bilinmiyor').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
-            const img = a.img || 'https://placehold.co/170x250/1a1a28/8b5cf6?text=?';
-
-            const slug = (a.slug || '').replace(/'/g, '&#39;');
-
-            const id = a.id || '';
-
-            return `<div class="pg-card" onclick="closePgModal();loadDetails('${id}','${slug}',${a.isMovie||false},'${t}','','${img}')">
-
-                <div class="pg-card-num">${idx + 1}</div>
-
-                <div class="pg-card-poster-wrap">
-
-                    <img class="pg-card-poster" src="${img}" alt="${t}" onerror="this.src='https://placehold.co/170x250/1a1a28/8b5cf6?text=?'">
-
-                    <div class="pg-card-play-icon"><i class="fa-solid fa-play"></i></div>
-
-                </div>
-
-                <div class="pg-card-info">
-
-                    <div class="pg-card-title">${t}</div>
-
-                    <div class="pg-card-meta"><i class="fa-solid fa-tv"></i> Anime</div>
-
-                </div>
-
-                <button class="pg-card-remove" title="Listeden Kaldır" onclick="event.stopPropagation();toggleWatchlistItem({id:'${id}',title:'${t}',img:'${img}',slug:'${slug}'});showWatchlist()">
-
-                    <i class="fa-solid fa-xmark"></i>
-
-                </button>
-
-            </div>`;
-
-        }).join('')
-
-        : '<div class="pg-empty"><i class="fa-solid fa-bookmark"></i><p>İzleme listeniz boş.</p><small>Kart üzerindeki 🔖 ikonu ile ekleyebilirsiniz.</small></div>';
-
-
-
-    const totalCount = list.length;
-
-    openPgModal(`
-
-        <div class="pg-modal-header">
-
-            <div class="pg-modal-title-group">
-
-                <div class="pg-modal-icon"><i class="fa-solid fa-bookmark"></i></div>
-
-                <div>
-
-                    <h2 class="pg-modal-title">İzleme Listem</h2>
-
-                    <span class="pg-modal-subtitle">${totalCount} anime</span>
-
-                </div>
-
-            </div>
-
-            <div class="pg-modal-actions">
-
-                ${totalCount > 0 ? `
-
-                <select class="pg-sort-select" onchange="sortWatchlist(this.value)">
-
-                    <option value="default">📋 Sıralama</option>
-
-                    <option value="az">🔤 A → Z</option>
-
-                    <option value="za">🔤 Z → A</option>
-
-                </select>
-
-                <button class="pg-danger-btn" onclick="if(confirm('Tüm liste silinsin mi?')){saveWatchlist([]);showWatchlist();}">
-
-                    <i class="fa-solid fa-trash"></i> Temizle
-
-                </button>` : ''}
-
-                <button class="pg-close-btn" onclick="closePgModal()"><i class="fa-solid fa-xmark"></i></button>
-
-            </div>
-
-        </div>
-
-        <div class="pg-modal-grid">${grid}</div>
-
-    `);
-
-
-
-    document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
-
-    if (document.querySelectorAll('.mobile-nav-btn')[2]) document.querySelectorAll('.mobile-nav-btn')[2].classList.add('active');
-
-}
-
-
-
-window.sortWatchlist = function(mode) {
-
-    let list = getWatchlist();
-
-    if (mode === 'az') list = [...list].sort((a,b) => (a.title||'').localeCompare(b.title||''));
-
-    if (mode === 'za') list = [...list].sort((a,b) => (b.title||'').localeCompare(a.title||''));
-
-    saveWatchlist(list);
-
-    showWatchlist();
-
-};
-
-
-
-
-
-// ══════════════════════════════════════════════════════════
-
-// LİSTELERİM SİSTEMİ
-
-// ══════════════════════════════════════════════════════════
-
-
+// ══════════════════════════════════════════════════════════════════════════
+// KİŞİSEL KÜTÜPHANE SİSTEMİ (TAM SAYFA: LİSTELERİM · FAVORİLER · GEÇMİŞ · İZLEME LİSTESİ)
+// ══════════════════════════════════════════════════════════════════════════
 
 function generateListId() {
-
     return 'lst_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6);
-
 }
-
-
 
 const getMyLists = () => ls.get('anitr_my_lists', []);
-
 const saveMyLists = (v) => ls.set('anitr_my_lists', v);
 
+const _libState = {
+    tab: 'lists',          // 'lists' | 'favorites' | 'history' | 'watchlist'
+    detailId: null,        // aktif özel liste ID'si
+    query: '',             // arama metni
+    sort: {
+        lists: 'updated',  // 'updated' | 'az' | 'count'
+        favorites: 'default', // 'default' | 'az' | 'za'
+        history: 'newest', // 'newest' | 'oldest' | 'progress' | 'az'
+        watchlist: 'default', // 'default' | 'az' | 'za'
+        detail: 'default'  // 'default' | 'az' | 'za'
+    },
+    subfilter: {
+        favorites: 'all',  // 'all' | 'tv' | 'movie'
+        watchlist: 'all',  // 'all' | 'tv' | 'movie'
+        detail: 'all',     // 'all' | 'tv' | 'movie'
+        history: 'all'     // 'all' | 'inprogress' | 'completed'
+    },
+    viewMode: localStorage.getItem('anitr_lib_viewmode') || 'grid', // 'grid' | 'rows'
+    createOpen: false,
+    newTag: 'Genel',
+    quickAddOpen: false,
+    renamingId: null
+};
 
+function _libEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
 
-// ── Ana Listelerim Sayfası ─────────────────────────────────
+function _libRelDate(ts) {
+    if (!ts) return 'Bilinmiyor';
+    const d = new Date(ts), now = new Date();
+    const diffSec = Math.max(0, Math.floor((now - d) / 1000));
+    if (diffSec < 60) return 'Az önce';
+    if (diffSec < 3600) return Math.floor(diffSec / 60) + ' dk önce';
+    if (diffSec < 86400) return Math.floor(diffSec / 3600) + ' sa önce';
+    if (diffSec < 172800) return 'Dün';
+    return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+}
+
+function _libDayBucket(ts) {
+    if (!ts) return 'Daha Eski';
+    const d = new Date(ts), now = new Date();
+    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const startItem  = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const diffDays = Math.round((startToday - startItem) / 86400000);
+    if (diffDays <= 0) return 'Bugün';
+    if (diffDays === 1) return 'Dün';
+    if (diffDays <= 7) return 'Son 7 Gün';
+    return 'Daha Eski';
+}
+
+function _activateLibraryPage() {
+    if (typeof closeNavDrawer === 'function') { try { closeNavDrawer(); } catch (_) {} }
+    if (typeof closePgModal === 'function') { try { closePgModal(); } catch (_) {} }
+    if (typeof statsModal !== 'undefined' && statsModal) statsModal.classList.add('hidden');
+
+    const hv = document.getElementById('historyView');
+    const wasHidden = !hv || hv.classList.contains('hidden');
+
+    _closeSocialPages();
+    const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
+    if (typeof leaveW2GRoom === 'function') leaveW2GRoom();
+    if (typeof clearProfileCurrentAnime === 'function') clearProfileCurrentAnime();
+    if (typeof setAmbientBackground === 'function') setAmbientBackground(null);
+
+    if (typeof homeView !== 'undefined' && homeView) homeView.classList.add('hidden');
+    if (typeof animeListView !== 'undefined' && animeListView) animeListView.classList.add('hidden');
+    if (typeof watchView !== 'undefined' && watchView) watchView.classList.add('hidden');
+    if (typeof malView !== 'undefined' && malView) malView.classList.add('hidden');
+    const sv = document.getElementById('scheduleView'); if (sv) sv.classList.add('hidden');
+    const nv = document.getElementById('newsView'); if (nv) nv.classList.add('hidden');
+    const stv = document.getElementById('statsView'); if (stv) stv.classList.add('hidden');
+
+    if (hv) hv.classList.remove('hidden');
+    if (window.setAnavActive) setAnavActive('library');
+    if (wasHidden) window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (typeof vjsPlayer !== 'undefined' && vjsPlayer) {
+        try { vjsPlayer.dispose(); } catch (e) {}
+        vjsPlayer = null;
+    }
+}
+
+function _moveLibTabInk() {
+    const wrap = document.getElementById('libTabs');
+    const ink = document.getElementById('libTabInk');
+    if (!wrap || !ink) return;
+    const act = wrap.querySelector('.lib-tab-btn.active');
+    if (!act || !act.offsetWidth) return;
+    ink.style.width = act.offsetWidth + 'px';
+    ink.style.transform = 'translateX(' + (act.offsetLeft - 3) + 'px)';
+}
+
+window.addEventListener('resize', _moveLibTabInk);
 
 function showMyLists() {
-
-    closePgModal();
-
-    const lists = getMyLists();
-
-
-
-    const totalItems = lists.reduce((sum, l) => sum + (l.animes || []).length, 0);
-
-
-
-    const gridHtml = lists.length === 0
-
-        ? `<div class="ml-empty">
-
-            <div class="ml-empty-icon"><i class="fa-solid fa-layer-group"></i></div>
-
-            <h3>Henüz listen yok</h3>
-
-            <p>İlk listeni oluşturup içerik eklemeye başla.</p>
-
-            <button class="ml-create-first-btn" onclick="createListModal()">
-
-                <i class="fa-solid fa-plus"></i> İlk listeyi oluştur
-
-            </button>
-
-        </div>`
-
-        : `<div class="ml-grid" id="myListsGrid">
-
-            ${lists.map((lst, i) => buildListCard(lst, i)).join('')}
-
-        </div>`;
-
-
-
-    openPgModal(`
-
-        <div class="pg-modal-header">
-
-            <div class="pg-modal-title-group">
-
-                <div class="pg-modal-icon"><i class="fa-solid fa-layer-group"></i></div>
-
-                <div>
-
-                    <h2 class="pg-modal-title">Listelerim</h2>
-
-                    <span class="pg-modal-subtitle">${lists.length} liste · ${totalItems} içerik</span>
-
-                </div>
-
-            </div>
-
-            <div class="pg-modal-actions">
-
-                <select class="pg-sort-select" onchange="sortMyLists(this.value)" id="myListsSortSelect">
-
-                    <option value="updated">Son Güncellenen</option>
-
-                    <option value="az">A → Z</option>
-
-                    <option value="count">Anime Sayısı</option>
-
-                </select>
-
-                <button class="ml-new-btn" onclick="createListModal()">
-
-                    <i class="fa-solid fa-plus"></i> Yeni Liste
-
-                </button>
-
-                <button class="pg-close-btn" onclick="closePgModal()"><i class="fa-solid fa-xmark"></i></button>
-
-            </div>
-
-        </div>
-
-        <div class="ml-body">${gridHtml}</div>
-
-    `);
-
-
-
-    // Animate cards on open
-
-    setTimeout(() => {
-
-        document.querySelectorAll('.ml-card').forEach((card, i) => {
-
-            card.style.animationDelay = `${i * 60}ms`;
-
-            card.classList.add('ml-card-enter');
-
-        });
-
-    }, 50);
-
-
-
+    _libState.tab = 'lists';
+    _libState.detailId = null;
+    _libState.query = '';
+    _activateLibraryPage();
+    renderLibraryPage(false);
     document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
-
+    if (document.querySelectorAll('.mobile-nav-btn')[2]) document.querySelectorAll('.mobile-nav-btn')[2].classList.add('active');
 }
-
-
-
-function buildListCard(lst, idx) {
-
-    const animes = lst.animes || [];
-
-    const count = animes.length;
-
-    const covers = animes.slice(0, 4).map(a => a.img || 'https://placehold.co/100x140/1a1a28/8b5cf6?text=?');
-
-    while (covers.length < 4) covers.push('');
-
-
-
-    const collageHtml = `
-
-        <div class="ml-card-collage">
-
-            ${covers.map((c, ci) => c
-
-                ? `<img src="${c}" loading="lazy" onerror="this.style.background='rgba(139,92,246,0.15)'">`
-
-                : `<div class="ml-card-placeholder"><i class="fa-solid fa-image"></i></div>`
-
-            ).join('')}
-
-        </div>`;
-
-
-
-    const safeId = lst.id;
-
-    const safeName = (lst.name || '').replace(/'/g, "&#39;").replace(/"/g, "&quot;");
-
-
-
-    return `<div class="ml-card" onclick="showListDetail('${safeId}')">
-
-        ${collageHtml}
-
-        <div class="ml-card-info">
-
-            <div class="ml-card-name">${lst.name || 'İsimsiz Liste'}</div>
-
-            <div class="ml-card-meta"><i class="fa-solid fa-tv"></i> ${count} anime</div>
-
-        </div>
-
-        <div class="ml-card-actions" onclick="event.stopPropagation()">
-
-            <button class="ml-card-menu-btn" onclick="toggleListMenu('${safeId}', event)">
-
-                <i class="fa-solid fa-ellipsis-vertical"></i>
-
-            </button>
-
-            <div class="ml-card-menu hidden" id="menu_${safeId}">
-
-                <button onclick="renameListPrompt('${safeId}')"><i class="fa-solid fa-pen"></i> Düzenle</button>
-
-                <button class="danger" onclick="deleteListConfirm('${safeId}')"><i class="fa-solid fa-trash"></i> Sil</button>
-
-            </div>
-
-        </div>
-
-    </div>`;
-
-}
-
-
-
-window.toggleListMenu = function(id, e) {
-
-    e.stopPropagation();
-
-    const menu = document.getElementById('menu_' + id);
-
-    if (!menu) return;
-
-    const isHidden = menu.classList.contains('hidden');
-
-    document.querySelectorAll('.ml-card-menu').forEach(m => m.classList.add('hidden'));
-
-    if (isHidden) menu.classList.remove('hidden');
-
-};
-
-
-
-document.addEventListener('click', () => {
-
-    document.querySelectorAll('.ml-card-menu').forEach(m => m.classList.add('hidden'));
-
-});
-
-
-
-window.sortMyLists = function(mode) {
-
-    let lists = getMyLists();
-
-    if (mode === 'az') lists = [...lists].sort((a, b) => (a.name||'').localeCompare(b.name||''));
-
-    else if (mode === 'count') lists = [...lists].sort((a, b) => (b.animes||[]).length - (a.animes||[]).length);
-
-    else lists = [...lists].sort((a, b) => (b.updatedAt||0) - (a.updatedAt||0));
-
-    saveMyLists(lists);
-
-    showMyLists();
-
-};
-
-
-
-// ── Liste Oluşturma Modal ─────────────────────────────────
-
-function createListModal() {
-
-    const overlay = document.createElement('div');
-
-    overlay.className = 'ml-dialog-overlay';
-
-    overlay.innerHTML = `
-
-        <div class="ml-dialog" id="createListDialog">
-
-            <div class="ml-dialog-icon"><i class="fa-solid fa-layer-group"></i></div>
-
-            <h3>Yeni Liste Oluştur</h3>
-
-            <input class="ml-dialog-input" id="newListName" type="text" placeholder="Liste adı..."
-
-                maxlength="40" autofocus onkeydown="if(event.key==='Enter')confirmCreateList()">
-
-            <div class="ml-dialog-btns">
-
-                <button class="ml-dialog-cancel" onclick="this.closest('.ml-dialog-overlay').remove()">İptal</button>
-
-                <button class="ml-dialog-confirm" onclick="confirmCreateList()">
-
-                    <i class="fa-solid fa-check"></i> Oluştur
-
-                </button>
-
-            </div>
-
-        </div>`;
-
-    document.body.appendChild(overlay);
-
-    requestAnimationFrame(() => overlay.classList.add('visible'));
-
-    setTimeout(() => document.getElementById('newListName')?.focus(), 100);
-
-}
-
-
-
-function confirmCreateList() {
-
-    const nameEl = document.getElementById('newListName');
-
-    const name = (nameEl?.value || '').trim();
-
-    if (!name) { nameEl?.classList.add('shake'); setTimeout(() => nameEl?.classList.remove('shake'), 500); return; }
-
-
-
-    const lists = getMyLists();
-
-    lists.unshift({
-
-        id: generateListId(),
-
-        name,
-
-        animes: [],
-
-        createdAt: Date.now(),
-
-        updatedAt: Date.now()
-
-    });
-
-    saveMyLists(lists);
-
-    document.querySelector('.ml-dialog-overlay')?.remove();
-
-    showToast('✅ "' + name + '" listesi oluşturuldu!');
-
-    showMyLists();
-
-}
-
-
-
-window.renameListPrompt = function(id) {
-
-    const lists = getMyLists();
-
-    const lst = lists.find(l => l.id === id);
-
-    if (!lst) return;
-
-
-
-    const overlay = document.createElement('div');
-
-    overlay.className = 'ml-dialog-overlay';
-
-    overlay.innerHTML = `
-
-        <div class="ml-dialog" id="renameListDialog">
-
-            <div class="ml-dialog-icon"><i class="fa-solid fa-pen"></i></div>
-
-            <h3>Listeyi Düzenle</h3>
-
-            <input class="ml-dialog-input" id="renameListInput" type="text" value="${(lst.name||'').replace(/"/g,'')}"
-
-                maxlength="40" onkeydown="if(event.key==='Enter')confirmRenameList('${id}')">
-
-            <div class="ml-dialog-btns">
-
-                <button class="ml-dialog-cancel" onclick="this.closest('.ml-dialog-overlay').remove()">İptal</button>
-
-                <button class="ml-dialog-confirm" onclick="confirmRenameList('${id}')">
-
-                    <i class="fa-solid fa-check"></i> Kaydet
-
-                </button>
-
-            </div>
-
-        </div>`;
-
-    document.body.appendChild(overlay);
-
-    requestAnimationFrame(() => overlay.classList.add('visible'));
-
-    setTimeout(() => { const el = document.getElementById('renameListInput'); if(el){el.focus();el.select();} }, 100);
-
-};
-
-
-
-window.confirmRenameList = function(id) {
-
-    const el = document.getElementById('renameListInput');
-
-    const name = (el?.value || '').trim();
-
-    if (!name) return;
-
-    const lists = getMyLists();
-
-    const lst = lists.find(l => l.id === id);
-
-    if (lst) { lst.name = name; lst.updatedAt = Date.now(); saveMyLists(lists); }
-
-    document.querySelector('.ml-dialog-overlay')?.remove();
-
-    showToast('✅ Liste adı güncellendi!');
-
-    showMyLists();
-
-};
-
-
-
-window.deleteListConfirm = function(id) {
-
-    const lists = getMyLists();
-
-    const lst = lists.find(l => l.id === id);
-
-    if (!lst) return;
-
-
-
-    const overlay = document.createElement('div');
-
-    overlay.className = 'ml-dialog-overlay';
-
-    overlay.innerHTML = `
-
-        <div class="ml-dialog">
-
-            <div class="ml-dialog-icon danger-icon"><i class="fa-solid fa-trash"></i></div>
-
-            <h3>Listeyi Sil</h3>
-
-            <p style="color:var(--text3);text-align:center;font-size:14px;margin-bottom:1.5rem">
-
-                "<b>${lst.name}</b>" silinecek. Bu işlem geri alınamaz.
-
-            </p>
-
-            <div class="ml-dialog-btns">
-
-                <button class="ml-dialog-cancel" onclick="this.closest('.ml-dialog-overlay').remove()">İptal</button>
-
-                <button class="ml-dialog-confirm danger-confirm" onclick="confirmDeleteList('${id}')">
-
-                    <i class="fa-solid fa-trash"></i> Sil
-
-                </button>
-
-            </div>
-
-        </div>`;
-
-    document.body.appendChild(overlay);
-
-    requestAnimationFrame(() => overlay.classList.add('visible'));
-
-};
-
-
-
-window.confirmDeleteList = function(id) {
-
-    let lists = getMyLists();
-
-    lists = lists.filter(l => l.id !== id);
-
-    saveMyLists(lists);
-
-    document.querySelector('.ml-dialog-overlay')?.remove();
-
-    showToast('🗑️ Liste silindi.');
-
-    showMyLists();
-
-};
-
-
-
-// ── Liste Detayı ──────────────────────────────────────────
 
 function showListDetail(id) {
-
-    const lists = getMyLists();
-
-    const lst = lists.find(l => l.id === id);
-
-    if (!lst) return;
-
-
-
-    const animes = lst.animes || [];
-
-    const safeName = (lst.name || '').replace(/"/g, '&quot;');
-
-
-
-    const cardsHtml = animes.length === 0
-
-        ? `<div class="pg-empty">
-
-            <i class="fa-solid fa-film"></i>
-
-            <p>Bu listede henüz anime yok.</p>
-
-            <small>Anime detay sayfasından "Listele" butonuyla ekleyebilirsin.</small>
-
-        </div>`
-
-        : animes.map((a, idx) => {
-
-            const t = (a.title||'Bilinmiyor').replace(/'/g,"&#39;").replace(/"/g,"&quot;");
-
-            const img = a.img || 'https://placehold.co/170x250/1a1a28/8b5cf6?text=?';
-
-            const slug = (a.slug||'').replace(/'/g,"&#39;");
-
-            return `<div class="pg-card ml-detail-card" onclick="closePgModal();loadDetails('${a.id}','${slug}',${a.isMovie||false},'${t}','','${img}')">
-
-                <div class="pg-card-num">${idx+1}</div>
-
-                <div class="pg-card-poster-wrap">
-
-                    <img class="pg-card-poster" src="${img}" alt="${t}" onerror="this.src='https://placehold.co/170x250/1a1a28/8b5cf6?text=?'">
-
-                    <div class="pg-card-play-icon"><i class="fa-solid fa-play"></i></div>
-
-                </div>
-
-                <div class="pg-card-info">
-
-                    <div class="pg-card-title">${t}</div>
-
-                    <div class="pg-card-meta"><i class="fa-solid fa-tv"></i> Anime</div>
-
-                </div>
-
-                <button class="pg-card-remove" title="Listeden Kaldır" onclick="event.stopPropagation();removeAnimeFromList('${id}','${a.id}')">
-
-                    <i class="fa-solid fa-xmark"></i>
-
-                </button>
-
-            </div>`;
-
-        }).join('');
-
-
-
-    openPgModal(`
-
-        <div class="pg-modal-header">
-
-            <div class="pg-modal-title-group">
-
-                <button class="ml-back-btn" onclick="showMyLists()"><i class="fa-solid fa-arrow-left"></i></button>
-
-                <div class="pg-modal-icon"><i class="fa-solid fa-list-ul"></i></div>
-
-                <div>
-
-                    <h2 class="pg-modal-title">${safeName}</h2>
-
-                    <span class="pg-modal-subtitle">${animes.length} anime</span>
-
-                </div>
-
-            </div>
-
-            <div class="pg-modal-actions">
-
-                <button class="pg-close-btn" onclick="closePgModal()"><i class="fa-solid fa-xmark"></i></button>
-
-            </div>
-
-        </div>
-
-        <div class="pg-modal-grid">${cardsHtml}</div>
-
-    `);
-
-
-
-    setTimeout(() => {
-
-        document.querySelectorAll('.ml-detail-card').forEach((card, i) => {
-
-            card.style.animationDelay = `${i * 40}ms`;
-
-            card.classList.add('ml-card-enter');
-
-        });
-
-    }, 50);
-
+    _libState.tab = 'lists';
+    _libState.detailId = id;
+    _libState.query = '';
+    _libState.quickAddOpen = false;
+    _activateLibraryPage();
+    renderLibraryPage(true);
 }
 
+function showFavorites() {
+    _libState.tab = 'favorites';
+    _libState.detailId = null;
+    _libState.query = '';
+    _activateLibraryPage();
+    renderLibraryPage(false);
+    document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+    if (document.querySelectorAll('.mobile-nav-btn')[3]) document.querySelectorAll('.mobile-nav-btn')[3].classList.add('active');
+}
 
+function showHistory() {
+    _libState.tab = 'history';
+    _libState.detailId = null;
+    _libState.query = '';
+    _activateLibraryPage();
+    renderLibraryPage(false);
+}
 
-window.removeAnimeFromList = function(listId, animeId) {
+function showWatchlist() {
+    _libState.tab = 'watchlist';
+    _libState.detailId = null;
+    _libState.query = '';
+    _activateLibraryPage();
+    renderLibraryPage(false);
+}
+
+window.libSwitchTab = function(tab) {
+    if (!['lists', 'favorites', 'history', 'watchlist'].includes(tab)) return;
+    _libState.tab = tab;
+    _libState.detailId = null;
+    _libState.query = '';
+    _libState.createOpen = false;
+    _libState.quickAddOpen = false;
+    _libState.renamingId = null;
+    renderLibraryPage(true);
+};
+
+window.libSetViewMode = function(mode) {
+    if (mode !== 'grid' && mode !== 'rows') return;
+    _libState.viewMode = mode;
+    try { localStorage.setItem('anitr_lib_viewmode', mode); } catch (_) {}
+    renderLibraryPage(true);
+};
+
+window.libSetSubfilter = function(key, val) {
+    _libState.subfilter[key] = val;
+    renderLibraryPage(true);
+};
+
+window.libSetSort = function(key, val) {
+    _libState.sort[key] = val;
+    renderLibraryPage(true);
+};
+
+window.libOnSearch = function(val) {
+    _libState.query = String(val || '');
+    renderLibraryPage(true, true);
+};
+
+window.libToggleCreate = function(force) {
+    _libState.createOpen = typeof force === 'boolean' ? force : !_libState.createOpen;
+    renderLibraryPage(true);
+    if (_libState.createOpen) {
+        setTimeout(() => { const inp = document.getElementById('libInlineListName'); if (inp) inp.focus(); }, 40);
+    }
+};
+
+window.libSetNewTag = function(tag) {
+    _libState.newTag = tag;
+    document.querySelectorAll('.lib-tag-opt').forEach(b => b.classList.toggle('active', b.dataset.tag === tag));
+};
+
+window.libCreateQuickList = function(presetName, presetTag) {
+    const inp = document.getElementById('libInlineListName');
+    const name = (presetName || (inp ? inp.value : '') || '').trim();
+    if (!name) {
+        if (inp) { inp.focus(); }
+        showToast('⚠️ Lütfen bir liste adı girin.');
+        return;
+    }
+    const lists = getMyLists();
+    const newId = generateListId();
+    lists.unshift({
+        id: newId,
+        name: name.slice(0, 45),
+        tag: presetTag || _libState.newTag || 'Genel',
+        animes: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+    });
+    saveMyLists(lists);
+    _libState.createOpen = false;
+    renderLibraryPage(true);
+    showToast(`✅ "${name}" listesi oluşturuldu!`);
+};
+
+window.libStartRename = function(id, e) {
+    if (e) e.stopPropagation();
+    _libState.renamingId = id;
+    renderLibraryPage(true);
+    setTimeout(() => {
+        const inp = document.getElementById('libRenameInput_' + id);
+        if (inp) { inp.focus(); inp.select(); }
+    }, 40);
+};
+
+window.libSaveRename = function(id, e) {
+    if (e) e.stopPropagation();
+    const inp = document.getElementById('libRenameInput_' + id);
+    const val = (inp ? inp.value : '').trim();
+    if (!val) { _libState.renamingId = null; renderLibraryPage(true); return; }
+    const lists = getMyLists();
+    const lst = lists.find(l => l.id === id);
+    if (lst) {
+        lst.name = val.slice(0, 45);
+        lst.updatedAt = Date.now();
+        saveMyLists(lists);
+        showToast('✅ Liste adı güncellendi.');
+    }
+    _libState.renamingId = null;
+    renderLibraryPage(true);
+};
+
+window.libDeleteList = function(id, e) {
+    if (e) e.stopPropagation();
+    const lists = getMyLists();
+    const idx = lists.findIndex(l => l.id === id);
+    if (idx === -1) return;
+    const removed = lists[idx];
+    lists.splice(idx, 1);
+    saveMyLists(lists);
+    if (_libState.detailId === id) _libState.detailId = null;
+    renderLibraryPage(true);
+    showToast(`🗑️ "${removed.name}" listesi silindi.`, 4800, {
+        action: {
+            label: 'Geri Al',
+            icon: 'fa-rotate-left',
+            onClick: function() {
+                const cur = getMyLists();
+                cur.splice(Math.min(idx, cur.length), 0, removed);
+                saveMyLists(cur);
+                renderLibraryPage(true);
+                showToast(`✅ "${removed.name}" geri yüklendi.`);
+            }
+        }
+    });
+};
+
+window.libToggleQuickAdd = function() {
+    _libState.quickAddOpen = !_libState.quickAddOpen;
+    renderLibraryPage(true);
+};
+
+window.libQuickAddAnimeToList = function(listId, encJson) {
+    try {
+        const anime = JSON.parse(decodeURIComponent(encJson));
+        const lists = getMyLists();
+        const lst = lists.find(l => l.id === listId);
+        if (!lst) return;
+        lst.animes = lst.animes || [];
+        if (lst.animes.some(a => String(a.id) === String(anime.id))) {
+            showToast('💡 Bu anime zaten listede bulunuyor.');
+            return;
+        }
+        lst.animes.push({
+            id: anime.id,
+            title: anime.title,
+            img: anime.img,
+            slug: anime.slug || '',
+            isMovie: !!anime.isMovie
+        });
+        lst.updatedAt = Date.now();
+        saveMyLists(lists);
+        renderLibraryPage(true);
+        showToast(`✅ "${anime.title}" listeye eklendi!`);
+    } catch (_) {}
+};
+
+window.removeAnimeFromList = function(listId, animeId, e) {
+    if (e) e.stopPropagation();
+    const lists = getMyLists();
+    const lst = lists.find(l => l.id === listId);
+    if (!lst || !lst.animes) return;
+    const idx = lst.animes.findIndex(a => String(a.id) === String(animeId));
+    if (idx === -1) return;
+    const removed = lst.animes[idx];
+    lst.animes.splice(idx, 1);
+    lst.updatedAt = Date.now();
+    saveMyLists(lists);
+    renderLibraryPage(true);
+    showToast(`🗑️ "${removed.title || 'Anime'}" listeden çıkarıldı.`, 4500, {
+        action: {
+            label: 'Geri Al',
+            icon: 'fa-rotate-left',
+            onClick: function() {
+                const curLists = getMyLists();
+                const target = curLists.find(l => l.id === listId);
+                if (target) {
+                    target.animes = target.animes || [];
+                    target.animes.splice(Math.min(idx, target.animes.length), 0, removed);
+                    target.updatedAt = Date.now();
+                    saveMyLists(curLists);
+                    renderLibraryPage(true);
+                    showToast(`✅ "${removed.title}" tekrar listeye eklendi.`);
+                }
+            }
+        }
+    });
+};
+
+window.libRemoveFavorite = function(id, e) {
+    if (e) e.stopPropagation();
+    const favs = getFavorites();
+    const idx = favs.findIndex(a => String(a.id) === String(id));
+    if (idx === -1) return;
+    const removed = favs[idx];
+    favs.splice(idx, 1);
+    saveFavorites(favs);
+    renderLibraryPage(true);
+    showToast(`🗑️ "${removed.title || 'Anime'}" favorilerden çıkarıldı.`, 4500, {
+        action: {
+            label: 'Geri Al',
+            icon: 'fa-rotate-left',
+            onClick: function() {
+                const cur = getFavorites();
+                cur.splice(Math.min(idx, cur.length), 0, removed);
+                saveFavorites(cur);
+                renderLibraryPage(true);
+                showToast(`✅ "${removed.title}" favorilere geri eklendi.`);
+            }
+        }
+    });
+};
+
+window.libRemoveWatchlist = function(id, e) {
+    if (e) e.stopPropagation();
+    const wl = getWatchlist();
+    const idx = wl.findIndex(a => String(a.id) === String(id));
+    if (idx === -1) return;
+    const removed = wl[idx];
+    wl.splice(idx, 1);
+    saveWatchlist(wl);
+    renderLibraryPage(true);
+    showToast(`🗑️ "${removed.title || 'Anime'}" izleme listesinden çıkarıldı.`, 4500, {
+        action: {
+            label: 'Geri Al',
+            icon: 'fa-rotate-left',
+            onClick: function() {
+                const cur = getWatchlist();
+                cur.splice(Math.min(idx, cur.length), 0, removed);
+                saveWatchlist(cur);
+                renderLibraryPage(true);
+                showToast(`✅ "${removed.title}" izleme listesine geri eklendi.`);
+            }
+        }
+    });
+};
+
+window.libRemoveHistoryItem = function(id, e) {
+    if (e) e.stopPropagation();
+    const hist = getHistory();
+    const idx = hist.findIndex(h => String(h.id) === String(id));
+    if (idx === -1) return;
+    const removed = hist[idx];
+    hist.splice(idx, 1);
+    saveHistory(hist);
+    if (typeof renderContinueWatching === 'function') renderContinueWatching();
+    renderLibraryPage(true);
+    showToast(`🗑️ "${removed.title || 'Kayıt'}" geçmişten silindi.`, 4500, {
+        action: {
+            label: 'Geri Al',
+            icon: 'fa-rotate-left',
+            onClick: function() {
+                const cur = getHistory();
+                cur.splice(Math.min(idx, cur.length), 0, removed);
+                saveHistory(cur);
+                if (typeof renderContinueWatching === 'function') renderContinueWatching();
+                renderLibraryPage(true);
+                showToast(`✅ "${removed.title}" geçmişe geri yüklendi.`);
+            }
+        }
+    });
+};
+
+window.libPickRandom = function(source) {
+    let pool = [];
+    if (source === 'favorites') pool = getFavorites();
+    else if (source === 'watchlist') pool = getWatchlist();
+    else if (source === 'detail' && _libState.detailId) {
+        const lst = getMyLists().find(l => l.id === _libState.detailId);
+        pool = (lst && lst.animes) ? lst.animes : [];
+    }
+    if (!pool.length) {
+        showToast('⚠️ Seçim yapılacak anime bulunamadı.');
+        return;
+    }
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    showToast(`🎲 "${pick.title}" açılıyor...`);
+    loadDetails(pick.id || '', pick.slug || '', !!pick.isMovie, pick.title || '', '', pick.img || '');
+};
+
+window.libExportAll = function() {
+    const payload = {
+        exportedAt: new Date().toISOString(),
+        myLists: getMyLists(),
+        favorites: getFavorites(),
+        watchlist: getWatchlist(),
+        history: getHistory()
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'anitr-kutuphane-yedek.json';
+    a.click();
+    showToast('💾 Kütüphane yedeği indirildi.');
+};
+
+window.libImportAll = function() {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = 'application/json,.json';
+    inp.onchange = (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = (ev) => {
+            try {
+                const data = JSON.parse(ev.target.result);
+                if (!data || typeof data !== 'object') throw new Error('Invalid');
+                if (Array.isArray(data.myLists)) saveMyLists(data.myLists);
+                if (Array.isArray(data.favorites)) saveFavorites(data.favorites);
+                if (Array.isArray(data.watchlist)) saveWatchlist(data.watchlist);
+                if (Array.isArray(data.history)) {
+                    saveHistory(data.history);
+                    if (typeof renderContinueWatching === 'function') renderContinueWatching();
+                }
+                renderLibraryPage(true);
+                showToast('✅ Kütüphane yedeği başarıyla geri yüklendi.');
+            } catch (_) {
+                showToast('❌ Geçersiz yedek dosyası.');
+            }
+        };
+        r.readAsText(f);
+    };
+    inp.click();
+};
+
+window.sortWatchlist = function(mode) { _libState.sort.watchlist = mode; renderLibraryPage(true); };
+window.sortFavorites = function(mode) { _libState.sort.favorites = mode; renderLibraryPage(true); };
+window.sortMyLists   = function(mode) { _libState.sort.lists = mode; renderLibraryPage(true); };
+
+function _buildAnimeGridCard(a, idx, removeFnCall, extraBadgeHtml) {
+    const id = _libEsc(a.id || '');
+    const slug = _libEsc(a.slug || '');
+    const title = _libEsc(a.title || 'Bilinmiyor');
+    const jsTitle = String(a.title || 'Bilinmiyor').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const jsSlug  = String(a.slug || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const img = _libEsc(a.img || 'https://placehold.co/240x360/0f0f1a/8b5cf6?text=?');
+    const jsImg   = String(a.img || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const isMovie = !!(a.isMovie);
+
+    return `
+    <article class="lib-anime-card" onclick="loadDetails('${id}','${jsSlug}',${isMovie},'${jsTitle}','','${jsImg}')">
+        <div class="lib-poster-wrap">
+            <img class="lib-poster" src="${img}" alt="${title}" loading="lazy" onerror="this.src='https://placehold.co/240x360/0f0f1a/8b5cf6?text=?'">
+            <span class="lib-card-idx">${String(idx + 1).padStart(2, '0')}</span>
+            ${extraBadgeHtml || `<span class="lib-card-tag">${isMovie ? 'Film' : 'Dizi'}</span>`}
+            <div class="lib-poster-overlay">
+                <button type="button" class="lib-ov-btn primary" title="Hızlı Oynat" onclick="event.stopPropagation();quickPlay('${id}','${jsSlug}',${isMovie},'${jsTitle}','','${jsImg}')">
+                    <i class="fa-solid fa-play"></i>
+                </button>
+                <button type="button" class="lib-ov-btn" title="Özel Listeye Ekle" onclick="event.stopPropagation();openAddToListModal({id:'${id}',title:'${jsTitle}',img:'${jsImg}',slug:'${jsSlug}',isMovie:${isMovie}})">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+                ${removeFnCall ? `<button type="button" class="lib-ov-btn danger" title="Kaldır" onclick="${removeFnCall}">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>` : ''}
+            </div>
+        </div>
+        <div class="lib-card-meta">
+            <h4 class="lib-card-title" title="${title}">${title}</h4>
+            <p class="lib-card-sub">${a.subLabel ? _libEsc(a.subLabel) : (isMovie ? 'Sinema Filmi' : 'Anime Serisi')}</p>
+        </div>
+    </article>`;
+}
+
+function _buildAnimeEditorialRow(a, idx, removeFnCall, rightMetaHtml, primaryBtnHtml) {
+    const id = _libEsc(a.id || '');
+    const title = _libEsc(a.title || 'Bilinmiyor');
+    const jsTitle = String(a.title || 'Bilinmiyor').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const jsSlug  = String(a.slug || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const img = _libEsc(a.img || 'https://placehold.co/120x170/0f0f1a/8b5cf6?text=?');
+    const jsImg   = String(a.img || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const isMovie = !!(a.isMovie);
+
+    return `
+    <div class="lib-row" onclick="loadDetails('${id}','${jsSlug}',${isMovie},'${jsTitle}','','${jsImg}')">
+        <span class="lib-row-idx">${String(idx + 1).padStart(2, '0')}</span>
+        <img class="lib-row-poster" src="${img}" alt="" loading="lazy" onerror="this.src='https://placehold.co/120x170/0f0f1a/8b5cf6?text=?'">
+        <div class="lib-row-main">
+            <strong class="lib-row-title">${title}</strong>
+            <span class="lib-row-sub">${a.subLabel ? _libEsc(a.subLabel) : (isMovie ? 'Film' : 'Anime Serisi')}</span>
+        </div>
+        <div class="lib-row-meta">${rightMetaHtml || `<span class="lib-pill">${isMovie ? 'Film' : 'Dizi'}</span>`}</div>
+        <div class="lib-row-actions" onclick="event.stopPropagation()">
+            ${primaryBtnHtml || `<button type="button" class="lib-icon-btn" title="Hızlı Oynat" onclick="quickPlay('${id}','${jsSlug}',${isMovie},'${jsTitle}','','${jsImg}')"><i class="fa-solid fa-play"></i></button>`}
+            <button type="button" class="lib-icon-btn" title="Özel Listeye Ekle" onclick="openAddToListModal({id:'${id}',title:'${jsTitle}',img:'${jsImg}',slug:'${jsSlug}',isMovie:${isMovie}})"><i class="fa-solid fa-plus"></i></button>
+            ${removeFnCall ? `<button type="button" class="lib-icon-btn danger" title="Kaldır" onclick="${removeFnCall}"><i class="fa-solid fa-xmark"></i></button>` : ''}
+        </div>
+    </div>`;
+}
+
+function renderLibraryPage(isSoftUpdate, preserveInputFocus) {
+    const host = document.getElementById('libraryBody');
+    if (!host) return;
 
     const lists = getMyLists();
+    const favs  = getFavorites();
+    const hist  = getHistory();
+    const wl    = getWatchlist();
+    const positions = (typeof getPositions === 'function') ? getPositions() : {};
 
-    const lst = lists.find(l => l.id === listId);
+    const tab = _libState.tab;
+    const q = (_libState.query || '').trim().toLowerCase();
+    const activeList = (tab === 'lists' && _libState.detailId) ? lists.find(l => l.id === _libState.detailId) : null;
+    if (tab === 'lists' && _libState.detailId && !activeList) {
+        _libState.detailId = null;
+    }
 
-    if (!lst) return;
+    // Başlık & Alt Başlık
+    let pageTitle = 'Listelerim';
+    let pageSub = `<b>${lists.length}</b> özel liste · <b>${favs.length}</b> favori · <b>${hist.length}</b> geçmiş kaydı · <b>${wl.length}</b> izleme listesi`;
+    if (activeList) {
+        pageTitle = activeList.name || 'İsimsiz Liste';
+        pageSub = `<b>${(activeList.animes || []).length}</b> anime · Kategori: <b>${_libEsc(activeList.tag || 'Genel')}</b> · Son güncelleme: <b>${_libRelDate(activeList.updatedAt || activeList.createdAt)}</b>`;
+    } else if (tab === 'favorites') {
+        pageTitle = 'Favorilerim';
+        pageSub = `Beğendiğin ve öne çıkardığın <b>${favs.length}</b> anime serisi ve film`;
+    } else if (tab === 'history') {
+        pageTitle = 'İzleme Geçmişi';
+        pageSub = `Son izlediğin bölümler, kaldığın dakikalar ve ilerleme durumun (<b>${hist.length}</b> kayıt)`;
+    } else if (tab === 'watchlist') {
+        pageTitle = 'İzleme Listesi';
+        pageSub = `Daha sonra izlemek üzere kaydettiğin <b>${wl.length}</b> anime`;
+    }
 
-    lst.animes = (lst.animes || []).filter(a => String(a.id) !== String(animeId));
+    // Sağ üst aksiyon butonları
+    let topActionsHtml = '';
+    if (activeList) {
+        topActionsHtml = `
+            <button type="button" class="lib-btn" onclick="showMyLists()"><i class="fa-solid fa-arrow-left"></i><span>Tüm Listeler</span></button>
+            <button type="button" class="lib-btn primary" onclick="libToggleQuickAdd()"><i class="fa-solid fa-plus"></i><span>Hızlı Anime Ekle</span></button>
+            ${(activeList.animes || []).length > 1 ? `<button type="button" class="lib-btn" onclick="libPickRandom('detail')"><i class="fa-solid fa-shuffle"></i><span>Rastgele</span></button>` : ''}
+            <button type="button" class="lib-btn danger" onclick="libDeleteList('${activeList.id}', event)"><i class="fa-regular fa-trash-can"></i><span>Listeyi Sil</span></button>
+        `;
+    } else if (tab === 'lists') {
+        topActionsHtml = `
+            <button type="button" class="lib-btn primary" onclick="libToggleCreate()"><i class="fa-solid fa-plus"></i><span>Yeni Liste</span></button>
+            <button type="button" class="lib-btn" onclick="libExportAll()" title="Tüm kütüphaneyi JSON olarak yedekle"><i class="fa-solid fa-arrow-down-to-bracket"></i><span>Yedekle</span></button>
+            <button type="button" class="lib-btn" onclick="libImportAll()" title="JSON yedeğini geri yükle"><i class="fa-solid fa-arrow-up-from-bracket"></i><span>İçe Aktar</span></button>
+        `;
+    } else if (tab === 'favorites') {
+        topActionsHtml = `
+            ${favs.length > 1 ? `<button type="button" class="lib-btn" onclick="libPickRandom('favorites')"><i class="fa-solid fa-shuffle"></i><span>Rastgele Seç</span></button>` : ''}
+            ${favs.length > 0 ? `<button type="button" class="lib-btn danger" onclick="if(confirm('Tüm favoriler temizlensin mi?')){saveFavorites([]);renderLibraryPage(true);}"><i class="fa-regular fa-trash-can"></i><span>Temizle</span></button>` : ''}
+        `;
+    } else if (tab === 'history') {
+        topActionsHtml = `
+            ${hist.length > 0 ? `<button type="button" class="lib-btn primary" onclick="resumeWatch('${_libEsc(hist[0].id)}')"><i class="fa-solid fa-play"></i><span>Son Bölüme Devam Et</span></button>` : ''}
+            ${hist.length > 0 ? `<button type="button" class="lib-btn danger" onclick="if(confirm('Tüm izleme geçmişi temizlensin mi?')){saveHistory([]);if(typeof renderContinueWatching==='function')renderContinueWatching();renderLibraryPage(true);}"><i class="fa-regular fa-trash-can"></i><span>Geçmişi Temizle</span></button>` : ''}
+        `;
+    } else if (tab === 'watchlist') {
+        topActionsHtml = `
+            ${wl.length > 1 ? `<button type="button" class="lib-btn" onclick="libPickRandom('watchlist')"><i class="fa-solid fa-shuffle"></i><span>Rastgele Seç</span></button>` : ''}
+            ${wl.length > 0 ? `<button type="button" class="lib-btn danger" onclick="if(confirm('İzleme listesi tamamen temizlensin mi?')){saveWatchlist([]);renderLibraryPage(true);}"><i class="fa-regular fa-trash-can"></i><span>Temizle</span></button>` : ''}
+        `;
+    }
 
-    lst.updatedAt = Date.now();
+    // Araç çubuğu sağ kontroller (Alt filtre + Sıralama + Görünüm modu)
+    let toolbarRightHtml = '';
+    const viewToggleHtml = `
+        <div class="cat-density" role="group" aria-label="Görünüm Modu">
+            <button type="button" class="${_libState.viewMode === 'grid' ? 'active' : ''}" onclick="libSetViewMode('grid')" title="Poster Izgara Görünümü">
+                <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.2"/><rect x="9" y="1" width="6" height="6" rx="1.2"/><rect x="1" y="9" width="6" height="6" rx="1.2"/><rect x="9" y="9" width="6" height="6" rx="1.2"/></svg>
+            </button>
+            <button type="button" class="${_libState.viewMode === 'rows' ? 'active' : ''}" onclick="libSetViewMode('rows')" title="Editoryal Satır Görünümü">
+                <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2.5" rx="1"/><rect x="1" y="6.75" width="14" height="2.5" rx="1"/><rect x="1" y="11.5" width="14" height="2.5" rx="1"/></svg>
+            </button>
+        </div>`;
 
+    if (tab === 'lists' && !activeList) {
+        const sVal = _libState.sort.lists;
+        toolbarRightHtml = `
+            <select class="cat-select" onchange="libSetSort('lists', this.value)" aria-label="Liste Sıralaması">
+                <option value="updated" ${sVal === 'updated' ? 'selected' : ''}>Son Güncellenen</option>
+                <option value="count" ${sVal === 'count' ? 'selected' : ''}>Anime Sayısı</option>
+                <option value="az" ${sVal === 'az' ? 'selected' : ''}>A → Z Sırala</option>
+            </select>
+            ${viewToggleHtml}
+        `;
+    } else if (tab === 'history') {
+        const sf = _libState.subfilter.history;
+        const sVal = _libState.sort.history;
+        toolbarRightHtml = `
+            <div class="lib-subpills">
+                <button type="button" class="${sf === 'all' ? 'active' : ''}" onclick="libSetSubfilter('history','all')">Tümü</button>
+                <button type="button" class="${sf === 'inprogress' ? 'active' : ''}" onclick="libSetSubfilter('history','inprogress')">Devam Edenler</button>
+                <button type="button" class="${sf === 'completed' ? 'active' : ''}" onclick="libSetSubfilter('history','completed')">Tamamlananlar</button>
+            </div>
+            <select class="cat-select" onchange="libSetSort('history', this.value)" aria-label="Geçmiş Sıralaması">
+                <option value="newest" ${sVal === 'newest' ? 'selected' : ''}>En Yeni</option>
+                <option value="oldest" ${sVal === 'oldest' ? 'selected' : ''}>En Eski</option>
+                <option value="progress" ${sVal === 'progress' ? 'selected' : ''}>İlerleme (%)</option>
+                <option value="az" ${sVal === 'az' ? 'selected' : ''}>A → Z</option>
+            </select>
+            ${viewToggleHtml}
+        `;
+    } else {
+        const key = activeList ? 'detail' : tab;
+        const sf = _libState.subfilter[key] || 'all';
+        const sVal = _libState.sort[key] || 'default';
+        toolbarRightHtml = `
+            <div class="lib-subpills">
+                <button type="button" class="${sf === 'all' ? 'active' : ''}" onclick="libSetSubfilter('${key}','all')">Tümü</button>
+                <button type="button" class="${sf === 'tv' ? 'active' : ''}" onclick="libSetSubfilter('${key}','tv')">Dizi</button>
+                <button type="button" class="${sf === 'movie' ? 'active' : ''}" onclick="libSetSubfilter('${key}','movie')">Film</button>
+            </div>
+            <select class="cat-select" onchange="libSetSort('${key}', this.value)" aria-label="Sıralama">
+                <option value="default" ${sVal === 'default' ? 'selected' : ''}>Eklenme Sırası</option>
+                <option value="az" ${sVal === 'az' ? 'selected' : ''}>A → Z</option>
+                <option value="za" ${sVal === 'za' ? 'selected' : ''}>Z → A</option>
+            </select>
+            ${viewToggleHtml}
+        `;
+    }
+
+    // ANA İÇERİK OLUŞTURMA
+    let bodyHtml = '';
+
+    // 1. ÖZEL LİSTE DETAY GÖRÜNÜMÜ
+    if (activeList) {
+        let items = [...(activeList.animes || [])];
+        const sf = _libState.subfilter.detail;
+        if (sf === 'tv') items = items.filter(a => !a.isMovie);
+        else if (sf === 'movie') items = items.filter(a => !!a.isMovie);
+        if (q) items = items.filter(a => (a.title || '').toLowerCase().includes(q));
+        if (_libState.sort.detail === 'az') items.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        else if (_libState.sort.detail === 'za') items.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+
+        // Hızlı Anime Ekleme Havuzu (Favoriler + İzleme Listesi + Geçmiş)
+        let quickPoolHtml = '';
+        if (_libState.quickAddOpen) {
+            const existingIds = new Set((activeList.animes || []).map(a => String(a.id)));
+            const poolMap = new Map();
+            [...favs, ...wl, ...hist].forEach(item => {
+                if (item && item.id && item.title && !existingIds.has(String(item.id)) && !poolMap.has(String(item.id))) {
+                    poolMap.set(String(item.id), item);
+                }
+            });
+            const candidates = Array.from(poolMap.values()).slice(0, 12);
+            quickPoolHtml = `
+            <div class="lib-quickadd-drawer">
+                <div class="lib-qa-head">
+                    <div>
+                        <span class="lib-qa-kicker">KOLEKSİYONDAN HIZLI EKLE</span>
+                        <h4>Favori, İzleme Listesi veya Geçmişindeki Animeleri Bu Listeye Ekle</h4>
+                    </div>
+                    <button type="button" class="lib-icon-btn" onclick="libToggleQuickAdd()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                ${candidates.length ? `
+                <div class="lib-qa-grid">
+                    ${candidates.map(c => {
+                        const enc = encodeURIComponent(JSON.stringify({ id: c.id, title: c.title, img: c.img || '', slug: c.slug || '', isMovie: !!c.isMovie }));
+                        return `
+                        <div class="lib-qa-item">
+                            <img src="${_libEsc(c.img || 'https://placehold.co/80x110/0f0f1a/8b5cf6?text=?')}" alt="" loading="lazy">
+                            <span>${_libEsc(c.title)}</span>
+                            <button type="button" onclick="libQuickAddAnimeToList('${activeList.id}','${enc}')"><i class="fa-solid fa-plus"></i> Ekle</button>
+                        </div>`;
+                    }).join('')}
+                </div>` : `<p class="lib-qa-empty">Kütüphanendeki tüm animeler zaten bu listede yer alıyor veya henüz favori/geçmiş kaydın yok.</p>`}
+            </div>`;
+        }
+
+        if (!items.length) {
+            bodyHtml = quickPoolHtml + `
+            <div class="lib-empty">
+                <span class="lib-empty-code">00 / BOŞ LİSTE</span>
+                <h3>${q ? 'Aramana uygun anime bulunamadı' : 'Bu listede henüz anime yok'}</h3>
+                <p>${q ? 'Farklı bir anahtar kelimeyle tekrar deneyebilirsin.' : 'Üstteki "Hızlı Anime Ekle" butonuyla mevcut kütüphanenden veya katalogdaki kartlardan bu listeye anime ekleyebilirsin.'}</p>
+                <div class="lib-empty-actions">
+                    ${!_libState.quickAddOpen ? `<button type="button" class="lib-btn primary" onclick="libToggleQuickAdd()"><i class="fa-solid fa-plus"></i> Hızlı Anime Ekle</button>` : ''}
+                    <button type="button" class="lib-btn" onclick="showAnimeListView();setAnavActive('anime')">Kataloğa Göz At →</button>
+                </div>
+            </div>`;
+        } else if (_libState.viewMode === 'rows') {
+            bodyHtml = quickPoolHtml + `<div class="lib-rows-wrap">${items.map((a, i) =>
+                _buildAnimeEditorialRow(a, i, `removeAnimeFromList('${activeList.id}','${_libEsc(a.id)}',event)`)
+            ).join('')}</div>`;
+        } else {
+            bodyHtml = quickPoolHtml + `<div class="lib-grid">${items.map((a, i) =>
+                _buildAnimeGridCard(a, i, `removeAnimeFromList('${activeList.id}','${_libEsc(a.id)}',event)`)
+            ).join('')}</div>`;
+        }
+    }
+
+    // 2. LİSTELERİM GENEL BAKIŞ
+    else if (tab === 'lists') {
+        let filteredLists = [...lists];
+        if (q) {
+            filteredLists = filteredLists.filter(l =>
+                (l.name || '').toLowerCase().includes(q) ||
+                (l.tag || '').toLowerCase().includes(q) ||
+                (l.animes || []).some(a => (a.title || '').toLowerCase().includes(q))
+            );
+        }
+        const sMode = _libState.sort.lists;
+        if (sMode === 'az') filteredLists.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        else if (sMode === 'count') filteredLists.sort((a, b) => (b.animes || []).length - (a.animes || []).length);
+        else filteredLists.sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+
+        const tags = ['Genel', 'Sezonluk', 'Maraton', 'Başyapıtlar', 'Film Gecesi'];
+        const createDrawerHtml = _libState.createOpen ? `
+        <div class="lib-create-panel">
+            <div class="lib-cp-top">
+                <div>
+                    <span class="lib-qa-kicker">YENİ KOLEKSİYON</span>
+                    <h4>Özel Liste Oluştur</h4>
+                </div>
+                <button type="button" class="lib-icon-btn" onclick="libToggleCreate(false)"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="lib-cp-form">
+                <input id="libInlineListName" type="text" class="lib-cp-input" maxlength="45" placeholder="Liste adı (ör. 2026 Kış Favorileri, En İyi Bilim Kurgu...)" onkeydown="if(event.key==='Enter')libCreateQuickList()">
+                <div class="lib-cp-tags">
+                    ${tags.map(t => `<button type="button" class="lib-tag-opt${_libState.newTag === t ? ' active' : ''}" data-tag="${t}" onclick="libSetNewTag('${t}')">${t}</button>`).join('')}
+                </div>
+                <button type="button" class="lib-btn primary" onclick="libCreateQuickList()"><i class="fa-solid fa-check"></i><span>Oluştur</span></button>
+            </div>
+            <div class="lib-cp-presets">
+                <span>Hızlı Şablonlar:</span>
+                <button type="button" onclick="libCreateQuickList('Başyapıt Seriler','Başyapıtlar')">+ Başyapıt Seriler</button>
+                <button type="button" onclick="libCreateQuickList('Hafta Sonu Maratonu','Maraton')">+ Hafta Sonu Maratonu</button>
+                <button type="button" onclick="libCreateQuickList('İzlenecek Anime Filmleri','Film Gecesi')">+ İzlenecek Anime Filmleri</button>
+                <button type="button" onclick="libCreateQuickList('2026 Sezon Takibi','Sezonluk')">+ 2026 Sezon Takibi</button>
+            </div>
+        </div>` : '';
+
+        if (!filteredLists.length) {
+            bodyHtml = createDrawerHtml + `
+            <div class="lib-empty">
+                <span class="lib-empty-code">00 / KOLEKSİYON YOK</span>
+                <h3>${q ? 'Aramana uygun özel liste bulunamadı' : 'Henüz özel bir liste oluşturmadın'}</h3>
+                <p>${q ? 'Arama filtresini temizleyerek tüm listelerini görebilirsin.' : 'Kendi izleme koleksiyonlarını, favori seçkilerini veya film listelerini oluşturup düzenleyebilirsin.'}</p>
+                <div class="lib-empty-actions">
+                    <button type="button" class="lib-btn primary" onclick="libToggleCreate(true)"><i class="fa-solid fa-plus"></i> İlk Listeni Oluştur</button>
+                </div>
+            </div>`;
+        } else if (_libState.viewMode === 'rows') {
+            bodyHtml = createDrawerHtml + `
+            <div class="lib-rows-wrap">
+                ${filteredLists.map((lst, idx) => {
+                    const count = (lst.animes || []).length;
+                    const firstImg = (lst.animes && lst.animes[0] && lst.animes[0].img) ? lst.animes[0].img : '';
+                    const isRenaming = _libState.renamingId === lst.id;
+                    const previewNames = (lst.animes || []).slice(0, 3).map(a => a.title).join(', ') || 'Henüz içerik eklenmedi';
+                    return `
+                    <div class="lib-row" onclick="showListDetail('${lst.id}')">
+                        <span class="lib-row-idx">${String(idx + 1).padStart(2, '0')}</span>
+                        ${firstImg
+                            ? `<img class="lib-row-poster" src="${_libEsc(firstImg)}" alt="" loading="lazy">`
+                            : `<div class="lib-row-poster is-empty"><i class="fa-solid fa-layer-group"></i></div>`}
+                        <div class="lib-row-main">
+                            ${isRenaming
+                                ? `<div class="lib-inline-rename" onclick="event.stopPropagation()">
+                                    <input id="libRenameInput_${lst.id}" type="text" value="${_libEsc(lst.name || '')}" maxlength="45" onkeydown="if(event.key==='Enter')libSaveRename('${lst.id}',event);if(event.key==='Escape'){_libState.renamingId=null;renderLibraryPage(true);}">
+                                    <button type="button" class="lib-btn primary sm" onclick="libSaveRename('${lst.id}',event)">Kaydet</button>
+                                   </div>`
+                                : `<strong class="lib-row-title">${_libEsc(lst.name || 'İsimsiz Liste')}</strong>`}
+                            <span class="lib-row-sub">${_libEsc(previewNames)}</span>
+                        </div>
+                        <div class="lib-row-meta">
+                            <span class="lib-pill">${_libEsc(lst.tag || 'Genel')}</span>
+                            <span class="lib-row-count"><b>${count}</b> anime</span>
+                        </div>
+                        <div class="lib-row-actions" onclick="event.stopPropagation()">
+                            <button type="button" class="lib-icon-btn" title="Adı Düzenle" onclick="libStartRename('${lst.id}',event)"><i class="fa-solid fa-pen"></i></button>
+                            <button type="button" class="lib-icon-btn danger" title="Listeyi Sil" onclick="libDeleteList('${lst.id}',event)"><i class="fa-regular fa-trash-can"></i></button>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>`;
+        } else {
+            bodyHtml = createDrawerHtml + `
+            <div class="lib-lists-grid">
+                ${filteredLists.map((lst, idx) => {
+                    const animes = lst.animes || [];
+                    const count = animes.length;
+                    const slots = [0, 1, 2, 3].map(i => animes[i] ? animes[i].img : '');
+                    const isRenaming = _libState.renamingId === lst.id;
+                    const previewNames = animes.slice(0, 3).map(a => a.title).join(' · ') || 'Bu listede henüz anime yok';
+                    return `
+                    <article class="lib-list-card" onclick="showListDetail('${lst.id}')">
+                        <div class="lib-lc-top">
+                            <span class="lib-lc-idx">${String(idx + 1).padStart(2, '0')} / ${_libEsc((lst.tag || 'GENEL').toUpperCase())}</span>
+                            <span class="lib-lc-count"><b>${count}</b> anime</span>
+                        </div>
+                        <div class="lib-lc-mosaic">
+                            ${slots.map((src, si) => src
+                                ? `<img src="${_libEsc(src)}" alt="" loading="lazy" onerror="this.style.opacity='0'">`
+                                : `<div class="lib-lc-slot"><span>0${si + 1}</span></div>`
+                            ).join('')}
+                        </div>
+                        <div class="lib-lc-body">
+                            ${isRenaming
+                                ? `<div class="lib-inline-rename" onclick="event.stopPropagation()">
+                                    <input id="libRenameInput_${lst.id}" type="text" value="${_libEsc(lst.name || '')}" maxlength="45" onkeydown="if(event.key==='Enter')libSaveRename('${lst.id}',event);if(event.key==='Escape'){_libState.renamingId=null;renderLibraryPage(true);}">
+                                    <button type="button" class="lib-btn primary sm" onclick="libSaveRename('${lst.id}',event)">Kaydet</button>
+                                   </div>`
+                                : `<h3 class="lib-lc-title">${_libEsc(lst.name || 'İsimsiz Liste')}</h3>`}
+                            <p class="lib-lc-preview">${_libEsc(previewNames)}</p>
+                        </div>
+                        <div class="lib-lc-foot">
+                            <span class="lib-lc-date">Güncelleme: ${_libRelDate(lst.updatedAt || lst.createdAt)}</span>
+                            <div class="lib-lc-actions" onclick="event.stopPropagation()">
+                                <button type="button" class="lib-icon-btn" title="Liste Adını Düzenle" onclick="libStartRename('${lst.id}',event)"><i class="fa-solid fa-pen"></i></button>
+                                <button type="button" class="lib-icon-btn danger" title="Listeyi Sil" onclick="libDeleteList('${lst.id}',event)"><i class="fa-regular fa-trash-can"></i></button>
+                                <span class="lib-lc-open" onclick="showListDetail('${lst.id}')">Aç →</span>
+                            </div>
+                        </div>
+                    </article>`;
+                }).join('')}
+            </div>`;
+        }
+    }
+
+    // 3. FAVORİLERİM VEYA İZLEME LİSTESİ
+    else if (tab === 'favorites' || tab === 'watchlist') {
+        const isFav = tab === 'favorites';
+        let items = [...(isFav ? favs : wl)];
+        const sf = _libState.subfilter[tab] || 'all';
+        if (sf === 'tv') items = items.filter(a => !a.isMovie);
+        else if (sf === 'movie') items = items.filter(a => !!a.isMovie);
+        if (q) items = items.filter(a => (a.title || '').toLowerCase().includes(q));
+        const sMode = _libState.sort[tab] || 'default';
+        if (sMode === 'az') items.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        else if (sMode === 'za') items.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+
+        if (!items.length) {
+            bodyHtml = `
+            <div class="lib-empty">
+                <span class="lib-empty-code">00 / ${isFav ? 'FAVORİ YOK' : 'LİSTE BOŞ'}</span>
+                <h3>${q ? 'Aramana uygun sonuç bulunamadı' : (isFav ? 'Henüz favorilerine anime eklemedin' : 'İzleme listen şu an boş')}</h3>
+                <p>${isFav
+                    ? 'Anime detay sayfalarındaki kalp butonuna tıklayarak en sevdiğin serileri burada toplayabilirsin.'
+                    : 'Daha sonra izlemek istediğin animeleri kartların üzerindeki yer imi ikonuyla buraya kaydedebilirsin.'}</p>
+                <div class="lib-empty-actions">
+                    <button type="button" class="lib-btn primary" onclick="showAnimeListView();setAnavActive('anime')">Kataloğu Keşfet →</button>
+                </div>
+            </div>`;
+        } else if (_libState.viewMode === 'rows') {
+            bodyHtml = `<div class="lib-rows-wrap">${items.map((a, i) => {
+                const rmCall = isFav ? `libRemoveFavorite('${_libEsc(a.id)}',event)` : `libRemoveWatchlist('${_libEsc(a.id)}',event)`;
+                return _buildAnimeEditorialRow(a, i, rmCall);
+            }).join('')}</div>`;
+        } else {
+            bodyHtml = `<div class="lib-grid">${items.map((a, i) => {
+                const rmCall = isFav ? `libRemoveFavorite('${_libEsc(a.id)}',event)` : `libRemoveWatchlist('${_libEsc(a.id)}',event)`;
+                return _buildAnimeGridCard(a, i, rmCall);
+            }).join('')}</div>`;
+        }
+    }
+
+    // 4. İZLEME GEÇMİŞİ
+    else if (tab === 'history') {
+        let enriched = hist.map(h => {
+            const savedSec = positions[(h.slug || h.id) + '_s' + (h.sIdx || 0) + '_e' + (h.eIdx || 0)] || 0;
+            const progress = Math.min(100, Math.floor((savedSec / 1440) * 100));
+            const minStr = Math.floor(savedSec / 60) + ':' + String(Math.floor(savedSec % 60)).padStart(2, '0');
+            const epLabel = h.lastWatchedLabel || ('Bölüm ' + ((h.eIdx || 0) + 1));
+            return Object.assign({}, h, {
+                savedSec,
+                progress,
+                minStr,
+                epLabel,
+                subLabel: epLabel + (savedSec > 0 ? ` · ${minStr} (%${progress})` : '')
+            });
+        });
+
+        const sf = _libState.subfilter.history;
+        if (sf === 'inprogress') enriched = enriched.filter(h => h.progress > 0 && h.progress < 90);
+        else if (sf === 'completed') enriched = enriched.filter(h => h.progress >= 90);
+
+        if (q) enriched = enriched.filter(h => (h.title || '').toLowerCase().includes(q) || (h.epLabel || '').toLowerCase().includes(q));
+
+        const sMode = _libState.sort.history;
+        if (sMode === 'oldest') enriched.sort((a, b) => (a.lastWatchedAt || 0) - (b.lastWatchedAt || 0));
+        else if (sMode === 'progress') enriched.sort((a, b) => b.progress - a.progress);
+        else if (sMode === 'az') enriched.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        else enriched.sort((a, b) => (b.lastWatchedAt || 0) - (a.lastWatchedAt || 0));
+
+        if (!enriched.length) {
+            bodyHtml = `
+            <div class="lib-empty">
+                <span class="lib-empty-code">00 / GEÇMİŞ BOŞ</span>
+                <h3>${q || sf !== 'all' ? 'Filtreye uygun izleme kaydı bulunamadı' : 'Henüz izleme geçmişin oluşmadı'}</h3>
+                <p>Bir anime bölümü izlemeye başladığında kaldığın saniye ve bölüm bilgisi otomatik olarak buraya kaydedilir.</p>
+                <div class="lib-empty-actions">
+                    <button type="button" class="lib-btn primary" onclick="showAnimeListView();setAnavActive('anime')">İzlemeye Başla →</button>
+                </div>
+            </div>`;
+        } else if (_libState.viewMode === 'grid') {
+            bodyHtml = `<div class="lib-grid">${enriched.map((h, i) => {
+                const badge = `<span class="lib-card-tag">${_libEsc(h.epLabel)}</span>`;
+                const progBar = h.progress > 0 ? `<div class="lib-card-prog"><span style="width:${h.progress}%"></span></div>` : '';
+                const id = _libEsc(h.id || '');
+                const title = _libEsc(h.title || 'Bilinmiyor');
+                const jsTitle = String(h.title || 'Bilinmiyor').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const jsSlug  = String(h.slug || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const img = _libEsc(h.img || 'https://placehold.co/240x360/0f0f1a/8b5cf6?text=?');
+                const jsImg   = String(h.img || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const isMovie = !!(h.isMovie);
+                return `
+                <article class="lib-anime-card" onclick="loadDetails('${id}','${jsSlug}',${isMovie},'${jsTitle}','','${jsImg}')">
+                    <div class="lib-poster-wrap">
+                        <img class="lib-poster" src="${img}" alt="${title}" loading="lazy" onerror="this.src='https://placehold.co/240x360/0f0f1a/8b5cf6?text=?'">
+                        <span class="lib-card-idx">${String(i + 1).padStart(2, '0')}</span>
+                        ${badge}
+                        <div class="lib-poster-overlay">
+                            <button type="button" class="lib-ov-btn primary" title="Kaldığın Yerden Devam Et" onclick="event.stopPropagation();resumeWatch('${id}')">
+                                <i class="fa-solid fa-play"></i>
+                            </button>
+                            <button type="button" class="lib-ov-btn" title="Özel Listeye Ekle" onclick="event.stopPropagation();openAddToListModal({id:'${id}',title:'${jsTitle}',img:'${jsImg}',slug:'${jsSlug}',isMovie:${isMovie}})">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                            <button type="button" class="lib-ov-btn danger" title="Geçmişten Kaldır" onclick="libRemoveHistoryItem('${id}',event)">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        ${progBar}
+                    </div>
+                    <div class="lib-card-meta">
+                        <h4 class="lib-card-title" title="${title}">${title}</h4>
+                        <p class="lib-card-sub">${_libEsc(h.epLabel)}${h.savedSec > 0 ? ` · ${h.minStr}` : ''} · ${_libRelDate(h.lastWatchedAt)}</p>
+                    </div>
+                </article>`;
+            }).join('')}</div>`;
+        } else {
+            // Kronolojik Gruplu Editoryal Satır Görünümü
+            const groups = new Map();
+            enriched.forEach(h => {
+                const g = sMode === 'newest' ? _libDayBucket(h.lastWatchedAt) : 'Tüm Kayıtlar';
+                if (!groups.has(g)) groups.set(g, []);
+                groups.get(g).push(h);
+            });
+            let globalIdx = 0;
+            bodyHtml = Array.from(groups.entries()).map(([gName, gItems]) => `
+                <div class="lib-hist-group">
+                    <div class="lib-hist-ghead">
+                        <span>${_libEsc(gName)}</span>
+                        <small>${gItems.length} kayıt</small>
+                    </div>
+                    <div class="lib-rows-wrap">
+                        ${gItems.map(h => {
+                            const idx = globalIdx++;
+                            const id = _libEsc(h.id || '');
+                            const rightMeta = `
+                                <div class="lib-hist-progwrap">
+                                    <div class="lib-hist-progtext">
+                                        <span>${_libEsc(h.epLabel)}</span>
+                                        <b>${h.savedSec > 0 ? `${h.minStr} · %${h.progress}` : 'Başlandı'}</b>
+                                    </div>
+                                    <div class="lib-hist-progbar"><span style="width:${Math.max(4, h.progress)}%"></span></div>
+                                </div>
+                                <span class="lib-hist-date">${_libRelDate(h.lastWatchedAt)}</span>
+                            `;
+                            const playBtn = `
+                                <button type="button" class="lib-resume-btn" onclick="resumeWatch('${id}')" title="Kaldığın Yerden Devam Et">
+                                    <i class="fa-solid fa-play"></i><span>Devam Et</span>
+                                </button>`;
+                            return _buildAnimeEditorialRow(h, idx, `libRemoveHistoryItem('${id}',event)`, rightMeta, playBtn);
+                        }).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    // Eğer sadece arama yapılıyorsa input odağını koru
+    if (preserveInputFocus && document.getElementById('libContentMount')) {
+        document.getElementById('libContentMount').innerHTML = bodyHtml;
+        return;
+    }
+
+    host.innerHTML = `
+    <div class="lib-shell${isSoftUpdate ? ' is-switching' : ''}">
+        <!-- ÜST BAŞLIK -->
+        <header class="lib-head">
+            <div class="lib-head-left">
+                <p class="cat-eyebrow">Kişisel Kütüphane${activeList ? ` &nbsp;/&nbsp; <button type="button" class="lib-bread-btn" onclick="showMyLists()">Listelerim</button>` : ''}</p>
+                <h1 class="cat-title">${_libEsc(pageTitle)}</h1>
+                <p class="cat-count">${pageSub}</p>
+            </div>
+            <div class="lib-head-right">
+                <div class="cat-search lib-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                    <input id="libSearchInput" type="text" value="${_libEsc(_libState.query)}" placeholder="Koleksiyon içinde ara..." oninput="libOnSearch(this.value)">
+                    <kbd class="cat-kbd">/</kbd>
+                </div>
+                <div class="lib-top-actions">
+                    ${topActionsHtml}
+                </div>
+            </div>
+        </header>
+
+        <!-- ARAÇ ÇUBUĞU: SEKMELER & FİLTRELER -->
+        <div class="lib-toolbar">
+            <div class="lib-tabs" id="libTabs" role="tablist" aria-label="Kütüphane Bölümleri">
+                <span class="lib-tabs-ink" id="libTabInk"></span>
+                <button type="button" class="lib-tab-btn${tab === 'lists' ? ' active' : ''}" onclick="libSwitchTab('lists')">
+                    <span>Listelerim</span><b>${lists.length}</b>
+                </button>
+                <button type="button" class="lib-tab-btn${tab === 'favorites' ? ' active' : ''}" onclick="libSwitchTab('favorites')">
+                    <span>Favoriler</span><b>${favs.length}</b>
+                </button>
+                <button type="button" class="lib-tab-btn${tab === 'history' ? ' active' : ''}" onclick="libSwitchTab('history')">
+                    <span>İzleme Geçmişi</span><b>${hist.length}</b>
+                </button>
+                <button type="button" class="lib-tab-btn${tab === 'watchlist' ? ' active' : ''}" onclick="libSwitchTab('watchlist')">
+                    <span>İzleme Listesi</span><b>${wl.length}</b>
+                </button>
+            </div>
+            <div class="lib-toolbar-right">
+                ${toolbarRightHtml}
+            </div>
+        </div>
+
+        <!-- İÇERİK ALANI -->
+        <div id="libContentMount" class="lib-content">
+            ${bodyHtml}
+        </div>
+    </div>`;
+
+    requestAnimationFrame(_moveLibTabInk);
+}
+
+// "/" tuşu ile kütüphane aramasına odaklan
+document.addEventListener('keydown', function(e) {
+    if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+    const hv = document.getElementById('historyView');
+    if (!hv || hv.classList.contains('hidden')) return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    e.preventDefault();
+    const inp = document.getElementById('libSearchInput');
+    if (inp) inp.focus();
+});
+
+// Eski modal fonksiyonlarını yeni tam sayfa sistemle uyumlu tut
+function createListModal() {
+    const hv = document.getElementById('historyView');
+    if (hv && !hv.classList.contains('hidden') && _libState.tab === 'lists' && !_libState.detailId) {
+        libToggleCreate(true);
+        return;
+    }
+    const overlay = document.createElement('div');
+    overlay.className = 'ml-dialog-overlay';
+    overlay.innerHTML = `
+        <div class="ml-dialog" id="createListDialog">
+            <div class="ml-dialog-icon"><i class="fa-solid fa-layer-group"></i></div>
+            <h3>Yeni Liste Oluştur</h3>
+            <input class="ml-dialog-input" id="newListName" type="text" placeholder="Liste adı..."
+                maxlength="45" autofocus onkeydown="if(event.key==='Enter')confirmCreateList()">
+            <div class="ml-dialog-btns">
+                <button class="ml-dialog-cancel" onclick="this.closest('.ml-dialog-overlay').remove()">İptal</button>
+                <button class="ml-dialog-confirm" onclick="confirmCreateList()">
+                    <i class="fa-solid fa-check"></i> Oluştur
+                </button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+    setTimeout(() => document.getElementById('newListName')?.focus(), 80);
+}
+
+function confirmCreateList() {
+    const nameEl = document.getElementById('newListName');
+    const name = (nameEl?.value || '').trim();
+    if (!name) return;
+    const lists = getMyLists();
+    lists.unshift({
+        id: generateListId(),
+        name: name.slice(0, 45),
+        tag: 'Genel',
+        animes: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+    });
     saveMyLists(lists);
+    document.querySelector('.ml-dialog-overlay')?.remove();
+    showToast('✅ "' + name + '" listesi oluşturuldu!');
+    const hv = document.getElementById('historyView');
+    if (hv && !hv.classList.contains('hidden')) renderLibraryPage(true);
+}
 
-    showListDetail(listId);
-
-    showToast('🗑️ Anime listeden kaldırıldı.');
-
-};
 
 
 
@@ -8118,14 +8687,45 @@ async function loadRandom() {
 // ── Stats (Yeni Özellik 5) ────────────────────────────────
 
 function showStats() {
+    if (typeof closeNavDrawer === 'function') { try { closeNavDrawer(); } catch (_) {} }
+    if (typeof closePgModal === 'function') { try { closePgModal(); } catch (_) {} }
+    if (statsModal) statsModal.classList.add('hidden');
+    _closeSocialPages();
+    const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
+    const _dlv = document.getElementById('downloadsView'); if (_dlv) _dlv.classList.add('hidden');
+    const _aiv = document.getElementById('aiView'); if (_aiv) _aiv.classList.add('hidden');
+    if (typeof leaveW2GRoom === 'function') leaveW2GRoom();
+    if (typeof clearProfileCurrentAnime === 'function') clearProfileCurrentAnime();
+    if (typeof setAmbientBackground === 'function') setAmbientBackground(null);
 
+    if (typeof homeView !== 'undefined' && homeView) homeView.classList.add('hidden');
+    if (typeof animeListView !== 'undefined' && animeListView) animeListView.classList.add('hidden');
+    if (typeof watchView !== 'undefined' && watchView) watchView.classList.add('hidden');
+    if (typeof malView !== 'undefined' && malView) malView.classList.add('hidden');
+    const sv = document.getElementById('scheduleView'); if (sv) sv.classList.add('hidden');
+    const nv = document.getElementById('newsView'); if (nv) nv.classList.add('hidden');
+    const hv = document.getElementById('historyView'); if (hv) hv.classList.add('hidden');
+
+    const stv = document.getElementById('statsView');
+    if (stv) stv.classList.remove('hidden');
+
+    if (window.setAnavActive) setAnavActive('stats');
     if (window.stxRender) window.stxRender();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    statsModal.classList.remove('hidden');
-
+    if (typeof vjsPlayer !== 'undefined' && vjsPlayer) {
+        try { vjsPlayer.dispose(); } catch (e) {}
+        vjsPlayer = null;
+    }
 }
 
-function closeStats() { statsModal.classList.add('hidden'); }
+function closeStats() {
+    if (statsModal) statsModal.classList.add('hidden');
+    const stv = document.getElementById('statsView');
+    if (stv && !stv.classList.contains('hidden')) {
+        showHomeView();
+    }
+}
 
 
 
@@ -8297,7 +8897,7 @@ async function showAnimeListView() {
 
     var clr = document.getElementById('catalogSearchClear'); if (clr) clr.classList.add('hidden');
 
-    var src = (document.getElementById('catalogSourceFilter') || {}).value || 'anizium';
+    var src = (document.getElementById('catalogSourceFilter') || {}).value || 'anilist';
 
     document.querySelectorAll('.catalog-source-btn').forEach(function(btn) {
 
@@ -8421,21 +9021,7 @@ async function loadMoreAnime() {
 
     if (grid && animeListPage === 1) {
 
-        grid.innerHTML = Array(15).fill(0).map(() => `
-
-            <div style="background:rgba(255,255,255,0.04);border-radius:14px;overflow:hidden;animation:skeletonPulse 1.5s ease infinite;">
-
-                <div style="height:200px;background:rgba(255,255,255,0.05);"></div>
-
-                <div style="padding:10px;display:flex;flex-direction:column;gap:8px;">
-
-                    <div class="skeleton" style="height:14px;width:80%;border-radius:6px;"></div>
-
-                    <div class="skeleton" style="height:10px;width:50%;border-radius:6px;"></div>
-
-                </div>
-
-            </div>`).join('');
+        grid.innerHTML = Array(14).fill('<div class="cat-skel"><div class="cat-skel-poster"></div><div class="cat-skel-line"></div><div class="cat-skel-line s"></div></div>').join('');
 
     }
 
@@ -8443,7 +9029,7 @@ async function loadMoreAnime() {
 
     try {
 
-        const catalogSource = document.getElementById('catalogSourceFilter')?.value || 'anizium';
+        const catalogSource = document.getElementById('catalogSourceFilter')?.value || 'anilist';
 
 
 
@@ -8459,7 +9045,23 @@ async function loadMoreAnime() {
 
             if (animeListPage === 1 && grid) grid.innerHTML = '';
 
-
+            if (data && (data.ip_banned || data.error_code === 1006 || data.status === 403)) {
+                hasMoreAnime = false;
+                if (counter) counter.innerHTML = `<b>0</b> anime<span class="cat-count-src">Anizium (IP Engelli)</span>`;
+                if (grid) {
+                    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem 1.5rem;max-width:620px;margin:1rem auto;border-radius:16px;background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.28);color:var(--text1)">
+                        <i class="fa-solid fa-shield-halved" style="font-size:2.2rem;color:#fb7185;display:block;margin-bottom:0.85rem"></i>
+                        <h3 style="margin:0 0 0.5rem;font-size:1.1rem">Mevcut IP Adresiniz Anizium Tarafından Engellenmiş (Cloudflare Error 1006)</h3>
+                        <p style="margin:0 0 1.2rem;color:var(--text3);font-size:0.9rem;line-height:1.5">Yeni koruma sayesinde Anizium artık otomatik veya seri istek atmaz; ancak daha önce banlanan bu IP'yi Anizium/Cloudflare tarafı açana kadar başka bir IP'ye geçmeniz veya AnimeciX / AniHub kullanmanız gerekir.</p>
+                        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                            <button type="button" class="cat-btn" onclick="setCatalogSource('animecix')"><i class="fa-solid fa-play"></i> AnimeciX'e Geç</button>
+                            <button type="button" class="cat-btn" onclick="setCatalogSource('anihub')"><i class="fa-solid fa-bolt"></i> AniHub'a Geç</button>
+                            <button type="button" class="cat-btn cat-btn-ghost" onclick="fetch(API_BASE + '/anizium-reset').then(() => { animeListPage = 1; hasMoreAnime = true; loadMoreAnime(); })"><i class="fa-solid fa-rotate-right"></i> IP Değiştirdim, Tekrar Dene</button>
+                        </div>
+                    </div>`;
+                }
+                return;
+            }
 
             if (data && data.page && data.page.data && data.page.data.length > 0) {
 
@@ -8471,7 +9073,7 @@ async function loadMoreAnime() {
 
                     const totalCount = data.total_anime || data.page.total || '1000+';
 
-                    counter.innerHTML = `<i class="fa-solid fa-layer-group"></i> Anizium Kataloğu: <b style="color:var(--accent-light)">${totalCount}</b> Anime`;
+                    counter.innerHTML = `<b>${totalCount}</b> anime<span class="cat-count-src">Anizium</span>`;
 
                 }
 
@@ -8531,7 +9133,7 @@ async function loadMoreAnime() {
 
 
 
-                if (grid) grid.innerHTML += html;
+                if (grid) grid.insertAdjacentHTML('beforeend', html);
 
                 animeListPage++;
 
@@ -8558,6 +9160,69 @@ async function loadMoreAnime() {
         }
 
 
+
+        // ═══ ANİHUB KATALOĞU (anihub.com.tr) ═══
+        if (catalogSource === 'anihub') {
+            const searchQ = _catalogSearchQuery || '';
+            let apiUrl = API_BASE + '/anihub-catalog?page=' + animeListPage + '&limit=30';
+            if (searchQ) {
+                apiUrl += '&search=' + encodeURIComponent(searchQ);
+            }
+            try {
+                const res  = await fetch(apiUrl);
+                const data = await res.json();
+                if (animeListPage === 1 && grid) grid.innerHTML = '';
+                const items = Array.isArray(data.items) ? data.items : [];
+                const total = data.total || items.length;
+                hasMoreAnime = !!data.hasMore;
+
+                if (items.length > 0) {
+                    if (counter) {
+                        counter.innerHTML = '<b>' + total + '</b> anime<span class="cat-count-src">AniHub</span>';
+                    }
+                    window._anihubCatalogCache = window._anihubCatalogCache || {};
+                    const html = items.map(function(m) {
+                        const slug  = m.slug || '';
+                        const numId = m.numericId || 0;
+                        const title = m.title || 'Bilinmiyor';
+                        const img   = m.poster || 'https://placehold.co/200x280/0c0c16/8b5cf6?text=?';
+                        const year  = m.year ? String(m.year) : '';
+                        const type  = m.contentType === 'movie' ? 'Film' : 'Dizi';
+                        const qual  = m.videoQuality ? String(m.videoQuality).toUpperCase() : 'HD';
+                        const safeTitle = title.replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+                        const safeSlug  = slug.replace(/'/g, "\'");
+                        window._anihubCatalogCache[slug] = m;
+                        return '<div class="anime-card" data-slug="' + safeSlug + '" onclick="openAniHubCatalogItem(this.dataset.slug)">' +
+                            '<div class="card-poster-wrap">' +
+                            '<img src="' + img + '" alt="' + safeTitle + '" class="card-poster" loading="lazy">' +
+                            '<div class="card-badge">' + qual + '</div>' +
+                            '<div class="card-hover-overlay"><button class="quick-play-btn"><i class="fa-solid fa-play"></i></button></div>' +
+                            '</div>' +
+                            '<div class="card-info" style="padding:10px;">' +
+                            '<div class="card-title" style="font-size:13px;line-height:1.3;margin-bottom:4px;" title="' + safeTitle + '">' + title + '</div>' +
+                            '<div style="font-size:11px;color:var(--text3);display:flex;justify-content:space-between;">' +
+                            '<span>' + (year || 'AniHub') + '</span>' +
+                            '<span>' + type + '</span>' +
+                            '</div>' +
+                            '</div>' +
+                            '</div>';
+                    }).join('');
+                    if (grid) grid.insertAdjacentHTML('beforeend', html);
+                    animeListPage++;
+                    const moreBtn = document.getElementById('loadMoreAnimeBtn');
+                    if (moreBtn) moreBtn.classList.toggle('hidden', !hasMoreAnime);
+                } else {
+                    hasMoreAnime = false;
+                    if (animeListPage === 1 && grid) {
+                        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:4rem;color:var(--text3)">AniHub kataloğunda sonuç bulunamadı.</div>';
+                    }
+                }
+            } catch (err) {
+                console.error('AniHub katalog hatası:', err);
+                hasMoreAnime = false;
+            }
+            return;
+        }
 
         // ═══ ANİMECİX KATALOĞU ═══
 
@@ -8611,7 +9276,7 @@ async function loadMoreAnime() {
 
                     if (counter) {
 
-                        counter.innerHTML = '?? AnimeciX Kataloğu: <b style="color:var(--accent-light)">' + (total || items.length) + '</b> Anime';
+                        counter.innerHTML = '<b>' + (total || items.length) + '</b> anime<span class="cat-count-src">AnimeciX</span>';
 
                     }
 
@@ -8653,7 +9318,7 @@ async function loadMoreAnime() {
 
                     }).join('');
 
-                    if (grid) grid.innerHTML += html;
+                    if (grid) grid.insertAdjacentHTML('beforeend', html);
 
                     if (!searchQ) animeListPage++;
 
@@ -8771,7 +9436,7 @@ async function loadMoreAnime() {
 
             if (counter) {
 
-                counter.innerHTML = `<i class="fa-solid fa-layer-group"></i> Bulunan: <b style="color:var(--accent-light)">${data.Page.pageInfo.total}</b> Anime`;
+                counter.innerHTML = `<b>${data.Page.pageInfo.total}</b> anime<span class="cat-count-src">AniList</span>`;
 
             }
 
@@ -8831,7 +9496,7 @@ async function loadMoreAnime() {
 
 
 
-            if (grid) grid.innerHTML += html;
+            if (grid) grid.insertAdjacentHTML('beforeend', html);
 
             animeListPage++;
 
@@ -10839,96 +11504,7 @@ window.notifUnfollow              = notifUnfollow;
 
 
 
-// ── Watchlist / History Views ──────────────────────────────
-
-function showHistory() {
-
-    homeView.classList.add('hidden');
-
-    animeListView.classList.add('hidden');
-
-    watchView.classList.add('hidden');
-
-    document.getElementById('malView').classList.add('hidden');
-
-    document.getElementById('scheduleView').classList.add('hidden');
-    var nv3 = document.getElementById('newsView'); if (nv3) nv3.classList.add('hidden');
-
-    document.getElementById('historyView').classList.remove('hidden');
-
-
-
-    const historyContent = document.getElementById('historyContent');
-
-    const hist = getHistory();
-
-
-
-    if (!hist.length) {
-
-        historyContent.innerHTML = '<p style="color:var(--text3);">Henüz hiçbir şey izlemediniz.</p>';
-
-        return;
-
-    }
-
-
-
-    const cards = hist.map(h => {
-
-        const titleVal = (h.title || 'Bilinmiyor').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-
-        const img = (h.img || 'https://placehold.co/200x280/1a1a28/e8a020?text=?').replace(/'/g, "\\'");
-
-        const epLabel = h.lastWatchedLabel || `Bölüm ${(h.eIdx || 0) + 1}`;
-
-        const dateStr = h.lastWatchedAt ? new Date(h.lastWatchedAt).toLocaleString('tr-TR') : 'Bilinmeyen Tarih';
-
-        const savedSec = getPositions()[(h.slug || h.id) + '_s' + (h.sIdx || 0) + '_e' + (h.eIdx || 0)] || 0;
-
-        const progress = Math.min(100, Math.floor((savedSec / 1440) * 100));
-
-        const minStr = Math.floor(savedSec / 60) + ':' + String(savedSec % 60).padStart(2, '0');
-
-
-
-        return `
-
-        <div class="cw-card" style="margin-bottom: 1rem; width: 100%; max-width: none; cursor: default;">
-
-            <div style="flex-shrink:0; cursor: pointer;" onclick="loadDetails('${h.id}','${h.slug}',${h.isMovie},'${titleVal}','','${img}')">
-
-                <img src="${img}" style="width:80px;height:100px;border-radius:8px;object-fit:cover">
-
-            </div>
-
-            <div class="cw-info" style="flex-grow: 1;">
-
-                <div class="cw-title" style="font-size: 1.1rem; margin-bottom: 0.3rem;">${titleVal}</div>
-
-                <div class="cw-ep" style="font-size: 0.9rem; color: var(--accent);"><i class="fa-solid fa-play"></i> ${epLabel}</div>
-
-                <div style="font-size: 0.8rem; color: var(--text3); margin-top: 0.4rem;"><i class="fa-solid fa-calendar"></i> ${dateStr}</div>
-
-                ${savedSec > 0 ? `<div style="font-size:0.8rem; color:var(--accent); margin-top:0.4rem; font-weight:bold;"><i class="fa-solid fa-clock"></i> Kaldığın Süre: ${minStr} (%${progress})</div>` : ''}
-
-            </div>
-
-            <button class="btn-primary" onclick="resumeWatch('${h.id}')" style="margin-right: 1rem;">
-
-                <i class="fa-solid fa-play"></i> Devam Et
-
-            </button>
-
-        </div>`;
-
-    }).join('');
-
-
-
-    historyContent.innerHTML = `<div style="display:flex; flex-direction:column; gap:1rem; max-width:800px; margin:0 auto;">${cards}</div>`;
-
-}
+// ── Watchlist / History Views (Moved to Unified Full-Page Library) ──
 
 
 
@@ -11016,7 +11592,7 @@ async function handleSearch(queryParam) {
 
         try {
 
-            const altSrc = (curSrc === 'Anizium') ? 'AnimeciX' : 'Anizium';
+            const altSrc = (curSrc === 'AnimeciX') ? 'AniHub' : 'AnimeciX';
 
             const altData = await fetchAPI('/search?q=' + encodeURIComponent(q) + '&source=' + encodeURIComponent(altSrc));
 
@@ -11900,235 +12476,7 @@ function updateFavBtn() {
 
 
 
-function showHistory() {
-
-    closePgModal();
-
-    const hist = getHistory();
-
-
-
-    const grid = hist.length ? hist.map(h => {
-
-        const t = (h.title || 'Bilinmiyor').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
-        const img = h.img || 'https://placehold.co/170x250/1a1a28/8b5cf6?text=?';
-
-        const slug = (h.slug || '').replace(/'/g, '&#39;');
-
-        const id = h.id || '';
-
-        const epLabel = h.lastWatchedLabel || 'Bölüm ' + ((h.eIdx || 0) + 1);
-
-        const savedSec = getPositions()[(h.slug || h.id) + '_s' + (h.sIdx || 0) + '_e' + (h.eIdx || 0)] || 0;
-
-        const progress = Math.min(100, Math.floor((savedSec / 1440) * 100));
-
-        const minStr = Math.floor(savedSec / 60) + ':' + String(Math.floor(savedSec % 60)).padStart(2, '0');
-
-        const dateStr = h.lastWatchedAt ? new Date(h.lastWatchedAt).toLocaleDateString('tr-TR') : '';
-
-
-
-        return `<div class="pg-card" onclick="closePgModal();loadDetails('${id}','${slug}',${h.isMovie||false},'${t}','','${img}')">
-
-            <div class="pg-card-poster-wrap">
-
-                <img class="pg-card-poster" src="${img}" alt="${t}" onerror="this.src='https://placehold.co/170x250/1a1a28/8b5cf6?text=?'">
-
-                <div class="pg-card-play-icon"><i class="fa-solid fa-play"></i></div>
-
-                ${progress > 0 ? `<div class="pg-card-progress"><div class="pg-card-progress-fill" style="width:${progress}%"></div></div>` : ''}
-
-            </div>
-
-            <div class="pg-card-info">
-
-                <div class="pg-card-title">${t}</div>
-
-                <div class="pg-card-meta"><i class="fa-solid fa-play" style="color:var(--accent)"></i> ${epLabel}</div>
-
-                ${savedSec > 0 ? `<div class="pg-card-time"><i class="fa-solid fa-clock"></i> ${minStr} (%${progress})</div>` : ''}
-
-                ${dateStr ? `<div class="pg-card-date"><i class="fa-solid fa-calendar"></i> ${dateStr}</div>` : ''}
-
-            </div>
-
-            <button class="pg-card-play-btn" title="Devam Et" onclick="event.stopPropagation();closePgModal();resumeWatch('${id}')">
-
-                <i class="fa-solid fa-play"></i>
-
-            </button>
-
-        </div>`;
-
-    }).join('') : '<div class="pg-empty"><i class="fa-solid fa-clock-rotate-left"></i><p>İzleme geçmişiniz boş.</p></div>';
-
-
-
-    openPgModal(`
-
-        <div class="pg-modal-header">
-
-            <div class="pg-modal-title-group">
-
-                <div class="pg-modal-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
-
-                <div>
-
-                    <h2 class="pg-modal-title">İzleme Geçmişi</h2>
-
-                    <span class="pg-modal-subtitle">${hist.length} kayıt</span>
-
-                </div>
-
-            </div>
-
-            <div class="pg-modal-actions">
-
-                ${hist.length > 0 ? `<button class="pg-danger-btn" onclick="if(confirm('Tüm geçmiş silinsin mi?')){saveHistory([]);showHistory();}">
-
-                    <i class="fa-solid fa-trash"></i> Temizle
-
-                </button>` : ''}
-
-                <button class="pg-close-btn" onclick="closePgModal()"><i class="fa-solid fa-xmark"></i></button>
-
-            </div>
-
-        </div>
-
-        <div class="pg-modal-grid">${grid}</div>
-
-    `);
-
-}
-
-
-
-function showFavorites() {
-
-    closePgModal();
-
-    const favs = getFavorites();
-
-
-
-    const grid = favs.length ? favs.map(a => {
-
-        const t = (a.title || 'Bilinmiyor').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
-        const img = a.img || 'https://placehold.co/170x250/1a1a28/8b5cf6?text=?';
-
-        const slug = (a.slug || '').replace(/'/g, '&#39;');
-
-        const id = a.id || '';
-
-
-
-        return `<div class="pg-card" onclick="closePgModal();loadDetails('${id}','${slug}',${a.isMovie||false},'${t}','','${img}')">
-
-            <div class="pg-card-poster-wrap">
-
-                <img class="pg-card-poster" src="${img}" alt="${t}" onerror="this.src='https://placehold.co/170x250/1a1a28/8b5cf6?text=?'">
-
-                <div class="pg-card-play-icon"><i class="fa-solid fa-play"></i></div>
-
-                <div class="pg-card-heart"><i class="fa-solid fa-heart"></i></div>
-
-            </div>
-
-            <div class="pg-card-info">
-
-                <div class="pg-card-title">${t}</div>
-
-                <div class="pg-card-meta"><i class="fa-solid fa-heart" style="color:#f43f5e"></i> Favori</div>
-
-            </div>
-
-            <button class="pg-card-remove" title="Favorilerden Kaldır" onclick="event.stopPropagation();toggleFavorite({id:'${id}',title:'${t}',img:'${img}',slug:'${slug}'});showFavorites()">
-
-                <i class="fa-solid fa-heart-crack"></i>
-
-            </button>
-
-        </div>`;
-
-    }).join('') : '<div class="pg-empty"><i class="fa-solid fa-heart"></i><p>Favori listeniz boş.</p><small>Anime sayfalarındaki ❤️ butonu ile ekleyebilirsiniz.</small></div>';
-
-
-
-    openPgModal(`
-
-        <div class="pg-modal-header">
-
-            <div class="pg-modal-title-group">
-
-                <div class="pg-modal-icon pg-modal-icon-red"><i class="fa-solid fa-heart"></i></div>
-
-                <div>
-
-                    <h2 class="pg-modal-title">Favorilerim</h2>
-
-                    <span class="pg-modal-subtitle">${favs.length} anime</span>
-
-                </div>
-
-            </div>
-
-            <div class="pg-modal-actions">
-
-                ${favs.length > 0 ? `
-
-                <select class="pg-sort-select" onchange="sortFavorites(this.value)">
-
-                    <option value="default">📋 Sıralama</option>
-
-                    <option value="az">🔤 A → Z</option>
-
-                    <option value="za">🔤 Z → A</option>
-
-                </select>
-
-                <button class="pg-danger-btn" onclick="if(confirm('Tüm favoriler silinsin mi?')){saveFavorites([]);showFavorites();}">
-
-                    <i class="fa-solid fa-trash"></i> Temizle
-
-                </button>` : ''}
-
-                <button class="pg-close-btn" onclick="closePgModal()"><i class="fa-solid fa-xmark"></i></button>
-
-            </div>
-
-        </div>
-
-        <div class="pg-modal-grid">${grid}</div>
-
-    `);
-
-
-
-    document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
-
-    if (document.querySelectorAll('.mobile-nav-btn')[3]) document.querySelectorAll('.mobile-nav-btn')[3].classList.add('active');
-
-}
-
-
-
-window.sortFavorites = function(mode) {
-
-    let favs = getFavorites();
-
-    if (mode === 'az') favs = [...favs].sort((a,b) => (a.title||'').localeCompare(b.title||''));
-
-    if (mode === 'za') favs = [...favs].sort((a,b) => (b.title||'').localeCompare(a.title||''));
-
-    saveFavorites(favs);
-
-    showFavorites();
-
-};
+// ── History & Favorites handled by Unified Library View ──
 
 
 
@@ -12552,6 +12900,12 @@ async function loadDetails(id, slug, isMovie, title, synopsis, img) {
 
         <div class="detail-body" style="padding: 2rem 4%; max-width: 1400px; margin: 0 auto; min-height: 50vh;">
 
+            <div class="detail-source-bar" id="detailSourceBar" role="tablist" aria-label="İzleme Kaynağı Seçici">
+                <span class="detail-source-lbl">YAYIN KAYNAĞI</span>
+                <div class="detail-source-pills">
+                    ${['AnimeciX', 'AniHub', 'Anizium Free', 'Anizium'].map(s => `<button type="button" class="detail-source-pill${currentSource === s ? ' active' : ''}" onclick="switchDetailSource('${s}')">${s}</button>`).join('')}
+                </div>
+            </div>
             <div id="seasonTabs" class="season-tabs"></div>
 
             <div class="bulk-download-toolbar" id="bulkDownloadPanel">
@@ -12614,13 +12968,17 @@ async function loadDetails(id, slug, isMovie, title, synopsis, img) {
 
 
 
-    const qs = (id ? 'id=' + id : '') + (slug ? '&slug=' + encodeURIComponent(slug) : '') + '&source=' + encodeURIComponent(currentSource);
+    let seasonsData = [];
+    if (window._skipNextSeasonsFetch) {
+        window._skipNextSeasonsFetch = false;
+    } else {
+        const resolved = await _fetchSeasonsWithFallback(id, slug, title);
+        id = resolved.id;
+        slug = resolved.slug;
+        seasonsData = resolved.seasons;
+    }
 
-    const seasonsData = await fetchAPI('/seasons?' + qs);
-
-
-
-    if (!seasonsData || !Array.isArray(seasonsData) || !seasonsData.length) {
+    if (!_hasValidSeasons(seasonsData)) {
 
         document.getElementById('episodesList').innerHTML = '<p style="color:var(--text3);padding:1rem">Sezon bulunamadı.</p>';
 
@@ -14519,6 +14877,16 @@ function openPlayer(watch, resumeAt) {
 
     vjsPlayer.on('error', function() {
 
+        // Anizium / Anizium Free akışı başarısız olduğunda art arda tüm kalite URL'lerine istek atmayı engelle
+
+        if (typeof currentSource === 'string' && currentSource.toLowerCase().indexOf('anizium') !== -1) {
+
+            showToast('⚠️ Anizium video bağlantısı alınamadı (IP banı riskine karşı otomatik tekrar durduruldu). Başka bir kaynak seçin.', 4000);
+
+            return;
+
+        }
+
         const nextIdx = _autoFallbackIdx + 1;
 
         if (nextIdx < urls.length) {
@@ -15182,220 +15550,445 @@ async function saveMALUsername() {
 
 
 
-function checkMALStatus() {
+const _malState = {
+    tab: 'watching',
+    query: '',
+    sort: 'default',
+    viewMode: localStorage.getItem('anitr_mal_viewmode') || 'grid',
+    loading: false,
+    error: '',
+    profile: null,
+    items: {} // status -> array
+};
 
-    const savedUser = localStorage.getItem('anitr_mal_username');
-
-    const noUserDiv = document.getElementById('malNoUser');
-
-    const tabsDiv   = document.getElementById('malTabs');
-
-
-
-    if (savedUser) {
-
-        malUser = savedUser;
-
-        if (document.getElementById('malUsernameInput')) {
-
-            document.getElementById('malUsernameInput').value = malUser;
-
-        }
-
-        const statusDiv = document.getElementById('malAuthStatus');
-
-        if (statusDiv) statusDiv.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Bağlı Hesap: <b>${malUser}</b>`;
-
-        const contentDiv = document.getElementById('malContent');
-
-        if (contentDiv) contentDiv.classList.remove('hidden');
-
-        if (noUserDiv) noUserDiv.style.display = 'none';
-
-        if (tabsDiv)   tabsDiv.style.display = 'flex';
-
-    } else {
-
-        malUser = "";
-
-        const statusDiv = document.getElementById('malAuthStatus');
-
-        if (statusDiv) statusDiv.innerHTML = `<span style="color:var(--text3);">Hesap Bağlı Değil</span>`;
-
-        const contentDiv = document.getElementById('malContent');
-
-        if (contentDiv) contentDiv.classList.add('hidden');
-
-        if (noUserDiv) noUserDiv.style.display = 'block';
-
-        if (tabsDiv)   tabsDiv.style.display = 'none';
-
-    }
-
+function _malEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+function _moveMalTabInk() {
+    const wrap = document.getElementById('malStatusTabs');
+    const ink = document.getElementById('malTabInk');
+    if (!wrap || !ink) return;
+    const act = wrap.querySelector('.lib-tab-btn.active');
+    if (!act || !act.offsetWidth) return;
+    ink.style.width = act.offsetWidth + 'px';
+    ink.style.transform = 'translateX(' + (act.offsetLeft - 3) + 'px)';
+}
+window.addEventListener('resize', _moveMalTabInk);
 
+function checkMALStatus() {
+    const savedUser = (localStorage.getItem('anitr_mal_username') || '').trim();
+    malUser = savedUser;
+    if (document.getElementById('malUsernameInput')) {
+        document.getElementById('malUsernameInput').value = malUser;
+    }
+}
+
+window.connectMALDirect = async function(usernameArg) {
+    const inp = document.getElementById('malQuickUserInput') || document.getElementById('malEmptyUserInput');
+    const u = String(usernameArg != null ? usernameArg : (inp ? inp.value : '')).trim();
+    if (!u) {
+        showToast('⚠️ Lütfen bir MyAnimeList kullanıcı adı girin.');
+        return;
+    }
+    localStorage.setItem('anitr_mal_username', u);
+    malUser = u;
+    _malState.items = {};
+    _malState.profile = null;
+    _malState.error = '';
+    showToast(`🔄 "${u}" MAL profili senkronize ediliyor...`);
+    renderMALPage(true);
+    fetchMALProfileSummary(u);
+    await loadMALList(_malState.tab);
+};
+
+window.disconnectMALAccount = function() {
+    localStorage.removeItem('anitr_mal_username');
+    malUser = '';
+    _malState.items = {};
+    _malState.profile = null;
+    _malState.error = '';
+    renderMALPage(true);
+    showToast('🗑️ MyAnimeList hesap bağlantısı kaldırıldı.');
+};
+
+async function fetchMALProfileSummary(username) {
+    if (!username) return;
+    try {
+        const res = await fetch(`${API_BASE}/mal/profile?username=${encodeURIComponent(username)}`);
+        if (res.ok) {
+            const data = await res.json();
+            _malState.profile = data;
+            renderMALPage(true, true);
+        }
+    } catch (_) {}
+}
 
 let currentMALTab = 'watching';
 
-
-
 function switchMALTab(status) {
-
     currentMALTab = status;
-
-    // Sekme görünümü güncelle
-
-    document.querySelectorAll('.mal-tab-btn').forEach(b => {
-
-        b.classList.remove('btn-primary', 'active');
-
-        b.classList.add('btn-secondary');
-
-    });
-
-    const activeBtn = document.getElementById('tab' + status.charAt(0).toUpperCase() + status.slice(1));
-
-    if (activeBtn) {
-
-        activeBtn.classList.remove('btn-secondary');
-
-        activeBtn.classList.add('btn-primary', 'active');
-
+    _malState.tab = status;
+    _malState.error = '';
+    renderMALPage(true);
+    if (_malState.items[status] && _malState.items[status].length) {
+        return;
     }
-
     loadMALList(status);
-
 }
 
+window.malSetViewMode = function(mode) {
+    _malState.viewMode = mode;
+    try { localStorage.setItem('anitr_mal_viewmode', mode); } catch (_) {}
+    renderMALPage(true);
+};
 
+window.malOnSearch = function(val) {
+    _malState.query = String(val || '');
+    renderMALPage(true, true);
+};
 
-async function loadMALList(status = currentMALTab) {
+window.malOnSort = function(val) {
+    _malState.sort = val || 'default';
+    renderMALPage(true);
+};
 
-    console.log('loadMALList called with status:', status, 'malUser:', malUser);
+window.renderMALFilteredGrid = function() {
+    const si = document.getElementById('malListSearchInput');
+    const so = document.getElementById('malListSortSelect');
+    if (si) _malState.query = si.value;
+    if (so) _malState.sort = so.value;
+    renderMALPage(true, true);
+};
 
-    if (!malUser) {
-
-        console.log('No malUser, returning');
-
+window.malSyncToAnitrLibrary = function() {
+    const activeItems = _malState.items[_malState.tab] || [];
+    if (!activeItems.length) {
+        showToast('⚠️ Aktarılacak anime bulunamadı.');
         return;
-
     }
+    const statusNames = {
+        watching: 'MAL · İzleniyor',
+        completed: 'MAL · Tamamlananlar',
+        plantowatch: 'MAL · Planlananlar',
+        onhold: 'MAL · Beklemede',
+        dropped: 'MAL · Bırakılanlar',
+        recs: 'MAL · Öneriler'
+    };
+    const listName = statusNames[_malState.tab] || `MAL · ${malUser}`;
+    const lists = getMyLists();
+    let target = lists.find(l => l.name === listName);
+    if (!target) {
+        target = {
+            id: generateListId(),
+            name: listName,
+            tag: 'MyAnimeList',
+            animes: [],
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        };
+        lists.unshift(target);
+    }
+    const existing = new Set((target.animes || []).map(a => String(a.title || '').toLowerCase()));
+    let added = 0;
+    activeItems.forEach(item => {
+        const title = item.title || '';
+        if (!title || existing.has(title.toLowerCase())) return;
+        existing.add(title.toLowerCase());
+        const img = (item.images?.jpg?.large_image_url || item.images?.jpg?.image_url || item.image_url || '');
+        target.animes.push({
+            id: item.mal_id || ('mal_' + Date.now() + '_' + added),
+            title: title,
+            img: img,
+            slug: '',
+            isMovie: item.type === 'Movie'
+        });
+        added++;
+    });
+    target.updatedAt = Date.now();
+    saveMyLists(lists);
+    showToast(`✅ ${added} anime "${listName}" özel listene aktarıldı!`, 4600, {
+        action: {
+            label: 'Listeyi Gör',
+            icon: 'fa-arrow-right',
+            onClick: function() { showListDetail(target.id); }
+        }
+    });
+};
 
-    const grid = document.getElementById('malListGrid');
+async function loadMALList(status = _malState.tab) {
+    if (!malUser) {
+        renderMALPage(true);
+        return;
+    }
+    _malState.tab = status;
+    currentMALTab = status;
+    _malState.loading = true;
+    _malState.error = '';
+    renderMALPage(true);
 
-    grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 3rem;"><div class="spinner" style="display:inline-block"></div><p style="margin-top:1rem; color:var(--text3);">Liste yükleniyor...</p></div>';
-
-    
+    if (!_malState.profile) fetchMALProfileSummary(malUser);
 
     try {
-
-        const url = `${API_BASE}/mal/watchlist?username=${encodeURIComponent(malUser)}&status=${status}`;
-
-        console.log('Fetching from:', url);
-
-        const res = await fetch(url);
-
-        console.log('Response status:', res.status, 'ok:', res.ok);
-
-        
-
+        const endpoint = status === 'recs'
+            ? `${API_BASE}/mal/recommendations?username=${encodeURIComponent(malUser)}`
+            : `${API_BASE}/mal/watchlist?username=${encodeURIComponent(malUser)}&status=${encodeURIComponent(status)}`;
+        const res = await fetch(endpoint);
         if (!res.ok) {
-
             const errData = await res.json().catch(() => null);
-
-            console.error('Error data:', errData);
-
-            throw new Error(errData?.error || "Liste yüklenemedi (HTTP " + res.status + ")");
-
+            throw new Error(errData?.error || `MAL verisi alınamadı (HTTP ${res.status})`);
         }
-
         const data = await res.json();
-
-        console.log('Received data:', data, 'length:', data ? data.length : 0);
-
-        
-
-        if (!data || data.length === 0) {
-
-            grid.innerHTML = '<p style="grid-column: 1/-1; color:var(--text3); text-align:center; padding:2rem;">Bu listede anime bulunamadı.</p>';
-
-            return;
-
-        }
-
-        
-
-        let html = '';
-
-        data.forEach(item => {
-
-            console.log('Processing item:', item);
-
-            const img = (item.images?.jpg?.large_image_url || item.images?.jpg?.image_url) || '';
-
-            const score = item.score ? item.score.toFixed(1) : '-';
-
-            const safeTitle = (item.title || '').replace(/'/g, "\\'");
-
-            html += `
-
-            <div class="anime-card" onclick="searchMALAnime('${safeTitle}')">
-
-                <div class="card-poster-wrap">
-
-                    <img src="${img}" alt="${item.title || ''}" class="card-poster" loading="lazy" onerror="this.src='https://placehold.co/200x280/1a1a28/e8a020?text=?'">
-
-                    <div class="card-badge"><i class="fa-solid fa-star"></i> ${score}</div>
-
-                    <div class="card-hover-overlay">
-
-                        <button class="quick-play-btn"><i class="fa-solid fa-search"></i></button>
-
-                    </div>
-
-                </div>
-
-                <div class="card-info">
-
-                    <div class="card-title">${item.title || ''}</div>
-
-                </div>
-
-            </div>`;
-
-        });
-
-        console.log('Generated HTML:', html);
-
-        grid.innerHTML = html;
-
-        
-
-    } catch(err) {
-
-        console.error('Error in loadMALList:', err);
-
-        grid.innerHTML = `<p style="grid-column: 1/-1; color:#ef4444; text-align:center; padding:2rem;">${err.message}</p>`;
-
+        _malState.items[status] = Array.isArray(data) ? data : [];
+        _malState.loading = false;
+        renderMALPage(true);
+    } catch (err) {
+        _malState.loading = false;
+        _malState.error = err.message || 'Bağlantı hatası oluştu.';
+        renderMALPage(true);
     }
-
 }
 
+function renderMALPage(isSoft, keepInputFocus) {
+    const host = document.getElementById('malPageBody');
+    if (!host) return;
 
+    const statusTabs = [
+        ['watching',    'İzleniyor'],
+        ['completed',   'Tamamlandı'],
+        ['plantowatch', 'Planlanan'],
+        ['onhold',      'Beklemede'],
+        ['dropped',     'Bırakıldı'],
+        ['recs',        'Özel Öneriler']
+    ];
 
-// MAL'deki animeyi sistemde ara
+    const rawList = _malState.items[_malState.tab] || [];
+    const q = (_malState.query || '').trim().toLowerCase();
+    let filtered = [...rawList];
+    if (q) {
+        filtered = filtered.filter(it => (it.title || '').toLowerCase().includes(q));
+    }
+    if (_malState.sort === 'score_desc') {
+        filtered.sort((a, b) => (b.score || 0) - (a.score || 0));
+    } else if (_malState.sort === 'ep_desc') {
+        filtered.sort((a, b) => (b.episodes_watched || b.episodes || 0) - (a.episodes_watched || a.episodes || 0));
+    } else if (_malState.sort === 'title_asc') {
+        filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    }
+
+    // Hesaplanan özet metrikler
+    const allLoaded = Object.values(_malState.items).flat();
+    const activeCount = rawList.length;
+    const ratedItems = rawList.filter(i => Number(i.score) > 0);
+    const avgScore = ratedItems.length
+        ? (ratedItems.reduce((s, i) => s + Number(i.score), 0) / ratedItems.length).toFixed(2)
+        : (_malState.profile?.statistics?.anime?.mean_score || '—');
+    const totalEps = rawList.reduce((s, i) => s + Number(i.episodes_watched || i.num_episodes_watched || i.episodes || 0), 0) ||
+        (_malState.profile?.statistics?.anime?.episodes_watched || 0);
+    const estHours = Math.round((totalEps * 24) / 60);
+
+    // İçerik Gövdesi
+    let contentHtml = '';
+    if (!malUser) {
+        contentHtml = `
+        <div class="mal-onboard-card">
+            <div class="mal-ob-left">
+                <span class="stx-panel-kicker">ŞİFRESİZ API SENKRONİZASYONU</span>
+                <h2 class="mal-ob-title">MyAnimeList Profilini Anitr ile Eşle</h2>
+                <p class="mal-ob-desc">Herhangi bir şifre veya OAuth izni gerekmeden, yalnızca herkese açık MyAnimeList kullanıcı adını girerek izleme durumlarını, verdiğin puanları ve sana özel önerileri Anitr içerisinde görüntüleyebilir ve yerel kütüphanene aktarabilirsin.</p>
+                <div class="mal-ob-form">
+                    <input id="malEmptyUserInput" type="text" class="lib-cp-input" placeholder="MAL kullanıcı adın (ör. Xinil)..." onkeydown="if(event.key==='Enter')connectMALDirect(this.value)">
+                    <button type="button" class="lib-btn primary" onclick="connectMALDirect(document.getElementById('malEmptyUserInput').value)">
+                        <i class="fa-solid fa-arrow-right"></i><span>Profili Yükle</span>
+                    </button>
+                </div>
+                <div class="lib-cp-presets" style="border-top:none;padding-top:4px">
+                    <span>Örnek Profiller:</span>
+                    <button type="button" onclick="connectMALDirect('Xinil')">Xinil</button>
+                    <button type="button" onclick="connectMALDirect('Garnt')">Garnt</button>
+                    <button type="button" onclick="connectMALDirect('Joey')">Joey</button>
+                </div>
+            </div>
+            <div class="mal-ob-right">
+                <div class="mal-ob-spec"><span>01</span><div><strong>Tüm Durum Listeleri</strong><small>İzleniyor, Tamamlandı, Planlanan, Beklemede ve Bırakılanlar</small></div></div>
+                <div class="mal-ob-spec"><span>02</span><div><strong>Tek Tıkla Anitr'de İzle</strong><small>MAL listendeki herhangi bir animeye tıklayarak Anitr'de anında aç</small></div></div>
+                <div class="mal-ob-spec"><span>03</span><div><strong>Yerel Kütüphaneye Aktarım</strong><small>MAL listelerini Anitr Özel Listelerim bölümüne tek tıkla kopyala</small></div></div>
+            </div>
+        </div>`;
+    } else if (_malState.loading) {
+        contentHtml = `<div class="lib-grid">${Array(12).fill('<div class="cat-skel"><div class="cat-skel-poster"></div><div class="cat-skel-line"></div><div class="cat-skel-line s"></div></div>').join('')}</div>`;
+    } else if (_malState.error) {
+        contentHtml = `
+        <div class="lib-empty">
+            <span class="lib-empty-code">BAĞLANTI UYARISI</span>
+            <h3>MyAnimeList Verisi Alınamadı</h3>
+            <p>${_malEsc(_malState.error)} — Kullanıcı adının doğru olduğundan ve MAL listesinin herkese açık (Public) olduğundan emin ol.</p>
+            <div class="lib-empty-actions">
+                <button type="button" class="lib-btn primary" onclick="loadMALList('${_malState.tab}')"><i class="fa-solid fa-rotate-right"></i> Tekrar Dene</button>
+                <button type="button" class="lib-btn danger" onclick="disconnectMALAccount()">Hesabı Değiştir</button>
+            </div>
+        </div>`;
+    } else if (!filtered.length) {
+        contentHtml = `
+        <div class="lib-empty">
+            <span class="lib-empty-code">00 / KAYIT YOK</span>
+            <h3>${q ? 'Aramana uygun anime bulunamadı' : 'Bu MAL sekmesinde anime bulunmuyor'}</h3>
+            <p>${q ? 'Arama kutusunu temizleyerek tüm listeyi görebilirsin.' : 'Farklı bir durum sekmesine (Tamamlandı, Planlanan vb.) geçiş yapabilirsin.'}</p>
+        </div>`;
+    } else if (_malState.viewMode === 'rows') {
+        contentHtml = `<div class="lib-rows-wrap">${filtered.map((item, idx) => {
+            const img = _malEsc(item.images?.jpg?.large_image_url || item.images?.jpg?.image_url || item.image_url || 'https://placehold.co/120x170/0f0f1a/8b5cf6?text=?');
+            const title = _malEsc(item.title || 'Bilinmiyor');
+            const safeTitle = String(item.title || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const safeImg = String(item.images?.jpg?.large_image_url || item.images?.jpg?.image_url || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const score = item.score ? Number(item.score).toFixed(1) : '—';
+            const eps = item.episodes_watched || item.num_episodes_watched || item.episodes || 0;
+            return `
+            <div class="lib-row" onclick="searchMALAnime('${safeTitle}')">
+                <span class="lib-row-idx">${String(idx + 1).padStart(2, '0')}</span>
+                <img class="lib-row-poster" src="${img}" alt="" loading="lazy" onerror="this.src='https://placehold.co/120x170/0f0f1a/8b5cf6?text=?'">
+                <div class="lib-row-main">
+                    <strong class="lib-row-title">${title}</strong>
+                    <span class="lib-row-sub">${eps ? `${eps} Bölüm` : 'MyAnimeList Kaydı'}${item.type ? ` · ${_malEsc(item.type)}` : ''}</span>
+                </div>
+                <div class="lib-row-meta">
+                    <span class="lib-pill">Puan: <b>${score}</b></span>
+                </div>
+                <div class="lib-row-actions" onclick="event.stopPropagation()">
+                    <button type="button" class="lib-resume-btn" onclick="searchMALAnime('${safeTitle}')"><i class="fa-solid fa-play"></i><span>Anitr'de Aç</span></button>
+                    <button type="button" class="lib-icon-btn" title="Anitr Listeme Ekle" onclick="openAddToListModal({id:'${item.mal_id || safeTitle}',title:'${safeTitle}',img:'${safeImg}',slug:''})"><i class="fa-solid fa-plus"></i></button>
+                </div>
+            </div>`;
+        }).join('')}</div>`;
+    } else {
+        contentHtml = `<div class="lib-grid">${filtered.map((item, idx) => {
+            const img = _malEsc(item.images?.jpg?.large_image_url || item.images?.jpg?.image_url || item.image_url || 'https://placehold.co/240x360/0f0f1a/8b5cf6?text=?');
+            const title = _malEsc(item.title || 'Bilinmiyor');
+            const safeTitle = String(item.title || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const safeImg = String(item.images?.jpg?.large_image_url || item.images?.jpg?.image_url || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const score = item.score ? `★ ${Number(item.score).toFixed(1)}` : 'MAL';
+            const eps = item.episodes_watched || item.num_episodes_watched || item.episodes || 0;
+            return `
+            <article class="lib-anime-card" onclick="searchMALAnime('${safeTitle}')">
+                <div class="lib-poster-wrap">
+                    <img class="lib-poster" src="${img}" alt="${title}" loading="lazy" onerror="this.src='https://placehold.co/240x360/0f0f1a/8b5cf6?text=?'">
+                    <span class="lib-card-idx">${String(idx + 1).padStart(2, '0')}</span>
+                    <span class="lib-card-tag">${score}</span>
+                    <div class="lib-poster-overlay">
+                        <button type="button" class="lib-ov-btn primary" title="Anitr'de Ara ve İzle" onclick="event.stopPropagation();searchMALAnime('${safeTitle}')">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                        <button type="button" class="lib-ov-btn" title="Özel Listeme Ekle" onclick="event.stopPropagation();openAddToListModal({id:'${item.mal_id || safeTitle}',title:'${safeTitle}',img:'${safeImg}',slug:''})">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="lib-card-meta">
+                    <h4 class="lib-card-title" title="${title}">${title}</h4>
+                    <p class="lib-card-sub">${eps ? `${eps} bölüm` : 'Anime'} · Puan: ${item.score || '—'}</p>
+                </div>
+            </article>`;
+        }).join('')}</div>`;
+    }
+
+    if (keepInputFocus && document.getElementById('malContentMount')) {
+        document.getElementById('malContentMount').innerHTML = contentHtml;
+        return;
+    }
+
+    host.innerHTML = `
+    <div class="lib-shell${isSoft ? ' is-switching' : ''}">
+        <header class="lib-head">
+            <div class="lib-head-left">
+                <p class="cat-eyebrow">MyAnimeList Entegrasyonu</p>
+                <h1 class="cat-title">MAL Kütüphanesi &amp; Senkronizasyon</h1>
+                <p class="cat-count">
+                    ${malUser
+                        ? `Bağlı Profil: <b>@${_malEsc(malUser)}</b> <span class="cat-count-src">Aktif sekmede <b>${activeCount}</b> anime</span>`
+                        : 'Şifresiz MyAnimeList profil senkronizasyonu ve yerel kütüphane aktarımı'}
+                </p>
+            </div>
+            <div class="lib-head-right">
+                <div class="mal-user-bar">
+                    <input id="malQuickUserInput" type="text" value="${_malEsc(malUser)}" placeholder="MAL kullanıcı adı..." onkeydown="if(event.key==='Enter')connectMALDirect(this.value)">
+                    <button type="button" class="lib-btn primary sm" onclick="connectMALDirect()">
+                        <i class="fa-solid fa-arrows-rotate"></i><span>${malUser ? 'Yenile' : 'Bağlan'}</span>
+                    </button>
+                    ${malUser ? `<button type="button" class="lib-btn sm" onclick="malSyncToAnitrLibrary()" title="Bu sekmedeki animeleri Anitr Listelerim'e kopyala"><i class="fa-solid fa-file-import"></i><span>Listeme Aktar</span></button>` : ''}
+                    ${malUser ? `<button type="button" class="lib-btn danger sm" onclick="disconnectMALAccount()" title="Bağlantıyı Kes"><i class="fa-solid fa-link-slash"></i></button>` : ''}
+                </div>
+            </div>
+        </header>
+
+        ${malUser ? `
+        <section class="stx-kpis" aria-label="MAL Profil Özeti">
+            <article class="stx-kpi">
+                <div class="stx-kpi-head"><span>01</span><small>AKTİF SEKME</small></div>
+                <div class="stx-kpi-val">${activeCount}<em>anime</em></div>
+                <p class="stx-kpi-foot">@${_malEsc(malUser)} profilinden çekilen kayıt</p>
+            </article>
+            <article class="stx-kpi">
+                <div class="stx-kpi-head"><span>02</span><small>İZLENEN BÖLÜM</small></div>
+                <div class="stx-kpi-val">${totalEps}<em>bölüm</em></div>
+                <p class="stx-kpi-foot">Bu listedeki toplam bölüm sayısı</p>
+            </article>
+            <article class="stx-kpi">
+                <div class="stx-kpi-head"><span>03</span><small>ORTALAMA PUAN</small></div>
+                <div class="stx-kpi-val">${avgScore}<em>/ 10</em></div>
+                <p class="stx-kpi-foot">${ratedItems.length} puanlanmış anime ortalaması</p>
+            </article>
+            <article class="stx-kpi">
+                <div class="stx-kpi-head"><span>04</span><small>TAHMİNİ SÜRE</small></div>
+                <div class="stx-kpi-val">${estHours}<em>saat</em></div>
+                <p class="stx-kpi-foot">Yaklaşık ${(estHours / 24).toFixed(1)} gün toplam izleme</p>
+            </article>
+        </section>
+
+        <div class="lib-toolbar">
+            <div class="lib-tabs" id="malStatusTabs" role="tablist">
+                <span class="lib-tabs-ink" id="malTabInk"></span>
+                ${statusTabs.map(([st, lbl]) => {
+                    const cnt = _malState.items[st] ? _malState.items[st].length : '';
+                    return `<button type="button" class="lib-tab-btn${_malState.tab === st ? ' active' : ''}" onclick="switchMALTab('${st}')">
+                        <span>${lbl}</span>${cnt !== '' ? `<b>${cnt}</b>` : ''}
+                    </button>`;
+                }).join('')}
+            </div>
+            <div class="lib-toolbar-right">
+                <div class="cat-search" style="width:220px">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                    <input id="malListSearchInput" type="text" value="${_malEsc(_malState.query)}" placeholder="MAL listende ara..." oninput="malOnSearch(this.value)" style="height:36px;font-size:13px">
+                </div>
+                <select id="malListSortSelect" class="cat-select" onchange="malOnSort(this.value)">
+                    <option value="default" ${_malState.sort === 'default' ? 'selected' : ''}>Varsayılan Sıra</option>
+                    <option value="score_desc" ${_malState.sort === 'score_desc' ? 'selected' : ''}>Puana Göre (Yüksek → Düşük)</option>
+                    <option value="ep_desc" ${_malState.sort === 'ep_desc' ? 'selected' : ''}>Bölüm Sayısına Göre</option>
+                    <option value="title_asc" ${_malState.sort === 'title_asc' ? 'selected' : ''}>A → Z Sırala</option>
+                </select>
+                <div class="cat-density">
+                    <button type="button" class="${_malState.viewMode === 'grid' ? 'active' : ''}" onclick="malSetViewMode('grid')" title="Poster Izgara"><svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.2"/><rect x="9" y="1" width="6" height="6" rx="1.2"/><rect x="1" y="9" width="6" height="6" rx="1.2"/><rect x="9" y="9" width="6" height="6" rx="1.2"/></svg></button>
+                    <button type="button" class="${_malState.viewMode === 'rows' ? 'active' : ''}" onclick="malSetViewMode('rows')" title="Editoryal Satır"><svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2.5" rx="1"/><rect x="1" y="6.75" width="14" height="2.5" rx="1"/><rect x="1" y="11.5" width="14" height="2.5" rx="1"/></svg></button>
+                </div>
+            </div>
+        </div>` : ''}
+
+        <div id="malContentMount" class="lib-content">
+            ${contentHtml}
+        </div>
+    </div>`;
+
+    requestAnimationFrame(_moveMalTabInk);
+}
 
 function searchMALAnime(title) {
-
-    searchInput.value = title;
-
-    searchBtn.click();
-
+    if (typeof searchAnimeByName === 'function') {
+        searchAnimeByName(title);
+        return;
+    }
+    if (searchInput) searchInput.value = title;
+    if (searchBtn) searchBtn.click();
     showHomeView();
-
     window.scrollTo({ top: 0, behavior: 'smooth' });
-
 }
 
 
@@ -16210,107 +16803,413 @@ async function startDownload() {
 
 
 
+const _dlState = {
+    filter: 'all', // 'all' | 'completed' | 'hd' | 'tr'
+    query: '',
+    sort: 'newest', // 'newest' | 'oldest' | 'az'
+    groupByAnime: false,
+    viewMode: localStorage.getItem('anitr_dl_viewmode') || 'rows',
+    addLinkOpen: false
+};
+
+function _moveDlTabInk() {
+    const wrap = document.getElementById('dlTabs');
+    const ink = document.getElementById('dlTabInk');
+    if (!wrap || !ink) return;
+    const act = wrap.querySelector('.lib-tab-btn.active');
+    if (!act || !act.offsetWidth) return;
+    ink.style.width = act.offsetWidth + 'px';
+    ink.style.transform = 'translateX(' + (act.offsetLeft - 3) + 'px)';
+}
+window.addEventListener('resize', _moveDlTabInk);
+
 function showDownloadsModal() {
+    if (typeof closeNavDrawer === 'function') { try { closeNavDrawer(); } catch (_) {} }
+    if (typeof closePgModal === 'function') { try { closePgModal(); } catch (_) {} }
+    const dm = document.getElementById('downloadsModal');
+    if (dm) dm.classList.add('hidden');
+
+    _closeSocialPages();
+    const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
+    if (typeof leaveW2GRoom === 'function') leaveW2GRoom();
+    if (typeof clearProfileCurrentAnime === 'function') clearProfileCurrentAnime();
+    if (typeof setAmbientBackground === 'function') setAmbientBackground(null);
+
+    if (typeof homeView !== 'undefined' && homeView) homeView.classList.add('hidden');
+    if (typeof animeListView !== 'undefined' && animeListView) animeListView.classList.add('hidden');
+    if (typeof watchView !== 'undefined' && watchView) watchView.classList.add('hidden');
+    if (typeof malView !== 'undefined' && malView) malView.classList.add('hidden');
+    const sv = document.getElementById('scheduleView'); if (sv) sv.classList.add('hidden');
+    const nv = document.getElementById('newsView'); if (nv) nv.classList.add('hidden');
+
+    const dv = document.getElementById('downloadsView');
+    if (dv) dv.classList.remove('hidden');
+
+    if (window.setAnavActive) setAnavActive('downloads');
+    if (typeof vjsPlayer !== 'undefined' && vjsPlayer) { try { vjsPlayer.dispose(); } catch (e) {} vjsPlayer = null; }
 
     loadDownloads();
-
-    renderDownloads();
-
-    document.getElementById('downloadsModal').classList.remove('hidden');
-
+    renderDownloads(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-
-
 
 function closeDownloadsModal() {
-
-    document.getElementById('downloadsModal').classList.add('hidden');
-
+    const dm = document.getElementById('downloadsModal');
+    if (dm) dm.classList.add('hidden');
+    const dv = document.getElementById('downloadsView');
+    if (dv && !dv.classList.contains('hidden')) showHomeView();
 }
 
+window.dlSetFilter = function(f) {
+    _dlState.filter = f;
+    renderDownloads(true);
+};
 
+window.dlSetSort = function(s) {
+    _dlState.sort = s;
+    renderDownloads(true);
+};
 
-function renderDownloads() {
+window.dlSetViewMode = function(m) {
+    _dlState.viewMode = m;
+    try { localStorage.setItem('anitr_dl_viewmode', m); } catch (_) {}
+    renderDownloads(true);
+};
 
-    const container = document.getElementById('downloadsContainer');
+window.dlToggleGroup = function() {
+    _dlState.groupByAnime = !_dlState.groupByAnime;
+    renderDownloads(true);
+};
 
-    
+window.dlOnSearch = function(val) {
+    _dlState.query = String(val || '');
+    renderDownloads(true, true);
+};
 
-    if (downloads.length === 0) {
+window.dlToggleAddLink = function(force) {
+    _dlState.addLinkOpen = typeof force === 'boolean' ? force : !_dlState.addLinkOpen;
+    renderDownloads(true);
+};
 
-        container.innerHTML = `
-
-            <div class="dl-empty-state">
-
-                <i class="fa-solid fa-box-open"></i>
-
-                <p>İndirme listeniz boş</p>
-
-                <span>Bir bölümü izlerken indirme butonuna tıklayın</span>
-
-            </div>`;
-
+window.dlSaveExternalLink = function() {
+    const tEl = document.getElementById('dlExtAnimeTitle');
+    const eEl = document.getElementById('dlExtEpTitle');
+    const uEl = document.getElementById('dlExtUrl');
+    const qEl = document.getElementById('dlExtQuality');
+    const animeTitle = (tEl ? tEl.value : '').trim();
+    const epTitle = (eEl ? eEl.value : '').trim() || 'Bölüm 1';
+    const url = (uEl ? uEl.value : '').trim();
+    const quality = (qEl ? qEl.value : '1080').trim();
+    if (!animeTitle || !url) {
+        showToast('⚠️ Lütfen anime adını ve video/indirme bağlantısını girin.');
         return;
+    }
+    downloads.unshift({
+        id: Date.now(),
+        animeId: '',
+        animeTitle: animeTitle,
+        episodeTitle: epTitle,
+        image: 'https://placehold.co/200x280/0f0f1a/8b5cf6?text=MP4',
+        quality: quality,
+        lang: 'jp',
+        status: 'completed',
+        url: url,
+        filename: `${animeTitle} - ${epTitle} (${quality}p).mp4`
+    });
+    saveDownloads();
+    _dlState.addLinkOpen = false;
+    renderDownloads(true);
+    showToast('✅ İndirme bağlantısı arşive eklendi.');
+};
 
+window.dlExportM3U = function() {
+    if (!downloads.length) {
+        showToast('⚠️ Dışa aktarılacak kayıt yok.');
+        return;
+    }
+    let m3u = '#EXTM3U\n';
+    downloads.forEach(d => {
+        if (d.url) {
+            m3u += `#EXTINF:-1,${d.animeTitle || 'Anime'} - ${d.episodeTitle || 'Bölüm'} (${d.quality || '1080'}p)\n${d.url}\n`;
+        }
+    });
+    const blob = new Blob([m3u], { type: 'audio/x-mpegurl;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'anitr-indirilenler.m3u8';
+    a.click();
+    showToast('💾 M3U oynatma listesi indirildi.');
+};
+
+window.dlCopyLink = function(url, e) {
+    if (e) e.stopPropagation();
+    if (!url) return;
+    navigator.clipboard?.writeText(url);
+    showToast('📋 Video bağlantısı panoya kopyalandı.');
+};
+
+window.clearAllDownloads = function() {
+    if (!downloads.length) return;
+    const backup = [...downloads];
+    downloads = [];
+    saveDownloads();
+    renderDownloads(true);
+    showToast('🗑️ Tüm indirme geçmişi temizlendi.', 4800, {
+        action: {
+            label: 'Geri Al',
+            icon: 'fa-rotate-left',
+            onClick: function() {
+                downloads = backup;
+                saveDownloads();
+                renderDownloads(true);
+                showToast('✅ İndirme geçmişi geri yüklendi.');
+            }
+        }
+    });
+};
+
+window.removeDownload = function(id, e) {
+    if (e) e.stopPropagation();
+    const idx = downloads.findIndex(d => String(d.id) === String(id));
+    if (idx === -1) return;
+    const removed = downloads[idx];
+    downloads.splice(idx, 1);
+    saveDownloads();
+    renderDownloads(true);
+    showToast(`🗑️ "${removed.animeTitle || 'Bölüm'}" indirme arşivinden silindi.`, 4500, {
+        action: {
+            label: 'Geri Al',
+            icon: 'fa-rotate-left',
+            onClick: function() {
+                downloads.splice(Math.min(idx, downloads.length), 0, removed);
+                saveDownloads();
+                renderDownloads(true);
+                showToast('✅ Kayıt geri yüklendi.');
+            }
+        }
+    });
+};
+
+function renderDownloads(isSoft, keepInputFocus) {
+    const host = document.getElementById('downloadsPageBody');
+    if (!host) return;
+
+    const total = downloads.length;
+    const completedCount = downloads.filter(d => d.status === 'completed').length;
+    const hdCount = downloads.filter(d => String(d.quality || '').includes('1080') || String(d.quality || '').includes('720')).length;
+    const trCount = downloads.filter(d => d.lang === 'tr').length;
+    const uniqueSeries = new Set(downloads.map(d => (d.animeTitle || '').trim()).filter(Boolean)).size;
+
+    let items = [...downloads];
+    if (_dlState.filter === 'completed') items = items.filter(d => d.status === 'completed');
+    else if (_dlState.filter === 'hd') items = items.filter(d => String(d.quality || '').includes('1080') || String(d.quality || '').includes('720'));
+    else if (_dlState.filter === 'tr') items = items.filter(d => d.lang === 'tr');
+
+    const q = (_dlState.query || '').trim().toLowerCase();
+    if (q) {
+        items = items.filter(d =>
+            (d.animeTitle || '').toLowerCase().includes(q) ||
+            (d.episodeTitle || '').toLowerCase().includes(q)
+        );
     }
 
+    if (_dlState.sort === 'oldest') items.sort((a, b) => (a.id || 0) - (b.id || 0));
+    else if (_dlState.sort === 'az') items.sort((a, b) => (a.animeTitle || '').localeCompare(b.animeTitle || ''));
+    else items.sort((a, b) => (b.id || 0) - (a.id || 0));
 
+    const addDrawerHtml = _dlState.addLinkOpen ? `
+    <div class="lib-create-panel">
+        <div class="lib-cp-top">
+            <div>
+                <span class="lib-qa-kicker">HARİCİ BAĞLANTI KAYDI</span>
+                <h4>Doğrudan Bölüm / Video Bağlantısını Arşive Ekle</h4>
+            </div>
+            <button type="button" class="lib-icon-btn" onclick="dlToggleAddLink(false)"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="lib-cp-form">
+            <input id="dlExtAnimeTitle" type="text" class="lib-cp-input" placeholder="Anime adı (ör. Solo Leveling)...">
+            <input id="dlExtEpTitle" type="text" class="lib-cp-input" style="max-width:180px" placeholder="Bölüm (ör. 1. Bölüm)">
+            <input id="dlExtUrl" type="url" class="lib-cp-input" placeholder="Video / MP4 / M3U8 URL...">
+            <select id="dlExtQuality" class="cat-select" style="height:40px">
+                <option value="1080">1080p Full HD</option>
+                <option value="720">720p HD</option>
+                <option value="480">480p SD</option>
+            </select>
+            <button type="button" class="lib-btn primary" onclick="dlSaveExternalLink()"><i class="fa-solid fa-check"></i><span>Kaydet</span></button>
+        </div>
+    </div>` : '';
 
-    container.innerHTML = downloads.map((dl, i) => `
+    const buildRow = (dl, idx) => {
+        const title = _libEsc(dl.animeTitle || 'Bilinmiyor');
+        const safeTitle = String(dl.animeTitle || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const ep = _libEsc(dl.episodeTitle || 'Bölüm');
+        const img = _libEsc(dl.image || 'https://placehold.co/120x170/0f0f1a/8b5cf6?text=?');
+        const qual = _libEsc(String(dl.quality || '1080').replace(/p$/i, '') + 'p');
+        const lang = dl.lang === 'tr' ? 'TR Dublaj' : 'JP / Altyazı';
+        const safeUrl = String(dl.url || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const dateStr = dl.id ? _libRelDate(dl.id) : '';
+        return `
+        <div class="lib-row" onclick="if('${safeTitle}')searchAnimeByName('${safeTitle}')">
+            <span class="lib-row-idx">${String(idx + 1).padStart(2, '0')}</span>
+            <img class="lib-row-poster" src="${img}" alt="" loading="lazy" onerror="this.src='https://placehold.co/120x170/0f0f1a/8b5cf6?text=?'">
+            <div class="lib-row-main">
+                <strong class="lib-row-title">${title}</strong>
+                <span class="lib-row-sub">${ep}${dateStr ? ` · ${dateStr}` : ''}</span>
+            </div>
+            <div class="lib-row-meta">
+                <span class="lib-pill">${qual}</span>
+                <span class="lib-pill">${lang}</span>
+                <span class="lib-pill" style="color:${dl.status === 'completed' ? '#a78bfa' : 'var(--pg-muted)'}">${dl.status === 'completed' ? 'Tamamlandı' : 'Hazırlanıyor'}</span>
+            </div>
+            <div class="lib-row-actions" onclick="event.stopPropagation()">
+                ${dl.url ? `<button type="button" class="lib-resume-btn" onclick="window.open('${safeUrl}','_blank')"><i class="fa-solid fa-arrow-up-right-from-square"></i><span>Dosyayı Aç</span></button>` : ''}
+                ${dl.url ? `<button type="button" class="lib-icon-btn" title="Bağlantıyı Kopyala" onclick="dlCopyLink('${safeUrl}',event)"><i class="fa-regular fa-copy"></i></button>` : ''}
+                <button type="button" class="lib-icon-btn danger" title="Kaydı Sil" onclick="removeDownload('${dl.id}',event)"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        </div>`;
+    };
 
-        <div class="dl-item" style="animation-delay:${i * 60}ms">
-
-            <img class="dl-item-thumb" src="${dl.image}" alt="${dl.animeTitle}" onerror="this.src='https://placehold.co/80x110/1a1a28/e8a020?text=?'">
-
-            <div class="dl-item-info">
-
-                <div class="dl-item-title">${dl.animeTitle}</div>
-
-                <div class="dl-item-ep">${dl.episodeTitle}</div>
-
-                <div class="dl-item-meta">
-
-                    <span class="dl-badge dl-badge-q">${dl.quality}p</span>
-
-                    ${dl.lang === 'tr' ? '<span class="dl-badge dl-badge-lang">🇹🇷 TR</span>' : '<span class="dl-badge dl-badge-lang">🇯🇵 JP</span>'}
-
-                    <span class="dl-badge ${dl.status === 'completed' ? 'dl-badge-done' : 'dl-badge-active'}">
-
-                        ${dl.status === 'completed' ? '✓ Tamamlandı' : '⏳ Bekleniyor'}
-
-                    </span>
-
+    let bodyHtml = '';
+    if (!items.length) {
+        bodyHtml = addDrawerHtml + `
+        <div class="lib-empty">
+            <span class="lib-empty-code">00 / ARŞİV BOŞ</span>
+            <h3>${q || _dlState.filter !== 'all' ? 'Filtreye uygun indirme kaydı bulunamadı' : 'Henüz indirilen bir bölüm yok'}</h3>
+            <p>Herhangi bir anime bölümünü izlerken oynatıcı altındaki "İndir" butonuna tıklayarak bölümleri cihazına kaydedebilir veya harici bağlantıları burada arşivleyebilirsin.</p>
+            <div class="lib-empty-actions">
+                <button type="button" class="lib-btn primary" onclick="showAnimeListView();setAnavActive('anime')">Kataloğa Göz At →</button>
+                <button type="button" class="lib-btn" onclick="dlToggleAddLink(true)"><i class="fa-solid fa-plus"></i> Harici Bağlantı Kaydet</button>
+            </div>
+        </div>`;
+    } else if (_dlState.viewMode === 'grid') {
+        bodyHtml = addDrawerHtml + `<div class="lib-grid">${items.map((dl, idx) => {
+            const title = _libEsc(dl.animeTitle || 'Bilinmiyor');
+            const safeTitle = String(dl.animeTitle || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const ep = _libEsc(dl.episodeTitle || 'Bölüm');
+            const img = _libEsc(dl.image || 'https://placehold.co/240x360/0f0f1a/8b5cf6?text=?');
+            const qual = _libEsc(String(dl.quality || '1080').replace(/p$/i, '') + 'p');
+            const safeUrl = String(dl.url || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            return `
+            <article class="lib-anime-card" onclick="if('${safeTitle}')searchAnimeByName('${safeTitle}')">
+                <div class="lib-poster-wrap">
+                    <img class="lib-poster" src="${img}" alt="${title}" loading="lazy" onerror="this.src='https://placehold.co/240x360/0f0f1a/8b5cf6?text=?'">
+                    <span class="lib-card-idx">${String(idx + 1).padStart(2, '0')}</span>
+                    <span class="lib-card-tag">${qual}</span>
+                    <div class="lib-poster-overlay">
+                        ${dl.url ? `<button type="button" class="lib-ov-btn primary" title="Dosyayı Aç / İndir" onclick="event.stopPropagation();window.open('${safeUrl}','_blank')"><i class="fa-solid fa-play"></i></button>` : ''}
+                        ${dl.url ? `<button type="button" class="lib-ov-btn" title="Bağlantıyı Kopyala" onclick="dlCopyLink('${safeUrl}',event)"><i class="fa-regular fa-copy"></i></button>` : ''}
+                        <button type="button" class="lib-ov-btn danger" title="Sil" onclick="removeDownload('${dl.id}',event)"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
                 </div>
-
+                <div class="lib-card-meta">
+                    <h4 class="lib-card-title" title="${title}">${title}</h4>
+                    <p class="lib-card-sub">${ep} · ${dl.lang === 'tr' ? 'TR' : 'JP'}</p>
+                </div>
+            </article>`;
+        }).join('')}</div>`;
+    } else if (_dlState.groupByAnime) {
+        const groups = new Map();
+        items.forEach(d => {
+            const k = d.animeTitle || 'Diğer';
+            if (!groups.has(k)) groups.set(k, []);
+            groups.get(k).push(d);
+        });
+        let gIdx = 0;
+        bodyHtml = addDrawerHtml + Array.from(groups.entries()).map(([gName, gList]) => `
+            <div class="lib-hist-group">
+                <div class="lib-hist-ghead">
+                    <span>${_libEsc(gName)}</span>
+                    <small>${gList.length} bölüm</small>
+                </div>
+                <div class="lib-rows-wrap">
+                    ${gList.map(dl => buildRow(dl, gIdx++)).join('')}
+                </div>
             </div>
+        `).join('');
+    } else {
+        bodyHtml = addDrawerHtml + `<div class="lib-rows-wrap">${items.map((dl, idx) => buildRow(dl, idx)).join('')}</div>`;
+    }
 
-            <div class="dl-item-actions">
+    if (keepInputFocus && document.getElementById('dlContentMount')) {
+        document.getElementById('dlContentMount').innerHTML = bodyHtml;
+        return;
+    }
 
-                ${dl.status === 'completed' ? `<button class="dl-action-btn dl-action-open" onclick="window.open('${dl.url}','_blank')" title="Aç"><i class="fa-solid fa-play"></i></button>` : ''}
-
-                <button class="dl-action-btn dl-action-del" onclick="removeDownload(${dl.id})" title="Sil"><i class="fa-solid fa-trash"></i></button>
-
+    host.innerHTML = `
+    <div class="lib-shell${isSoft ? ' is-switching' : ''}">
+        <header class="lib-head">
+            <div class="lib-head-left">
+                <p class="cat-eyebrow">Çevrimdışı Arşiv</p>
+                <h1 class="cat-title">İndirilenler</h1>
+                <p class="cat-count">Cihazına indirdiğin bölümler ve kayıtlı medya bağlantıların <span class="cat-count-src"><b>${total}</b> bölüm · <b>${uniqueSeries}</b> seri</span></p>
             </div>
+            <div class="lib-head-right">
+                <div class="cat-search lib-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                    <input id="dlSearchInput" type="text" value="${_libEsc(_dlState.query)}" placeholder="İndirilenlerde ara..." oninput="dlOnSearch(this.value)">
+                </div>
+                <div class="lib-top-actions">
+                    <button type="button" class="lib-btn primary" onclick="dlToggleAddLink()"><i class="fa-solid fa-plus"></i><span>Bağlantı Ekle</span></button>
+                    ${total > 0 ? `<button type="button" class="lib-btn" onclick="dlExportM3U()" title="M3U8 Oynatma Listesi Olarak İndir"><i class="fa-solid fa-file-export"></i><span>M3U Dışa Aktar</span></button>` : ''}
+                    ${total > 0 ? `<button type="button" class="lib-btn danger" onclick="clearAllDownloads()"><i class="fa-regular fa-trash-can"></i><span>Temizle</span></button>` : ''}
+                </div>
+            </div>
+        </header>
 
+        <section class="stx-kpis" aria-label="İndirme Özeti">
+            <article class="stx-kpi">
+                <div class="stx-kpi-head"><span>01</span><small>TOPLAM KAYIT</small></div>
+                <div class="stx-kpi-val">${total}<em>bölüm</em></div>
+                <p class="stx-kpi-foot">Arşivlenen toplam bölüm sayısı</p>
+            </article>
+            <article class="stx-kpi">
+                <div class="stx-kpi-head"><span>02</span><small>TAMAMLANAN</small></div>
+                <div class="stx-kpi-val">${completedCount}<em>dosya</em></div>
+                <p class="stx-kpi-foot">İndirmesi tamamlanan medya bağlantıları</p>
+            </article>
+            <article class="stx-kpi">
+                <div class="stx-kpi-head"><span>03</span><small>FARKLI SERİ</small></div>
+                <div class="stx-kpi-val">${uniqueSeries}<em>anime</em></div>
+                <p class="stx-kpi-foot">İndirme arşivindeki benzersiz seriler</p>
+            </article>
+            <article class="stx-kpi">
+                <div class="stx-kpi-head"><span>04</span><small>YÜKSEK ÇÖZÜNÜRLÜK</small></div>
+                <div class="stx-kpi-val">${hdCount}<em>HD</em></div>
+                <p class="stx-kpi-foot">720p ve 1080p kalitesindeki kayıtlar</p>
+            </article>
+        </section>
+
+        <div class="lib-toolbar">
+            <div class="lib-tabs" id="dlTabs" role="tablist">
+                <span class="lib-tabs-ink" id="dlTabInk"></span>
+                <button type="button" class="lib-tab-btn${_dlState.filter === 'all' ? ' active' : ''}" onclick="dlSetFilter('all')"><span>Tümü</span><b>${total}</b></button>
+                <button type="button" class="lib-tab-btn${_dlState.filter === 'completed' ? ' active' : ''}" onclick="dlSetFilter('completed')"><span>Tamamlanan</span><b>${completedCount}</b></button>
+                <button type="button" class="lib-tab-btn${_dlState.filter === 'hd' ? ' active' : ''}" onclick="dlSetFilter('hd')"><span>HD (720p/1080p)</span><b>${hdCount}</b></button>
+                <button type="button" class="lib-tab-btn${_dlState.filter === 'tr' ? ' active' : ''}" onclick="dlSetFilter('tr')"><span>TR Dublaj</span><b>${trCount}</b></button>
+            </div>
+            <div class="lib-toolbar-right">
+                <button type="button" class="lib-btn sm${_dlState.groupByAnime ? ' primary' : ''}" onclick="dlToggleGroup()">
+                    <i class="fa-solid fa-layer-group"></i><span>Seriye Göre Grupla</span>
+                </button>
+                <select class="cat-select" onchange="dlSetSort(this.value)">
+                    <option value="newest" ${_dlState.sort === 'newest' ? 'selected' : ''}>En Yeni</option>
+                    <option value="oldest" ${_dlState.sort === 'oldest' ? 'selected' : ''}>En Eski</option>
+                    <option value="az" ${_dlState.sort === 'az' ? 'selected' : ''}>Anime Adı (A → Z)</option>
+                </select>
+                <div class="cat-density">
+                    <button type="button" class="${_dlState.viewMode === 'grid' ? 'active' : ''}" onclick="dlSetViewMode('grid')" title="Poster Izgara"><svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.2"/><rect x="9" y="1" width="6" height="6" rx="1.2"/><rect x="1" y="9" width="6" height="6" rx="1.2"/><rect x="9" y="9" width="6" height="6" rx="1.2"/></svg></button>
+                    <button type="button" class="${_dlState.viewMode === 'rows' ? 'active' : ''}" onclick="dlSetViewMode('rows')" title="Editoryal Satır"><svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2.5" rx="1"/><rect x="1" y="6.75" width="14" height="2.5" rx="1"/><rect x="1" y="11.5" width="14" height="2.5" rx="1"/></svg></button>
+                </div>
+            </div>
         </div>
 
-    `).join('');
+        <div id="dlContentMount" class="lib-content">
+            ${bodyHtml}
+        </div>
+    </div>`;
 
+    requestAnimationFrame(_moveDlTabInk);
 }
-
-
-
-window.removeDownload = function(id) {
-
-    downloads = downloads.filter(d => d.id !== id);
-
-    saveDownloads();
-
-    renderDownloads();
-
-    showToast('🗑️ İndirme silindi');
-
-};
 
 
 
@@ -16650,101 +17549,198 @@ let scheduleActiveDay = new Date().getDay(); // 0=Sun,1=Mon,...
 
 
 
-function renderScheduleDayTabs(grouped) {
+const SCH_DAYS_SHORT = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+var _schedOnlyFollowed = false;
 
-    const tabsEl = document.getElementById('scheduleDayTabs');
-
-    if (!tabsEl) return;
-
-    const today = new Date().getDay();
-
-
-
-    tabsEl.innerHTML = SCHEDULE_DAYS_TR.map((day, idx) => {
-
-        const items = grouped[idx] || [];
-
-        const count = items.length;
-
-        const isToday = idx === today;
-
-        const isActive = idx === scheduleActiveDay;
-
-        const color = SCHEDULE_DAY_COLORS[idx] || '#8b5cf6';
-
-        // Find how many air within next 6 hours
-
-        const now = Date.now();
-
-        const soonCount = items.filter(m => {
-
-            const t = m.nextAiringEpisode?.timeUntilAiring;
-
-            return t && t > 0 && t <= 21600;
-
-        }).length;
-
-
-
-        return `<button class="sv2-day-tab ${isActive ? 'active' : ''} ${isToday ? 'today' : ''}"
-
-            onclick="switchScheduleDay(${idx})"
-
-            style="--dc:${color}">
-
-            <span class="sv2-day-name">${day}</span>
-
-            <span class="sv2-day-count">${count}</span>
-
-            ${isToday ? '<span class="sv2-today-pill">Bugün</span>' : ''}
-
-            ${soonCount > 0 && isToday ? `<span class="sv2-soon-dot" title="${soonCount} yakında yayında"></span>` : ''}
-
-        </button>`;
-
-    }).join('');
-
+function _schedEsc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+function _schedDateFor(dayIdx) {
+    const today = new Date().getDay();
+    const offset = (dayIdx - today + 7) % 7;
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return { offset: offset, date: d };
+}
 
+function _schedMoveInk() {
+    const wrap = document.getElementById('scheduleDayTabs');
+    const ink = document.getElementById('schInk');
+    if (!wrap || !ink) return;
+    const act = wrap.querySelector('.sch-day.active');
+    if (!act || !act.offsetWidth) return;
+    if (!ink.dataset.ready) ink.style.transition = 'none';
+    ink.style.width = act.offsetWidth + 'px';
+    ink.style.transform = 'translateX(' + act.offsetLeft + 'px)';
+    if (!ink.dataset.ready) { void ink.offsetWidth; ink.style.transition = ''; ink.dataset.ready = '1'; }
+}
+
+function renderScheduleDayTabs(grouped) {
+    const el = document.getElementById('scheduleDayTabs');
+    if (!el) return;
+    const today = new Date().getDay();
+    const order = [0, 1, 2, 3, 4, 5, 6].map(o => (today + o) % 7);
+    el.innerHTML = '<span class="sch-ink" id="schInk"></span>' + order.map((idx, o) => {
+        const d = _schedDateFor(idx).date;
+        const count = (grouped[idx] || []).length;
+        const label = o === 0 ? 'Bugün' : o === 1 ? 'Yarın' : SCH_DAYS_SHORT[idx];
+        return `<button type="button" class="sch-day${idx === scheduleActiveDay ? ' active' : ''}${o === 0 ? ' today' : ''}" data-day="${idx}" onclick="switchScheduleDay(${idx})">` +
+            `<span class="sch-day-name">${label}</span><span class="sch-day-num">${d.getDate()}</span><span class="sch-day-count">${count} yayın</span></button>`;
+    }).join('');
+    requestAnimationFrame(_schedMoveInk);
+}
 
 function switchScheduleDay(dayIdx) {
-
     scheduleActiveDay = dayIdx;
-
     const container = document.getElementById('scheduleContainer');
-
     if (!container || !container._grouped) return;
+    document.querySelectorAll('#scheduleDayTabs .sch-day').forEach(btn => {
+        btn.classList.toggle('active', Number(btn.dataset.day) === dayIdx);
+    });
+    _schedMoveInk();
+    _schedSearchQ = '';
+    _schedGenreFilter = '';
+    _schedUpdateSubbar(dayIdx, container._grouped);
+    renderScheduleDay(container._grouped, dayIdx);
+}
 
+function _schedUpdateSubbar(dayIdx, grouped) {
+    const bar = document.getElementById('schedSubbar');
+    if (!bar) return;
+    const items = grouped[dayIdx] || [];
+    const info = _schedDateFor(dayIdx);
+    const dayLabel = info.offset === 0 ? 'Bugün' : info.offset === 1 ? 'Yarın' : SCHEDULE_DAYS_TR[dayIdx];
+    const dateStr = info.date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+    const gc = {};
+    items.forEach(m => (m.genres || []).forEach(g => { gc[g] = (gc[g] || 0) + 1; }));
+    const genres = Object.entries(gc).sort((a, b) => b[1] - a[1]).slice(0, 14).map(e => e[0]);
+    bar.innerHTML = `
+        <div class="sch-bar-left">
+            <h2 class="sch-bar-day">${dayLabel}</h2>
+            <span class="sch-bar-date">${dateStr}</span>
+            <span class="sch-bar-count">${items.length} yayın</span>
+        </div>
+        <div class="sch-bar-right">
+            <label class="sch-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input id="schedSearchInput" type="text" placeholder="Bu gün içinde ara" autocomplete="off" oninput="_schedOnSearch(this.value)" value="${_schedEsc(_schedSearchQ)}">
+            </label>
+            ${genres.length ? `<select class="sch-select" aria-label="Tür" onchange="_schedSetGenre(this.value)">
+                <option value="">Tüm türler</option>
+                ${genres.map(g => `<option value="${_schedEsc(g)}"${_schedGenreFilter === g ? ' selected' : ''}>${_schedEsc(g)}</option>`).join('')}
+            </select>` : ''}
+            <button type="button" class="sch-toggle${_schedOnlyFollowed ? ' on' : ''}" onclick="_schedToggleOnlyFollowed()" aria-pressed="${_schedOnlyFollowed}">
+                <span class="sch-toggle-dot"></span>Takip ettiklerim
+            </button>
+        </div>`;
+}
 
+function _schedToggleOnlyFollowed() {
+    _schedOnlyFollowed = !_schedOnlyFollowed;
+    const container = document.getElementById('scheduleContainer');
+    if (!container || !container._grouped) return;
+    _schedUpdateSubbar(scheduleActiveDay, container._grouped);
+    renderScheduleDay(container._grouped, scheduleActiveDay);
+}
 
-    document.querySelectorAll('.sv2-day-tab').forEach((btn, i) => {
+function _schedClearFilters() {
+    _schedSearchQ = ''; _schedGenreFilter = ''; _schedOnlyFollowed = false;
+    const container = document.getElementById('scheduleContainer');
+    if (!container || !container._grouped) return;
+    _schedUpdateSubbar(scheduleActiveDay, container._grouped);
+    renderScheduleDay(container._grouped, scheduleActiveDay);
+}
 
-        const color = SCHEDULE_DAY_COLORS[i] || '#8b5cf6';
+function renderScheduleDay(grouped, dayIdx, silent) {
+    const grid = document.getElementById('scheduleGrid');
+    if (!grid) return;
+    grid.classList.toggle('sch-silent', !!silent);
+    const followed = _notifFollowedList || [];
+    const nowSec = Date.now() / 1000;
+    const airOf = m => m.nextAiringEpisode?.airingAt || 0;
 
-        btn.classList.toggle('active', i === dayIdx);
-
-        btn.style.setProperty('--dc', color);
-
+    let items = (grouped[dayIdx] || []).slice();
+    const filtered = !!(_schedSearchQ || _schedGenreFilter || _schedOnlyFollowed);
+    if (_schedSearchQ) {
+        items = items.filter(m => ((m.title?.romaji || '') + ' ' + (m.title?.english || '')).toLowerCase().includes(_schedSearchQ));
+    }
+    if (_schedGenreFilter) items = items.filter(m => (m.genres || []).includes(_schedGenreFilter));
+    if (_schedOnlyFollowed) {
+        items = items.filter(m => followed.some(f => f.title === (m.title?.romaji || m.title?.english)));
+    }
+    items.sort((a, b) => {
+        const ta = airOf(a) || Infinity, tb = airOf(b) || Infinity;
+        if (ta !== tb) return ta - tb;
+        return (b.popularity || 0) - (a.popularity || 0);
     });
 
+    if (!items.length) {
+        const msg = _schedOnlyFollowed && !filtered ? '' : (filtered ? 'Bu filtrelerle eşleşen yayın yok.' : 'Bu gün için yayın bulunamadı.');
+        grid.innerHTML = `<div class="sch-empty"><p>${msg}</p>${filtered ? '<button type="button" onclick="_schedClearFilters()">Filtreleri temizle</button>' : ''}</div>`;
+        return;
+    }
 
+    const isToday = _schedDateFor(dayIdx).offset === 0;
+    let nextMarked = false;
+    const groups = [];
+    items.forEach((m, i) => {
+        const at = airOf(m);
+        const key = at ? String(new Date(at * 1000).getHours()).padStart(2, '0') + ':00' : 'Belirsiz';
+        let g = groups[groups.length - 1];
+        if (!g || g.key !== key) { g = { key: key, rows: [] }; groups.push(g); }
+        g.rows.push(m);
+    });
 
-    // Reset search when switching day
-
-    const si = document.getElementById('schedSearchInput');
-
-    if (si) si.value = '';
-
-    _schedSearchQ = '';
-
-
-
-    renderScheduleDay(container._grouped, dayIdx);
-
-    _schedUpdateSubbar(dayIdx, container._grouped);
-
+    let rowIdx = 0;
+    grid.innerHTML = groups.map(g => {
+        const rows = g.rows.map(m => {
+            const title = m.title?.romaji || m.title?.english || 'Bilinmiyor';
+            const t = _schedEsc(title);
+            const img = _schedEsc(m.coverImage?.large || m.coverImage?.medium || '');
+            const at = airOf(m);
+            const secs = at ? at - nowSec : 0;
+            const timeStr = at ? new Date(at * 1000).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '';
+            const cd = secs > 0 ? formatTimeUntil(secs) : null;
+            const score = m.averageScore ? (m.averageScore / 10).toFixed(1) : '';
+            const studio = m.studios?.nodes?.[0]?.name || '';
+            const fmt = m.format === 'MOVIE' ? 'Film' : (m.format || 'TV');
+            const eps = m.episodes ? m.episodes + ' bölüm' : 'Süresiz';
+            const genres = (m.genres || []).slice(0, 2);
+            const isFollowed = followed.some(f => f.title === title);
+            const isNext = isToday && !nextMarked && secs > 0 && !filtered;
+            if (isNext) nextMarked = true;
+            const soon = secs > 0 && secs <= 3600;
+            const idx = Math.min(rowIdx++, 14);
+            return `<article class="sch-row${soon ? ' soon' : ''}${isNext ? ' is-next' : ''}" style="--i:${idx}" tabindex="0" data-title="${t}" data-img="${img}" ` +
+                `onclick="searchAnimeByName(this.dataset.title)" onkeydown="if(event.key==='Enter')searchAnimeByName(this.dataset.title)">` +
+                `<img class="sch-poster" src="${img}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` +
+                `<div class="sch-main">` +
+                    `<h3 class="sch-name" title="${t}">${_schedEsc(title)}${isNext ? '<span class="sch-next-label">Sıradaki</span>' : ''}</h3>` +
+                    `<p class="sch-meta">${[studio, fmt, eps].filter(Boolean).map(_schedEsc).join(' · ')}</p>` +
+                    `<div class="sch-tags">${genres.map(x => `<span class="sch-tag" data-g="${_schedEsc(x)}" onclick="event.stopPropagation();_schedSetGenre(this.dataset.g)">${_schedEsc(x)}</span>`).join('')}</div>` +
+                `</div>` +
+                `<div class="sch-ep">` +
+                    `<span class="sch-ep-num">${m.nextAiringEpisode?.episode ? 'Bölüm ' + m.nextAiringEpisode.episode : ''}</span>` +
+                    `<span class="sch-ep-time">${cd ? timeStr + ' · ' + cd : timeStr}</span>` +
+                `</div>` +
+                `<span class="sch-score${score >= 8 ? ' hi' : ''}">${score ? '★ ' + score : ''}</span>` +
+                `<div class="sch-actions">` +
+                    `<button type="button" class="sch-icon-btn${isFollowed ? ' active' : ''}" title="${isFollowed ? 'Takipten çık' : 'Takip et'}" aria-label="Takip" ` +
+                        `onclick="event.stopPropagation();_schedToggleFollow(this.closest('.sch-row').dataset.title,this.closest('.sch-row').dataset.img)">` +
+                        `<i class="fa-${isFollowed ? 'solid' : 'regular'} fa-bell"></i></button>` +
+                    `<button type="button" class="sch-icon-btn sch-watch" title="İzle" aria-label="İzle" onclick="event.stopPropagation();searchAnimeByName(this.closest('.sch-row').dataset.title)"><i class="fa-solid fa-play"></i></button>` +
+                `</div>` +
+            `</article>`;
+        }).join('');
+        return `<section class="sch-group"><div class="sch-group-h">${g.key}</div><div class="sch-rows">${rows}</div></section>`;
+    }).join('');
 }
+
+
+
+
 
 
 
@@ -16754,118 +17750,20 @@ var _schedGenreFilter = '';
 
 
 
-function _schedUpdateSubbar(dayIdx, grouped) {
-
-    const bar = document.getElementById('schedSubbar');
-
-    if (!bar) return;
-
-    const items = grouped[dayIdx] || [];
-
-    const today = new Date().getDay();
-
-    const dayName = SCHEDULE_DAYS_TR[dayIdx];
-
-    const isToday = dayIdx === today;
 
 
 
-    const soon = items.filter(m => {
-
-        const t = m.nextAiringEpisode?.timeUntilAiring;
-
-        return t && t > 0 && t <= 3600;
-
-    }).length;
 
 
-
-    bar.innerHTML = `
-
-        <div class="sv2-subbar-left">
-
-            <span class="sv2-subbar-day">${isToday ? '📅 Bugün' : dayName}</span>
-
-            <span class="sv2-subbar-count">${items.length} anime</span>
-
-            ${soon > 0 ? `<span class="sv2-live-badge"><span class="sv2-live-dot"></span>${soon} Yakında Yayında</span>` : ''}
-
-        </div>
-
-        <div class="sv2-subbar-right">
-
-            <div class="sv2-search-wrap">
-
-                <i class="fa-solid fa-magnifying-glass"></i>
-
-                <input id="schedSearchInput" type="text" placeholder="Anime ara..." oninput="_schedOnSearch(this.value)" value="${_schedSearchQ}">
-
-            </div>
-
-            <div class="sv2-genre-wrap" id="schedGenreFilter">
-
-                ${_schedBuildGenreFilter(items)}
-
-            </div>
-
-        </div>`;
-
-}
-
-
-
-function _schedBuildGenreFilter(items) {
-
-    // Collect all genres
-
-    const genreCount = {};
-
-    items.forEach(m => {
-
-        (m.genres || []).forEach(g => {
-
-            genreCount[g] = (genreCount[g] || 0) + 1;
-
-        });
-
-    });
-
-    const topGenres = Object.entries(genreCount)
-
-        .sort((a, b) => b[1] - a[1])
-
-        .slice(0, 5)
-
-        .map(([g]) => g);
-
-
-
-    if (!topGenres.length) return '';
-
-    return `<button class="sv2-genre-btn ${!_schedGenreFilter ? 'active' : ''}" onclick="_schedSetGenre('')">Tümü</button>` +
-
-        topGenres.map(g =>
-
-            `<button class="sv2-genre-btn ${_schedGenreFilter === g ? 'active' : ''}" onclick="_schedSetGenre('${g.replace(/'/g,"&#39;")}')">${g}</button>`
-
-        ).join('');
-
-}
 
 
 
 function _schedSetGenre(g) {
-
-    _schedGenreFilter = g;
-
+    _schedGenreFilter = (g === _schedGenreFilter) ? '' : g;
     const container = document.getElementById('scheduleContainer');
-
     if (!container || !container._grouped) return;
-
-    renderScheduleDay(container._grouped, scheduleActiveDay);
-
     _schedUpdateSubbar(scheduleActiveDay, container._grouped);
-
+    renderScheduleDay(container._grouped, scheduleActiveDay);
 }
 
 
@@ -16884,233 +17782,7 @@ function _schedOnSearch(val) {
 
 
 
-function renderScheduleDay(grouped, dayIdx) {
 
-    const grid = document.getElementById('scheduleGrid');
-
-    if (!grid) return;
-
-    let items = (grouped[dayIdx] || []).slice();
-
-
-
-    // Apply search filter
-
-    if (_schedSearchQ) {
-
-        items = items.filter(m => {
-
-            const t = (m.title?.romaji || '') + ' ' + (m.title?.english || '');
-
-            return t.toLowerCase().includes(_schedSearchQ);
-
-        });
-
-    }
-
-    // Apply genre filter
-
-    if (_schedGenreFilter) {
-
-        items = items.filter(m => (m.genres || []).includes(_schedGenreFilter));
-
-    }
-
-
-
-    // Sort: airing soonest first, then by popularity
-
-    items.sort((a, b) => {
-
-        const ta = a.nextAiringEpisode?.timeUntilAiring ?? Infinity;
-
-        const tb = b.nextAiringEpisode?.timeUntilAiring ?? Infinity;
-
-        if (ta !== tb) return ta - tb;
-
-        return (b.popularity || 0) - (a.popularity || 0);
-
-    });
-
-
-
-    if (!items.length) {
-
-        grid.innerHTML = `<div class="sv2-empty">
-
-            <i class="fa-solid fa-calendar-xmark"></i>
-
-            <p>${_schedSearchQ || _schedGenreFilter ? 'Arama sonucu bulunamadı.' : 'Bu gün için yayın bulunamadı.'}</p>
-
-            ${_schedSearchQ || _schedGenreFilter ? '<button onclick="_schedSetGenre(\'\');document.getElementById(\'schedSearchInput\').value=\'\';_schedOnSearch(\'\')">Filtreyi Temizle</button>' : ''}
-
-        </div>`;
-
-        return;
-
-    }
-
-
-
-    const now = Date.now();
-
-    grid.innerHTML = items.map(m => {
-
-        const title   = m.title?.romaji || m.title?.english || 'Bilinmiyor';
-
-        const safe    = title.replace(/'/g, "&#39;").replace(/"/g, '&quot;');
-
-        const img     = m.coverImage?.extraLarge || m.coverImage?.large || m.coverImage?.medium || 'https://placehold.co/200x280/0c0c16/8b5cf6?text=?';
-
-        const banner  = m.bannerImage || '';
-
-        const score   = m.averageScore ? (m.averageScore / 10).toFixed(1) : null;
-
-        const pop     = m.popularity  || 0;
-
-        const nextEp  = m.nextAiringEpisode;
-
-        const timeUntil = nextEp ? formatTimeUntil(nextEp.timeUntilAiring) : null;
-
-        const nextEpNum = nextEp?.episode || null;
-
-        const airingAt  = nextEp?.airingAt ? new Date(nextEp.airingAt * 1000) : null;
-
-        const airingStr = airingAt ? airingAt.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'}) : null;
-
-        const genres  = (m.genres || []).slice(0, 3);
-
-        const studio  = m.studios?.nodes?.[0]?.name || '';
-
-        const format  = m.format === 'TV' ? 'TV' : m.format === 'MOVIE' ? 'Film' : m.format === 'OVA' ? 'OVA' : m.format || '';
-
-        const eps     = m.episodes ? `${m.episodes} Bölüm` : '∞';
-
-        const isFollowed = (_notifFollowedList || []).some(f => f.title === title);
-
-
-
-        // Countdown urgency class
-
-        const secs = nextEp?.timeUntilAiring || Infinity;
-
-        const urgency = secs <= 3600 ? 'sv2-urgent' : secs <= 86400 ? 'sv2-soon' : '';
-
-
-
-        // Score color
-
-        const scoreClass = score >= 8 ? 'sv2-score-gold' : score >= 7 ? 'sv2-score-green' : 'sv2-score-gray';
-
-
-
-        return `<div class="sv2-card ${urgency}" onclick="searchAnimeByName('${safe}')">
-
-            <!-- Visual -->
-
-            <div class="sv2-card-visual">
-
-                ${banner ? `<div class="sv2-card-banner" style="background-image:url('${banner}')"></div>` : ''}
-
-                <img class="sv2-card-img" src="${img}" alt="${safe}" loading="lazy" onerror="this.src='https://placehold.co/200x280/0c0c16/8b5cf6?text=?'">
-
-                <div class="sv2-card-vignette"></div>
-
-
-
-                <!-- Top badges -->
-
-                <div class="sv2-card-top-row">
-
-                    ${airingStr ? `<span class="sv2-time-badge ${urgency}"><i class="fa-regular fa-clock"></i>${airingStr}</span>` : ''}
-
-                    <span class="sv2-format-badge">${format || 'TV'}</span>
-
-                </div>
-
-
-
-                <!-- Score -->
-
-                ${score ? `<div class="sv2-score-badge ${scoreClass}"><i class="fa-solid fa-star"></i>${score}</div>` : ''}
-
-
-
-                <!-- Countdown overlay -->
-
-                ${timeUntil ? `<div class="sv2-countdown-chip ${urgency}">
-
-                    <i class="fa-solid fa-hourglass-half"></i>
-
-                    <span>${timeUntil}</span>
-
-                    ${nextEpNum ? `<span class="sv2-ep-badge">Bölüm ${nextEpNum}</span>` : ''}
-
-                </div>` : ''}
-
-
-
-                <!-- Hover overlay -->
-
-                <div class="sv2-card-overlay">
-
-                    <button class="sv2-watch-btn" onclick="event.stopPropagation();searchAnimeByName('${safe}')">
-
-                        <i class="fa-solid fa-play"></i> İzle
-
-                    </button>
-
-                    <button class="sv2-follow-btn ${isFollowed ? 'active' : ''}"
-
-                        onclick="event.stopPropagation();_schedToggleFollow('${safe}','${img}')"
-
-                        title="${isFollowed ? 'Takipten Çık' : 'Takip Et'}">
-
-                        <i class="fa-${isFollowed ? 'solid' : 'regular'} fa-bell"></i>
-
-                    </button>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- Info -->
-
-            <div class="sv2-card-body">
-
-                <div class="sv2-card-title" title="${safe}">${title}</div>
-
-
-
-                ${studio ? `<div class="sv2-studio"><i class="fa-solid fa-building-columns"></i>${studio}</div>` : ''}
-
-
-
-                <div class="sv2-genres">
-
-                    ${genres.map(g => `<span class="sv2-genre-tag" onclick="event.stopPropagation();_schedSetGenre('${g.replace(/'/g,"&#39;")}')">${g}</span>`).join('')}
-
-                </div>
-
-
-
-                <div class="sv2-card-footer">
-
-                    <span class="sv2-eps-info"><i class="fa-solid fa-film"></i>${eps}</span>
-
-                    ${pop > 0 ? `<span class="sv2-pop-info"><i class="fa-solid fa-heart"></i>${pop >= 1000 ? (pop/1000).toFixed(1)+'K' : pop}</span>` : ''}
-
-                </div>
-
-            </div>
-
-        </div>`;
-
-    }).join('');
-
-}
 
 
 
@@ -17163,305 +17835,120 @@ function formatTimeUntil(seconds) {
 
 
 async function loadSchedule() {
-
     const container = document.getElementById('scheduleContainer');
-
     if (!container) return;
+    if (container.dataset.loaded === 'true') { requestAnimationFrame(_schedMoveInk); return; }
 
-
-
-    if (container.dataset.loaded === 'true') return;
-
-
-
-    // Modern loading state
-
-    container.innerHTML = `<div class="sv2-shell">
-
-        <div class="sv2-loading">
-
-            <div class="sv2-loading-orbs">
-
-                <span></span><span></span><span></span>
-
-            </div>
-
-            <p>AniList'ten takvim yükleniyor...</p>
-
-        </div>
-
-    </div>`;
-
-
+    const skelRow = '<div class="sch-skel-row"><div class="sch-skel-poster"></div><div class="sch-skel-text"><div class="sch-skel-line"></div><div class="sch-skel-line s"></div></div></div>';
+    container.innerHTML = '<div class="sch"><div class="sch-head"><div><p class="sch-eyebrow">Yükleniyor</p><h1 class="sch-title">Yayın Takvimi</h1></div></div>' +
+        '<div class="sch-list">' + Array(6).fill(skelRow).join('') + '</div></div>';
 
     try {
-
         const query = `
-
         query {
-
           Page(page: 1, perPage: 50) {
-
             media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC, isAdult: false) {
-
               title { romaji english }
-
               coverImage { extraLarge large medium }
-
-              bannerImage
-
               averageScore
-
               episodes
-
               format
-
               popularity
-
               status
-
               genres
-
               studios(isMain: true) { nodes { name } }
-
               airingSchedule(notYetAired: false, perPage: 1) {
-
                 nodes { episode airingAt }
-
               }
-
               nextAiringEpisode {
-
                 episode
-
                 timeUntilAiring
-
                 airingAt
-
               }
-
             }
-
           }
-
         }`;
 
-
-
         const data = await fetchAniList(query);
-
         if (!data?.Page?.media) throw new Error('Veri alınamadı');
 
-
-
-        const media = data.Page.media;
-
         const grouped = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
-
         let totalAiring = 0;
-
-
-
-        media.forEach(m => {
-
+        data.Page.media.forEach(m => {
             let dayIdx = -1;
-
             if (m.nextAiringEpisode?.airingAt) {
-
                 dayIdx = new Date(m.nextAiringEpisode.airingAt * 1000).getDay();
-
             } else if (m.airingSchedule?.nodes?.length > 0) {
-
                 dayIdx = new Date(m.airingSchedule.nodes[0].airingAt * 1000).getDay();
-
             }
-
             if (dayIdx !== -1) { grouped[dayIdx].push(m); totalAiring++; }
-
         });
 
-
-
         const today = new Date().getDay();
-
         const todayCount = (grouped[today] || []).length;
-
-        const soonCount = (grouped[today] || []).filter(m => {
-
-            const t = m.nextAiringEpisode?.timeUntilAiring;
-
-            return t && t > 0 && t <= 21600;
-
+        const nowSec = Date.now() / 1000;
+        const soonCount = data.Page.media.filter(m => {
+            const t = (m.nextAiringEpisode?.airingAt || 0) - nowSec;
+            return t > 0 && t <= 21600;
         }).length;
 
-        const season = _schedGetSeason();
-
-
-
-        // Build modern shell
-
         container.innerHTML = `
-
-        <div class="sv2-shell">
-
-            <!-- Hero Header -->
-
-            <div class="sv2-hero">
-
-                <div class="sv2-hero-bg"></div>
-
-                <div class="sv2-hero-content">
-
-                    <div class="sv2-hero-left">
-
-                        <div class="sv2-hero-kicker">
-
-                            <span class="sv2-live-dot-pulse"></span>
-
-                            Canlı Takvim
-
-                        </div>
-
-                        <h1 class="sv2-hero-title">
-
-                            <i class="fa-solid fa-calendar-week"></i>
-
-                            Haftalık Yayın Takvimi
-
-                        </h1>
-
-                        <p class="sv2-hero-sub">${season} · ${totalAiring} anime yayında</p>
-
-                    </div>
-
-                    <div class="sv2-hero-stats">
-
-                        <div class="sv2-stat-card">
-
-                            <span class="sv2-stat-val">${totalAiring}</span>
-
-                            <span class="sv2-stat-lbl">Bu Sezon</span>
-
-                        </div>
-
-                        <div class="sv2-stat-card highlight">
-
-                            <span class="sv2-stat-val">${todayCount}</span>
-
-                            <span class="sv2-stat-lbl">Bugün</span>
-
-                        </div>
-
-                        <div class="sv2-stat-card">
-
-                            <span class="sv2-stat-val">${soonCount}</span>
-
-                            <span class="sv2-stat-lbl">Yakında</span>
-
-                        </div>
-
-                    </div>
-
+        <div class="sch">
+            <header class="sch-head">
+                <div>
+                    <p class="sch-eyebrow">${_schedGetSeason()}</p>
+                    <h1 class="sch-title">Yayın Takvimi</h1>
                 </div>
-
-            </div>
-
-
-
-            <!-- Day tabs -->
-
-            <div class="sv2-tabs-row">
-
-                <div id="scheduleDayTabs" class="sv2-day-tabs"></div>
-
-            </div>
-
-
-
-            <!-- Subbar (search + genre + day summary) -->
-
-            <div id="schedSubbar" class="sv2-subbar"></div>
-
-
-
-            <!-- Grid -->
-
-            <div id="scheduleGrid" class="sv2-grid"></div>
-
+                <div class="sch-head-stats">
+                    <div><b>${totalAiring}</b><span>yayında</span></div>
+                    <div><b>${todayCount}</b><span>bugün</span></div>
+                    <div><b>${soonCount}</b><span>6 saat içinde</span></div>
+                </div>
+            </header>
+            <nav id="scheduleDayTabs" class="sch-days" aria-label="Gün seçimi"></nav>
+            <div id="schedSubbar" class="sch-bar"></div>
+            <div id="scheduleGrid" class="sch-list"></div>
         </div>`;
-
-
 
         container._grouped = grouped;
-
         container.dataset.loaded = 'true';
-
         _schedSearchQ = '';
-
         _schedGenreFilter = '';
-
-
+        _schedOnlyFollowed = false;
 
         scheduleActiveDay = today;
-
         renderScheduleDayTabs(grouped);
-
         _schedUpdateSubbar(today, grouped);
-
         renderScheduleDay(grouped, today);
 
-
-
-        // Live countdown tick every minute
-
         if (!container._tickInterval) {
-
             container._tickInterval = setInterval(() => {
-
-                if (document.getElementById('scheduleContainer')?.dataset.loaded === 'true') {
-
-                    renderScheduleDay(container._grouped, scheduleActiveDay);
-
+                const c = document.getElementById('scheduleContainer');
+                const v = document.getElementById('scheduleView');
+                if (c && c.dataset.loaded === 'true' && v && !v.classList.contains('hidden')) {
+                    renderScheduleDay(c._grouped, scheduleActiveDay, true);
                 }
-
             }, 60000);
-
         }
-
-
-
+        if (!window._schedResizeBound) {
+            window._schedResizeBound = true;
+            window.addEventListener('resize', _schedMoveInk);
+        }
     } catch (err) {
-
-        container.innerHTML = `<div class="sv2-error">
-
-            <i class="fa-solid fa-triangle-exclamation"></i>
-
-            <p>Takvim yüklenirken hata oluştu</p>
-
-            <small>${err.message}</small>
-
-            <button onclick="document.getElementById('scheduleContainer').dataset.loaded='';loadSchedule()">Tekrar Dene</button>
-
-        </div>`;
-
+        container.innerHTML = `<div class="sch"><div class="sch-empty">
+            <p>Takvim yüklenemedi</p>
+            <p style="font-size:12px;margin-top:6px;opacity:.7">${err.message}</p>
+            <button type="button" onclick="document.getElementById('scheduleContainer').dataset.loaded='';loadSchedule()">Tekrar dene</button>
+        </div></div>`;
     }
-
 }
 
 
 
 function _schedGetSeason() {
-
-    const m = new Date().getMonth();
-
-    if (m <= 2) return '❄️ Kış Sezonu';
-
-    if (m <= 5) return '🌸 İlkbahar Sezonu';
-
-    if (m <= 8) return '☀️ Yaz Sezonu';
-
-    return '🍂 Sonbahar Sezonu';
-
+    const d = new Date(), m = d.getMonth();
+    const s = m <= 2 ? 'Kış' : m <= 5 ? 'İlkbahar' : m <= 8 ? 'Yaz' : 'Sonbahar';
+    return s + ' ' + d.getFullYear();
 }
 
 /* ============================================================
@@ -20344,114 +20831,612 @@ window.uploadHeroBackground = async function(input) {
 
 
 
-// --- AI Navbar Modal ---
+// ══════════════════════════════════════════════════════════════════════════
+// AKILLI KEŞİF & ÖNERİ STÜDYOSU (TAM SAYFA #aiView — SIFIR KLİŞE, ANILIST + LLM MOTORU)
+// ══════════════════════════════════════════════════════════════════════════
+
+const _dscState = {
+    mode: 'mood', // 'mood' | 'similar' | 'taste' | 'prompt'
+    mood: 'dark',
+    format: 'all', // 'all' | 'short' | 'long' | 'movie'
+    era: 'all',    // 'all' | 'modern' | '2010s' | 'retro'
+    minScore: 75,
+    hideWatched: true,
+    simQuery: '',
+    promptText: '',
+    loading: false,
+    results: [],
+    aiNoteHtml: '',
+    sourceTitle: ''
+};
+
+const _DSC_MOODS = {
+    dark:      { code: '01', name: 'Karanlık & Psikolojik', desc: 'Gerilim, derin karakter analizi ve distopik atmosfer', genres: ['Psychological', 'Thriller'] },
+    action:    { code: '02', name: 'Yüksek Tempo & Aksiyon', desc: 'Sürükleyici savaş koreografileri ve yüksek adrenalin', genres: ['Action', 'Adventure'] },
+    mystery:   { code: '03', name: 'Gizem & Zeka Savaşı',    desc: 'Dedektiflik, kurgu katmanları ve stratejik düellolar', genres: ['Mystery', 'Supernatural'] },
+    scifi:     { code: '04', name: 'Bilim Kurgu & Siberpunk', desc: 'Gelecek teknolojileri, uzay ve felsefi bilim kurgu', genres: ['Sci-Fi'] },
+    fantasy:   { code: '05', name: 'Epik Fantastik Dünya',   desc: 'Büyü evrenleri, mitoloji ve geniş dünya inşası', genres: ['Fantasy', 'Adventure'] },
+    cozy:      { code: '06', name: 'Sıcak & Rahatlatıcı',    desc: 'Gündelik yaşam, huzurlu atmosfer ve samimi hikayeler', genres: ['Slice of Life', 'Comedy'] },
+    emotional: { code: '07', name: 'Duygusal & Dram',        desc: 'İz bırakan karakter gelişimleri ve güçlü dram', genres: ['Drama', 'Romance'] },
+    sports:    { code: '08', name: 'Rekabet & Spor',         desc: 'Takım ruhu, turnuva heyecanı ve azim hikayeleri', genres: ['Sports'] }
+};
+
+function _moveDscTabInk() {
+    const wrap = document.getElementById('dscTabs');
+    const ink = document.getElementById('dscTabInk');
+    if (!wrap || !ink) return;
+    const act = wrap.querySelector('.lib-tab-btn.active');
+    if (!act || !act.offsetWidth) return;
+    ink.style.width = act.offsetWidth + 'px';
+    ink.style.transform = 'translateX(' + (act.offsetLeft - 3) + 'px)';
+}
+window.addEventListener('resize', _moveDscTabInk);
 
 window.showAIModal = function() {
+    if (typeof closeNavDrawer === 'function') { try { closeNavDrawer(); } catch (_) {} }
+    if (typeof closePgModal === 'function') { try { closePgModal(); } catch (_) {} }
+    const aim = document.getElementById('aiModal');
+    if (aim) aim.classList.add('hidden');
 
-    const aim = document.getElementById('aiModal') || document.getElementById('aiModalOverlay'); if(aim) aim.classList.remove('hidden');
+    _closeSocialPages();
+    const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
+    if (typeof leaveW2GRoom === 'function') leaveW2GRoom();
+    if (typeof clearProfileCurrentAnime === 'function') clearProfileCurrentAnime();
+    if (typeof setAmbientBackground === 'function') setAmbientBackground(null);
 
-    document.getElementById('aiModalResult').style.display = 'none';
+    if (typeof homeView !== 'undefined' && homeView) homeView.classList.add('hidden');
+    if (typeof animeListView !== 'undefined' && animeListView) animeListView.classList.add('hidden');
+    if (typeof watchView !== 'undefined' && watchView) watchView.classList.add('hidden');
+    if (typeof malView !== 'undefined' && malView) malView.classList.add('hidden');
+    const sv = document.getElementById('scheduleView'); if (sv) sv.classList.add('hidden');
+    const nv = document.getElementById('newsView'); if (nv) nv.classList.add('hidden');
 
-    document.getElementById('aiModalResult').innerHTML = '';
+    const aiv = document.getElementById('aiView');
+    if (aiv) aiv.classList.remove('hidden');
 
-}
+    if (window.setAnavActive) setAnavActive('ai');
+    if (typeof vjsPlayer !== 'undefined' && vjsPlayer) { try { vjsPlayer.dispose(); } catch (e) {} vjsPlayer = null; }
+
+    renderDiscoveryPage(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!_dscState.results.length && !_dscState.loading) {
+        dscRunMoodSearch();
+    }
+};
 
 window.closeAIModal = function() {
+    const aim = document.getElementById('aiModal');
+    if (aim) aim.classList.add('hidden');
+    const aiv = document.getElementById('aiView');
+    if (aiv && !aiv.classList.contains('hidden')) showHomeView();
+};
 
-    const aim2 = document.getElementById('aiModal') || document.getElementById('aiModalOverlay'); if(aim2) aim2.classList.add('hidden');
+window.dscSwitchMode = function(mode) {
+    if (!['mood', 'similar', 'taste', 'prompt'].includes(mode)) return;
+    _dscState.mode = mode;
+    _dscState.aiNoteHtml = '';
+    renderDiscoveryPage(true);
+    if (mode === 'mood' && !_dscState.results.length) dscRunMoodSearch();
+    else if (mode === 'taste') dscRunTasteAnalysis();
+};
 
-}
+window.dscSelectMood = function(m) {
+    _dscState.mood = m;
+    dscRunMoodSearch();
+};
 
+window.dscSetFilter = function(key, val) {
+    _dscState[key] = val;
+    dscRunMoodSearch();
+};
 
-
-window.askAIForMAL = async function() {
-
-    const resEl = document.getElementById('aiModalResult');
-
-    resEl.style.display = 'block';
-
-    
-
-    if (!malUser) {
-
-        resEl.innerHTML = '<p style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> Lütfen ayarlardan MyAnimeList hesabınızı bağlayın!</p>';
-
-        return;
-
-    }
-
-    if (!appSettings.aiEnabled || !appSettings.aiApiKey) {
-
-        resEl.innerHTML = '<p style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> Lütfen ayarlardan Yapay Zeka (AI) özelliğini açın ve API anahtarınızı girin!</p>';
-
-        return;
-
-    }
-
-
-
-    resEl.innerHTML = '<div style="text-align:center; padding:1rem;"><div class="spinner" style="display:inline-block"></div><p style="margin-top:10px; color:var(--text3);">MAL listeniz analiz ediliyor...</p></div>';
-
-
-
-    let watchHistoryText = '';
+async function dscRunMoodSearch() {
+    const moodCfg = _DSC_MOODS[_dscState.mood] || _DSC_MOODS.dark;
+    _dscState.loading = true;
+    _dscState.aiNoteHtml = '';
+    _dscState.sourceTitle = `${moodCfg.name} Seçkisi`;
+    renderDiscoveryPage(true);
 
     try {
+        const watchedTitles = new Set(
+            [...getFavorites(), ...getHistory(), ...getWatchlist()].map(x => String(x.title || '').toLowerCase()).filter(Boolean)
+        );
 
-        const wlRes = await fetch(`${API_BASE}/mal/watchlist?username=${encodeURIComponent(malUser)}&status=completed`);
+        let formatFilter = '';
+        if (_dscState.format === 'movie') formatFilter = ', format: MOVIE';
+        else if (_dscState.format === 'short' || _dscState.format === 'long') formatFilter = ', format_in: [TV, ONA]';
 
-        let wlData = await wlRes.json();
+        let dateFilter = '';
+        if (_dscState.era === 'modern') dateFilter = ', startDate_greater: 20200000';
+        else if (_dscState.era === '2010s') dateFilter = ', startDate_greater: 20100000, startDate_lesser: 20200000';
+        else if (_dscState.era === 'retro') dateFilter = ', startDate_lesser: 20100000';
 
-        if (wlData && Array.isArray(wlData)) {
+        const genreListStr = JSON.stringify(moodCfg.genres);
+        const query = `
+        query {
+          Page(page: 1, perPage: 28) {
+            media(type: ANIME, isAdult: false, genre_in: ${genreListStr}, averageScore_greater: ${_dscState.minScore}, sort: [SCORE_DESC, POPULARITY_DESC]${formatFilter}${dateFilter}) {
+              id
+              title { romaji english }
+              coverImage { extraLarge large }
+              averageScore
+              episodes
+              format
+              seasonYear
+              genres
+              studios(isMain: true) { nodes { name } }
+              description(asHtml: false)
+            }
+          }
+        }`;
+        const data = await fetchAniList(query);
+        let media = (data && data.Page && data.Page.media) ? data.Page.media : [];
 
-            wlData.sort((a,b) => (b.score || 0) - (a.score || 0));
+        if (_dscState.format === 'short') media = media.filter(m => m.episodes && m.episodes <= 14);
+        else if (_dscState.format === 'long') media = media.filter(m => !m.episodes || m.episodes >= 20);
 
-            wlData = wlData.slice(0, 30);
-
-            watchHistoryText = wlData.map(a => `${a.title} (Puan: ${a.score})`).join(', ');
-
+        if (_dscState.hideWatched && watchedTitles.size > 0) {
+            media = media.filter(m => {
+                const r = (m.title?.romaji || '').toLowerCase();
+                const e = (m.title?.english || '').toLowerCase();
+                return !watchedTitles.has(r) && !watchedTitles.has(e);
+            });
         }
 
-    } catch(err) { console.log('MAL veri çekme hatası (AI için)', err); }
+        _dscState.results = media.slice(0, 12).map((m, i) => ({
+            id: m.id,
+            title: m.title?.romaji || m.title?.english || 'Bilinmiyor',
+            img: m.coverImage?.extraLarge || m.coverImage?.large || '',
+            score: m.averageScore ? (m.averageScore / 10).toFixed(1) : '8.0',
+            matchPct: Math.max(82, Math.min(99, Math.round((m.averageScore || 80) + (6 - Math.min(6, i))))),
+            episodes: m.episodes || null,
+            format: m.format === 'MOVIE' ? 'Film' : 'Dizi',
+            year: m.seasonYear || '',
+            genres: (m.genres || []).slice(0, 3),
+            studio: (m.studios?.nodes && m.studios.nodes[0]) ? m.studios.nodes[0].name : '',
+            desc: String(m.description || '').replace(/<[^>]*>/g, '').slice(0, 180)
+        }));
+    } catch (e) {
+        _dscState.results = [];
+    } finally {
+        _dscState.loading = false;
+        renderDiscoveryPage(true);
+    }
+}
 
-
-
-    if (!watchHistoryText) {
-
-        resEl.innerHTML = '<p style="color:#ef4444;">MAL listeniz boş veya okunamadı.</p>';
-
+window.dscRunSimilarSearch = async function(seedTitle) {
+    const inp = document.getElementById('dscSimInput');
+    const qTitle = String(seedTitle != null ? seedTitle : (inp ? inp.value : _dscState.simQuery)).trim();
+    if (!qTitle) {
+        showToast('⚠️ Lütfen referans bir anime adı girin veya seçin.');
         return;
+    }
+    _dscState.simQuery = qTitle;
+    _dscState.loading = true;
+    _dscState.sourceTitle = `"${qTitle}" Benzeri Seriler`;
+    renderDiscoveryPage(true);
 
+    try {
+        const query = `
+        query ($search: String) {
+          Media(search: $search, type: ANIME, isAdult: false) {
+            id
+            title { romaji english }
+            genres
+            recommendations(sort: [RATING_DESC], perPage: 14) {
+              nodes {
+                rating
+                mediaRecommendation {
+                  id
+                  title { romaji english }
+                  coverImage { extraLarge large }
+                  averageScore
+                  episodes
+                  format
+                  seasonYear
+                  genres
+                  studios(isMain: true) { nodes { name } }
+                  description(asHtml: false)
+                }
+              }
+            }
+          }
+        }`;
+        const data = await fetchAniList(query, { search: qTitle });
+        const base = data && data.Media;
+        const recNodes = (base && base.recommendations && base.recommendations.nodes) ? base.recommendations.nodes : [];
+        let list = recNodes.map((n, i) => {
+            const m = n.mediaRecommendation;
+            if (!m) return null;
+            return {
+                id: m.id,
+                title: m.title?.romaji || m.title?.english || 'Bilinmiyor',
+                img: m.coverImage?.extraLarge || m.coverImage?.large || '',
+                score: m.averageScore ? (m.averageScore / 10).toFixed(1) : '8.0',
+                matchPct: Math.max(84, Math.min(99, 97 - i * 2)),
+                episodes: m.episodes || null,
+                format: m.format === 'MOVIE' ? 'Film' : 'Dizi',
+                year: m.seasonYear || '',
+                genres: (m.genres || []).slice(0, 3),
+                studio: (m.studios?.nodes && m.studios.nodes[0]) ? m.studios.nodes[0].name : '',
+                desc: String(m.description || '').replace(/<[^>]*>/g, '').slice(0, 180)
+            };
+        }).filter(Boolean);
+
+        if (base && base.title) {
+            _dscState.sourceTitle = `"${base.title.romaji || base.title.english}" İçin Benzer Seriler`;
+        }
+        _dscState.results = list.slice(0, 12);
+    } catch (_) {
+        _dscState.results = [];
+    } finally {
+        _dscState.loading = false;
+        renderDiscoveryPage(true);
+    }
+};
+
+window.dscRunTasteAnalysis = async function() {
+    _dscState.loading = true;
+    _dscState.aiNoteHtml = '';
+    _dscState.sourceTitle = 'Kütüphane & İzleme Zevki Analizi';
+    renderDiscoveryPage(true);
+
+    const localPool = [...getFavorites(), ...getHistory(), ...getWatchlist()];
+    const sampleTitles = Array.from(new Set(localPool.map(a => a.title).filter(Boolean))).slice(0, 8);
+
+    try {
+        // En sevilen serilerden veya genel yüksek puanlılardan öneri derle
+        let topGenres = ['Action', 'Psychological', 'Fantasy'];
+        if (window._animeMeta) {
+            const gCount = {};
+            Object.values(window._animeMeta).forEach(m => (m.genres || []).forEach(g => { gCount[g] = (gCount[g] || 0) + 1; }));
+            const sortedG = Object.entries(gCount).sort((a, b) => b[1] - a[1]).map(e => e[0]);
+            if (sortedG.length >= 2) topGenres = sortedG.slice(0, 3);
+        }
+
+        const query = `
+        query {
+          Page(page: 1, perPage: 20) {
+            media(type: ANIME, isAdult: false, genre_in: ${JSON.stringify(topGenres)}, averageScore_greater: 78, sort: [TRENDING_DESC, SCORE_DESC]) {
+              id
+              title { romaji english }
+              coverImage { extraLarge large }
+              averageScore
+              episodes
+              format
+              seasonYear
+              genres
+              studios(isMain: true) { nodes { name } }
+              description(asHtml: false)
+            }
+          }
+        }`;
+        const data = await fetchAniList(query);
+        const watchedSet = new Set(sampleTitles.map(t => t.toLowerCase()));
+        const media = ((data && data.Page && data.Page.media) || []).filter(m => {
+            const r = (m.title?.romaji || '').toLowerCase();
+            return !watchedSet.has(r);
+        });
+
+        _dscState.results = media.slice(0, 12).map((m, i) => ({
+            id: m.id,
+            title: m.title?.romaji || m.title?.english || 'Bilinmiyor',
+            img: m.coverImage?.extraLarge || m.coverImage?.large || '',
+            score: m.averageScore ? (m.averageScore / 10).toFixed(1) : '8.2',
+            matchPct: Math.max(85, 98 - i * 2),
+            episodes: m.episodes || null,
+            format: m.format === 'MOVIE' ? 'Film' : 'Dizi',
+            year: m.seasonYear || '',
+            genres: (m.genres || []).slice(0, 3),
+            studio: (m.studios?.nodes && m.studios.nodes[0]) ? m.studios.nodes[0].name : '',
+            desc: String(m.description || '').replace(/<[^>]*>/g, '').slice(0, 180)
+        }));
+
+        // Eğer kullanıcı AI API anahtarı girdiyse, ek olarak kişisel analiz metni de üret
+        if (appSettings.aiEnabled && appSettings.aiApiKey && sampleTitles.length > 0) {
+            const prompt = `Kullanıcının kütüphanesindeki animeler: ${sampleTitles.join(', ')}. Bu zevk profilini 3 kısa maddede analiz et ve neden seçilen türlerin (${topGenres.join(', ')}) uyumlu olduğunu kısaca açıkla.`;
+            const aiTxt = await callAIAPI(prompt);
+            if (aiTxt && typeof marked !== 'undefined') {
+                _dscState.aiNoteHtml = marked.parse(aiTxt);
+            }
+        }
+    } catch (_) {
+        _dscState.results = [];
+    } finally {
+        _dscState.loading = false;
+        renderDiscoveryPage(true);
+    }
+};
+
+window.dscRunCustomPrompt = async function(presetText) {
+    const inp = document.getElementById('dscPromptInput');
+    const text = String(presetText != null ? presetText : (inp ? inp.value : _dscState.promptText)).trim();
+    if (!text) {
+        showToast('⚠️ Lütfen nasıl bir anime aradığınızı yazın.');
+        return;
+    }
+    _dscState.promptText = text;
+    _dscState.loading = true;
+    _dscState.aiNoteHtml = '';
+    _dscState.sourceTitle = `Özel Sorgu: "${text.slice(0, 42)}${text.length > 42 ? '...' : ''}"`;
+    renderDiscoveryPage(true);
+
+    // Metinden anahtar tür çıkarımı (API anahtarı olmasa bile gerçek sonuç döndürür)
+    const low = text.toLowerCase();
+    const detectedGenres = [];
+    if (low.includes('karanlık') || low.includes('psikolojik') || low.includes('zeka') || low.includes('gerilim')) detectedGenres.push('Psychological', 'Thriller');
+    if (low.includes('aksiyon') || low.includes('savaş') || low.includes('dövüş') || low.includes('shonen')) detectedGenres.push('Action');
+    if (low.includes('bilim kurgu') || low.includes('siberpunk') || low.includes('uzay') || low.includes('gelecek')) detectedGenres.push('Sci-Fi');
+    if (low.includes('büyü') || low.includes('fantastik') || low.includes('isekai')) detectedGenres.push('Fantasy');
+    if (low.includes('gizem') || low.includes('dedektif') || low.includes('suç')) detectedGenres.push('Mystery');
+    if (low.includes('romantik') || low.includes('aşk') || low.includes('duygusal') || low.includes('dram')) detectedGenres.push('Romance', 'Drama');
+    if (low.includes('komedi') || low.includes('eğlenceli') || low.includes('rahat')) detectedGenres.push('Comedy', 'Slice of Life');
+    if (!detectedGenres.length) detectedGenres.push('Action', 'Mystery', 'Sci-Fi');
+
+    try {
+        const query = `
+        query {
+          Page(page: 1, perPage: 16) {
+            media(type: ANIME, isAdult: false, genre_in: ${JSON.stringify(Array.from(new Set(detectedGenres)))}, averageScore_greater: 76, sort: [SCORE_DESC, POPULARITY_DESC]) {
+              id
+              title { romaji english }
+              coverImage { extraLarge large }
+              averageScore
+              episodes
+              format
+              seasonYear
+              genres
+              studios(isMain: true) { nodes { name } }
+              description(asHtml: false)
+            }
+          }
+        }`;
+        const data = await fetchAniList(query);
+        const media = (data && data.Page && data.Page.media) || [];
+        _dscState.results = media.slice(0, 12).map((m, i) => ({
+            id: m.id,
+            title: m.title?.romaji || m.title?.english || 'Bilinmiyor',
+            img: m.coverImage?.extraLarge || m.coverImage?.large || '',
+            score: m.averageScore ? (m.averageScore / 10).toFixed(1) : '8.0',
+            matchPct: Math.max(84, 98 - i * 2),
+            episodes: m.episodes || null,
+            format: m.format === 'MOVIE' ? 'Film' : 'Dizi',
+            year: m.seasonYear || '',
+            genres: (m.genres || []).slice(0, 3),
+            studio: (m.studios?.nodes && m.studios.nodes[0]) ? m.studios.nodes[0].name : '',
+            desc: String(m.description || '').replace(/<[^>]*>/g, '').slice(0, 180)
+        }));
+
+        if (appSettings.aiEnabled && appSettings.aiApiKey) {
+            const aiRes = await callAIAPI(`Kullanıcı şu kriterde anime arıyor: "${text}". Kısa, net ve editoryal bir dille 4 nokta atışı anime önerisi ve nedenlerini Markdown olarak yaz.`);
+            if (aiRes && typeof marked !== 'undefined') {
+                _dscState.aiNoteHtml = marked.parse(aiRes);
+            }
+        }
+    } catch (_) {
+        _dscState.results = [];
+    } finally {
+        _dscState.loading = false;
+        renderDiscoveryPage(true);
+    }
+};
+
+window.askAIForMAL = function() {
+    showAIModal();
+    dscSwitchMode('taste');
+};
+
+window.askAICustom = function() {
+    dscRunCustomPrompt();
+};
+
+function renderDiscoveryPage(isSoft) {
+    const host = document.getElementById('aiPageBody');
+    if (!host) return;
+
+    const mode = _dscState.mode;
+    const localSeeds = Array.from(new Set(
+        [...getFavorites(), ...getHistory(), ...getWatchlist()].map(a => a && a.title).filter(Boolean)
+    )).slice(0, 8);
+
+    // Mod Kontrol Paneli
+    let controlsHtml = '';
+    if (mode === 'mood') {
+        controlsHtml = `
+        <section class="dsc-control-box">
+            <div class="dsc-mood-grid">
+                ${Object.entries(_DSC_MOODS).map(([k, cfg]) => `
+                    <button type="button" class="dsc-mood-card${_dscState.mood === k ? ' active' : ''}" onclick="dscSelectMood('${k}')">
+                        <div class="dsc-mc-top">
+                            <span>${cfg.code}</span>
+                            <small>${cfg.genres.join(' · ')}</small>
+                        </div>
+                        <strong>${_libEsc(cfg.name)}</strong>
+                        <p>${_libEsc(cfg.desc)}</p>
+                    </button>
+                `).join('')}
+            </div>
+            <div class="dsc-filter-strip">
+                <div class="dsc-filter-group">
+                    <span class="dsc-fg-lbl">FORMAT</span>
+                    <div class="lib-subpills">
+                        <button type="button" class="${_dscState.format === 'all' ? 'active' : ''}" onclick="dscSetFilter('format','all')">Tümü</button>
+                        <button type="button" class="${_dscState.format === 'short' ? 'active' : ''}" onclick="dscSetFilter('format','short')">Kısa Seri (≤14 Böl.)</button>
+                        <button type="button" class="${_dscState.format === 'long' ? 'active' : ''}" onclick="dscSetFilter('format','long')">Uzun Seri (20+ Böl.)</button>
+                        <button type="button" class="${_dscState.format === 'movie' ? 'active' : ''}" onclick="dscSetFilter('format','movie')">Sinema Filmi</button>
+                    </div>
+                </div>
+                <div class="dsc-filter-group">
+                    <span class="dsc-fg-lbl">DÖNEM</span>
+                    <div class="lib-subpills">
+                        <button type="button" class="${_dscState.era === 'all' ? 'active' : ''}" onclick="dscSetFilter('era','all')">Tüm Yıllar</button>
+                        <button type="button" class="${_dscState.era === 'modern' ? 'active' : ''}" onclick="dscSetFilter('era','modern')">2020–2026</button>
+                        <button type="button" class="${_dscState.era === '2010s' ? 'active' : ''}" onclick="dscSetFilter('era','2010s')">2010–2019</button>
+                        <button type="button" class="${_dscState.era === 'retro' ? 'active' : ''}" onclick="dscSetFilter('era','retro')">Klasik (≤2009)</button>
+                    </div>
+                </div>
+                <div class="dsc-filter-group">
+                    <span class="dsc-fg-lbl">MİN. PUAN</span>
+                    <div class="lib-subpills">
+                        ${[70, 75, 80, 85].map(sc => `<button type="button" class="${_dscState.minScore === sc ? 'active' : ''}" onclick="dscSetFilter('minScore',${sc})">${(sc / 10).toFixed(1)}+</button>`).join('')}
+                    </div>
+                </div>
+                <button type="button" class="lib-btn sm${_dscState.hideWatched ? ' primary' : ''}" onclick="dscSetFilter('hideWatched',!_dscState.hideWatched)">
+                    <i class="fa-solid ${_dscState.hideWatched ? 'fa-eye-slash' : 'fa-eye'}"></i><span>İzlenenleri Gizle</span>
+                </button>
+            </div>
+        </section>`;
+    } else if (mode === 'similar') {
+        const defaultSeeds = localSeeds.length ? localSeeds : ['Death Note', 'Attack on Titan', 'Steins;Gate', 'Vinland Saga', 'Sousou no Frieren', 'Cyberpunk: Edgerunners'];
+        controlsHtml = `
+        <section class="lib-create-panel" style="margin-bottom:0">
+            <div class="lib-cp-top">
+                <div>
+                    <span class="lib-qa-kicker">REFERANS ANİME EŞLEŞTİRME</span>
+                    <h4>Sevdiğin Bir Animeyi Yaz, Aynı Kurgusal Dokuya Sahip Serileri Bulalım</h4>
+                </div>
+            </div>
+            <div class="lib-cp-form">
+                <input id="dscSimInput" type="text" class="lib-cp-input" value="${_libEsc(_dscState.simQuery)}" placeholder="Anime adı yazın (ör. Steins;Gate, Monster, Jujutsu Kaisen)..." onkeydown="if(event.key==='Enter')dscRunSimilarSearch()">
+                <button type="button" class="lib-btn primary" onclick="dscRunSimilarSearch()"><i class="fa-solid fa-magnifying-glass"></i><span>Benzerlerini Bul</span></button>
+            </div>
+            <div class="lib-cp-presets">
+                <span>${localSeeds.length ? 'Senin Kütüphanenden:' : 'Popüler Referanslar:'}</span>
+                ${defaultSeeds.map(t => {
+                    const safeT = String(t).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    return `<button type="button" onclick="dscRunSimilarSearch('${safeT}')">${_libEsc(t)}</button>`;
+                }).join('')}
+            </div>
+        </section>`;
+    } else if (mode === 'taste') {
+        controlsHtml = `
+        <section class="lib-create-panel" style="margin-bottom:0">
+            <div class="lib-cp-top">
+                <div>
+                    <span class="lib-qa-kicker">OTOMATİK PROFİL SENTEZİ</span>
+                    <h4>Kütüphanendeki Favoriler, Geçmiş ve MAL Verilerine Göre Kişisel Seçki</h4>
+                </div>
+                <button type="button" class="lib-btn primary sm" onclick="dscRunTasteAnalysis()"><i class="fa-solid fa-arrows-rotate"></i><span>Analizi Yenile</span></button>
+            </div>
+            <p style="margin:0;font-size:13px;color:var(--pg-muted);line-height:1.5">
+                ${localSeeds.length
+                    ? `Analiz edilen referans serilerin: <b style="color:var(--pg-text)">${_libEsc(localSeeds.join(' · '))}</b>`
+                    : 'Henüz yerel favori veya geçmiş kaydın az olduğu için genel yüksek puanlı trend seriler üzerinden eşleştirme yapılıyor.'}
+            </p>
+        </section>`;
+    } else if (mode === 'prompt') {
+        const hasKey = !!(appSettings && appSettings.aiEnabled && appSettings.aiApiKey);
+        controlsHtml = `
+        <section class="lib-create-panel" style="margin-bottom:0">
+            <div class="lib-cp-top">
+                <div>
+                    <span class="lib-qa-kicker">DOĞAL DİL SORGUSU &amp; AKILLI EŞLEŞTİRME</span>
+                    <h4>Nasıl Bir Hikaye, Atmosfer veya Karakter Aradığını Kendi Cümlelerinle Anlat</h4>
+                </div>
+                <button type="button" class="lib-btn sm" onclick="openSettings()"><i class="fa-solid fa-sliders"></i><span>API Ayarları (${hasKey ? 'Aktif' : 'Yerel Motor'})</span></button>
+            </div>
+            <div class="lib-cp-form">
+                <input id="dscPromptInput" type="text" class="lib-cp-input" value="${_libEsc(_dscState.promptText)}" placeholder="Örn: Ana karakterin zekasıyla kazandığı karanlık ve sürükleyici bir gizem serisi..." onkeydown="if(event.key==='Enter')dscRunCustomPrompt()">
+                <button type="button" class="lib-btn primary" onclick="dscRunCustomPrompt()"><i class="fa-solid fa-arrow-right"></i><span>Eşleştir</span></button>
+            </div>
+            <div class="lib-cp-presets">
+                <span>Örnek Sorgular:</span>
+                <button type="button" onclick="dscRunCustomPrompt('Death Note ve Monster tarzı karanlık psikolojik zeka savaşı')">Karanlık psikolojik zeka savaşı</button>
+                <button type="button" onclick="dscRunCustomPrompt('Siberpunk ve distopik gelecekte geçen sürükleyici bilim kurgu')">Siberpunk &amp; distopik bilim kurgu</button>
+                <button type="button" onclick="dscRunCustomPrompt('Yorucu bir günün ardından izlenecek sıcak ve huzurlu gündelik yaşam')">Sıcak &amp; huzurlu gündelik yaşam</button>
+                <button type="button" onclick="dscRunCustomPrompt('Sıfırdan güçlenen ana karakterli yüksek tempolu fantastik aksiyon')">Yüksek tempolu fantastik aksiyon</button>
+            </div>
+        </section>`;
     }
 
-
-
-    resEl.innerHTML = '<div style="text-align:center; padding:1rem;"><div class="spinner" style="display:inline-block"></div><p style="margin-top:10px; color:var(--text3);">Yapay Zeka izleme zevkinizi değerlendiriyor...</p></div>';
-
-
-
-    const prompt = `Kullanıcının daha önce izlediği ve yüksek puan verdiği animeler şunlar: ${watchHistoryText}. 
-
-
-
-Bu kullanıcının zevkini analiz ederek, ona İZLEMEDİĞİ ve ÇOK SEVECEĞİ 5 farklı anime öner. 
-
-Cevabını Markdown kullanarak güzel bir şekilde biçimlendir. Başlıkları, kısa nedenleri kalın yaz.`;
-
-    
-
-    const result = await callAIAPI(prompt);
-
-    if (result) {
-
-        resEl.innerHTML = marked.parse(result);
-
+    // Sonuç Listesi
+    let resultsHtml = '';
+    if (_dscState.loading) {
+        resultsHtml = `<div class="dsc-results-grid">${Array(6).fill('<div class="dsc-skel-card"></div>').join('')}</div>`;
+    } else if (!_dscState.results.length) {
+        resultsHtml = `
+        <div class="lib-empty">
+            <span class="lib-empty-code">00 / SONUÇ YOK</span>
+            <h3>Eşleşen anime bulunamadı</h3>
+            <p>Filtre kriterlerini esneterek veya farklı bir referans seri seçerek tekrar deneyebilirsin.</p>
+        </div>`;
     } else {
-
-        resEl.innerHTML = '<p style="color:#ef4444;">Yanıt alınamadı. Lütfen API ayarlarınızı kontrol edin.</p>';
-
+        resultsHtml = `
+        <div class="dsc-results-head">
+            <span class="stx-panel-kicker">${_libEsc(_dscState.sourceTitle || 'ÖNERİLEN SERİLER')}</span>
+            <span class="dsc-res-count"><b>${_dscState.results.length}</b> yüksek uyumlu eşleşme bulundu</span>
+        </div>
+        ${_dscState.aiNoteHtml ? `<div class="dsc-ai-editorial-note"><span class="lib-qa-kicker">ASİSTAN DEĞERLENDİRMESİ</span><div class="dsc-ai-prose">${_dscState.aiNoteHtml}</div></div>` : ''}
+        <div class="dsc-results-grid">
+            ${_dscState.results.map((r, idx) => {
+                const title = _libEsc(r.title);
+                const safeTitle = String(r.title || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const safeImg = String(r.img || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                return `
+                <article class="dsc-rec-card" onclick="searchAnimeByName('${safeTitle}')">
+                    <div class="dsc-rec-poster">
+                        <img src="${_libEsc(r.img)}" alt="${title}" loading="lazy" onerror="this.src='https://placehold.co/220x320/0f0f1a/8b5cf6?text=?'">
+                        <span class="dsc-match-badge">%${r.matchPct} Uyum</span>
+                    </div>
+                    <div class="dsc-rec-body">
+                        <div class="dsc-rec-top">
+                            <span class="dsc-rec-idx">${String(idx + 1).padStart(2, '0')} · ${_libEsc(r.format)}${r.year ? ` · ${r.year}` : ''}</span>
+                            <span class="dsc-rec-score">★ ${_libEsc(r.score)}</span>
+                        </div>
+                        <h3 class="dsc-rec-title">${title}</h3>
+                        <p class="dsc-rec-desc">${_libEsc(r.desc || 'Açıklama bulunmuyor.')}</p>
+                        <div class="dsc-rec-tags">
+                            ${(r.genres || []).map(g => `<span>${_libEsc(g)}</span>`).join('')}
+                            ${r.episodes ? `<span>${r.episodes} Bölüm</span>` : ''}
+                        </div>
+                        <div class="dsc-rec-foot" onclick="event.stopPropagation()">
+                            <button type="button" class="lib-resume-btn" onclick="searchAnimeByName('${safeTitle}')">
+                                <i class="fa-solid fa-play"></i><span>Anitr'de Aç</span>
+                            </button>
+                            <button type="button" class="lib-icon-btn" title="Özel Listeme Ekle" onclick="openAddToListModal({id:'${r.id}',title:'${safeTitle}',img:'${safeImg}',slug:''})">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </article>`;
+            }).join('')}
+        </div>`;
     }
 
+    host.innerHTML = `
+    <div class="lib-shell${isSoft ? ' is-switching' : ''}">
+        <header class="lib-head">
+            <div class="lib-head-left">
+                <p class="cat-eyebrow">Kişiselleştirilmiş Kürasyon</p>
+                <h1 class="cat-title">Akıllı Keşif Stüdyosu</h1>
+                <p class="cat-count">Ruh haline, sevdiğin serilere, kütüphane analizine ve doğal dil sorgularına göre anime eşleştirme motoru</p>
+            </div>
+            <div class="lib-head-right">
+                <div class="lib-top-actions">
+                    <button type="button" class="lib-btn" onclick="loadRandom()"><i class="fa-solid fa-shuffle"></i><span>Rastgele Anime</span></button>
+                    <button type="button" class="lib-btn" onclick="showMALView()"><i class="fa-solid fa-link"></i><span>MAL Senkronizasyonu</span></button>
+                </div>
+            </div>
+        </header>
+
+        <div class="lib-toolbar">
+            <div class="lib-tabs" id="dscTabs" role="tablist">
+                <span class="lib-tabs-ink" id="dscTabInk"></span>
+                <button type="button" class="lib-tab-btn${mode === 'mood' ? ' active' : ''}" onclick="dscSwitchMode('mood')"><span>Atmosfer &amp; Filtre</span></button>
+                <button type="button" class="lib-tab-btn${mode === 'similar' ? ' active' : ''}" onclick="dscSwitchMode('similar')"><span>Benzer Seri Bulucu</span></button>
+                <button type="button" class="lib-tab-btn${mode === 'taste' ? ' active' : ''}" onclick="dscSwitchMode('taste')"><span>Kütüphane Analizi</span></button>
+                <button type="button" class="lib-tab-btn${mode === 'prompt' ? ' active' : ''}" onclick="dscSwitchMode('prompt')"><span>Serbest Sorgu</span></button>
+            </div>
+        </div>
+
+        ${controlsHtml}
+
+        <div class="lib-content">
+            ${resultsHtml}
+        </div>
+    </div>`;
+
+    requestAnimationFrame(_moveDscTabInk);
 }
 
 
@@ -23077,215 +24062,549 @@ function _setupSkipButtons(player, opening, ending) {
 
 
     const fmtDur = (sec) => {
-
-        const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
-
+        const s = Math.max(0, Math.round(sec || 0));
+        const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
         return h > 0 ? `${h}<em>sa</em> ${m}<em>dk</em>` : `${m}<em>dk</em>`;
-
+    };
+    const fmtDurText = (sec) => {
+        const s = Math.max(0, Math.round(sec || 0));
+        const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+        return h > 0 ? `${h} sa ${m} dk` : `${m} dk`;
     };
 
     const RANKS = [
-
-        [0, 'Çaylak', '🌱'], [5, 'Düzenli İzleyici', '📺'], [20, 'Anime Sever', '💜'],
-
-        [50, 'Otaku', '🔥'], [100, 'Kıdemli Otaku', '⚡'], [250, 'Efsane', '👑']
-
+        { min: 0,   code: '01', name: 'Çaylak',           sub: 'Başlangıç Kademesi' },
+        { min: 5,   code: '02', name: 'Düzenli İzleyici', sub: 'Haftalık Takipçi' },
+        { min: 20,  code: '03', name: 'Anime Sever',      sub: 'Katalog Kaşifi' },
+        { min: 50,  code: '04', name: 'Otaku',            sub: 'Deneyimli İzleyici' },
+        { min: 100, code: '05', name: 'Kıdemli Otaku',    sub: 'Arşiv Ustası' },
+        { min: 250, code: '06', name: 'Efsane',           sub: 'Koleksiyon Lideri' }
     ];
 
-
-
-    window.stxRender = function(){
-
-        flush();
-
-        const s = load();
-
-        const watched = getWatched().length, favs = getFavorites().length, wl = getWatchlist().length, hist = getHistory().length;
-
-        const epsTracked = Object.values(s.eps).filter(v => v >= 120).length;
-
-        const epCount = Math.max(epsTracked, watched);
-
-        let total = s.total, estimated = false;
-
-        if (total < 60 && watched > 0) { total = watched * 24 * 60; estimated = true; }
-
-        const hours = total / 3600;
-
-
-
-        // Seviye
-
-        let ri = 0; RANKS.forEach((r, i) => { if (hours >= r[0]) ri = i; });
-
-        const cur = RANKS[ri], nxt = RANKS[ri + 1];
-
-        const prog = nxt ? Math.min(100, ((hours - cur[0]) / (nxt[0] - cur[0])) * 100) : 100;
-
-
-
-        // Son 7 gün
-
-        const names = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
-
-        const week = [];
-
-        for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); week.push({ n: names[d.getDay()], v: s.days[dayKey(d)] || 0, today: i === 0 }); }
-
-        const wMax = Math.max(1, ...week.map(w => w.v));
-
-        const wTotal = week.reduce((a, w) => a + w.v, 0);
-
-
-
-        // Seri
-
-        let streak = 0; const dd = new Date();
-
-        if (!(s.days[dayKey(dd)] > 0)) dd.setDate(dd.getDate() - 1);
-
-        while (s.days[dayKey(dd)] > 0) { streak++; dd.setDate(dd.getDate() - 1); }
-
-        const activeDays = Object.values(s.days).filter(v => v > 0).length;
-
-        const bestDay = Math.max(0, ...Object.values(s.days));
-
-
-
-        // En çok izlenenler & türler
-
-        const animeArr = Object.values(s.anime).sort((a, b) => b.sec - a.sec).slice(0, 5);
-
-        const aMax = animeArr.length ? animeArr[0].sec : 1;
-
-        const gmap = {};
-
-        Object.values(s.anime).forEach(a => (a.genres || []).forEach(g => gmap[g] = (gmap[g] || 0) + a.sec));
-
-        const genres = Object.entries(gmap).sort((a, b) => b[1] - a[1]).slice(0, 5);
-
-        const gMax = genres.length ? genres[0][1] : 1;
-
-        const unlocked = (typeof getUnlockedAchievements === 'function') ? getUnlockedAchievements().length : 0;
-
-        const achTotal = (typeof ACHIEVEMENTS !== 'undefined') ? ACHIEVEMENTS.length : 0;
-
-
-
-        document.getElementById('statsBody').innerHTML = `
-
-        <div class="stx">
-
-            <div class="stx-hero">
-
-                <div class="stx-rank-ico">${cur[2]}</div>
-
-                <div class="stx-hero-txt">
-
-                    <small>Seviyen</small><h4>${cur[1]}</h4>
-
-                    <div class="stx-prog"><i style="width:${prog.toFixed(1)}%"></i></div>
-
-                    <span>${nxt ? `Sonraki: <b>${nxt[1]}</b> · ${Math.max(0, Math.ceil(nxt[0] - hours))} saat kaldı` : 'En yüksek seviyeye ulaştın!'}</span>
-
-                </div>
-
-                <div class="stx-hero-time"><b>${fmtDur(total)}</b><small>${estimated ? 'tahmini toplam' : 'toplam izleme'}</small></div>
-
-            </div>
-
-
-
-            <div class="stx-grid">
-
-                <div class="stx-card c1"><i class="fa-solid fa-clapperboard"></i><b>${epCount}</b><small>İzlenen Bölüm</small></div>
-
-                <div class="stx-card c2"><i class="fa-solid fa-fire"></i><b>${streak}<em>gün</em></b><small>Güncel Seri</small></div>
-
-                <div class="stx-card c3"><i class="fa-solid fa-calendar-check"></i><b>${activeDays}<em>gün</em></b><small>Aktif Gün</small></div>
-
-                <div class="stx-card c4"><i class="fa-solid fa-trophy"></i><b>${fmtDur(bestDay)}</b><small>En Uzun Gün</small></div>
-
-            </div>
-
-
-
-            <div class="stx-block">
-
-                <div class="stx-bh"><span>Son 7 Gün</span><em>${fmtDur(wTotal)}</em></div>
-
-                <div class="stx-chart">
-
-                    ${week.map(w => `<div class="stx-bar${w.today ? ' today' : ''}" title="${Math.round(w.v / 60)} dk"><div class="stx-fill" style="height:${Math.max(4, (w.v / wMax) * 100)}%"></div><small>${w.n}</small></div>`).join('')}
-
-                </div>
-
-            </div>
-
-
-
-            <div class="stx-two">
-
-                <div class="stx-block">
-
-                    <div class="stx-bh"><span>En Çok İzlenenler</span></div>
-
-                    ${animeArr.length ? animeArr.map((a, i) => `<div class="stx-top">
-
-                        <span class="stx-n">${i + 1}</span>
-
-                        ${a.img ? `<img src="${esc(a.img)}" alt="" loading="lazy">` : '<div class="stx-noimg"></div>'}
-
-                        <div class="stx-top-txt"><b>${esc(a.title)}</b><div class="stx-mini"><i style="width:${(a.sec / aMax) * 100}%"></i></div></div>
-
-                        <em>${fmtDur(a.sec)}</em></div>`).join('') : '<p class="stx-empty">Bir anime izlemeye başla, burada görünsün.</p>'}
-
-                </div>
-
-                <div class="stx-block">
-
-                    <div class="stx-bh"><span>Favori Türler</span></div>
-
-                    ${genres.length ? genres.map(g => `<div class="stx-genre"><span>${esc(g[0])}</span><div class="stx-mini"><i style="width:${(g[1] / gMax) * 100}%"></i></div><em>${fmtDur(g[1])}</em></div>`).join('') : '<p class="stx-empty">Tür verisi izledikçe oluşur.</p>'}
-
-                </div>
-
-            </div>
-
-
-
-            <div class="stx-pills">
-
-                <div><i class="fa-solid fa-heart"></i><b>${favs}</b> Favori</div>
-
-                <div><i class="fa-solid fa-bookmark"></i><b>${wl}</b> Liste</div>
-
-                <div><i class="fa-solid fa-clock-rotate-left"></i><b>${hist}</b> Geçmiş</div>
-
-                <div><i class="fa-solid fa-medal"></i><b>${unlocked}/${achTotal}</b> Başarım</div>
-
-            </div>
-
-
-
-            <div class="stx-actions">
-
-                <button onclick="stxExport()"><i class="fa-solid fa-file-export"></i> Dışa Aktar</button>
-
-                <button class="danger" onclick="if(confirm('Tüm veriler sıfırlansın mı?')){resetAllUserData();}"><i class="fa-solid fa-trash"></i> Sıfırla</button>
-
-            </div>
-
-        </div>`;
-
+    let stxRange = 7;
+    try {
+        const savedR = parseInt(localStorage.getItem('anitr_stx_range'), 10);
+        if ([7, 14, 30].includes(savedR)) stxRange = savedR;
+    } catch (_) {}
+
+    let stxGoalHours = 6;
+    try {
+        const savedG = parseInt(localStorage.getItem('anitr_stx_goal'), 10);
+        if ([3, 6, 10, 15].includes(savedG)) stxGoalHours = savedG;
+    } catch (_) {}
+
+    function movePeriodInk() {
+        const wrap = document.getElementById('stxPeriods');
+        const ink = document.getElementById('stxPeriodInk');
+        if (!wrap || !ink) return;
+        const act = wrap.querySelector('.stx-period-btn.active');
+        if (!act || !act.offsetWidth) return;
+        ink.style.width = act.offsetWidth + 'px';
+        ink.style.transform = 'translateX(' + (act.offsetLeft - 3) + 'px)';
+    }
+
+    window.stxSetRange = function(days) {
+        if (![7, 14, 30].includes(days)) return;
+        stxRange = days;
+        try { localStorage.setItem('anitr_stx_range', String(days)); } catch (_) {}
+        window.stxRender(true);
     };
 
+    window.stxSetGoal = function(hours) {
+        if (![3, 6, 10, 15].includes(hours)) return;
+        stxGoalHours = hours;
+        try { localStorage.setItem('anitr_stx_goal', String(hours)); } catch (_) {}
+        window.stxRender(true);
+    };
+
+    window.stxOpenAnime = function(title) {
+        if (!title) return;
+        if (typeof searchAnimeByName === 'function') {
+            searchAnimeByName(title);
+        } else if (typeof searchInput !== 'undefined' && searchInput) {
+            searchInput.value = title;
+            if (typeof handleSearch === 'function') handleSearch();
+        }
+    };
+
+    window.stxRender = function(keepScroll){
+        flush();
+        const s = load();
+        const watchedArr = (typeof getWatched === 'function') ? getWatched() : [];
+        const favsArr    = (typeof getFavorites === 'function') ? getFavorites() : [];
+        const wlArr      = (typeof getWatchlist === 'function') ? getWatchlist() : [];
+        const histArr    = (typeof getHistory === 'function') ? getHistory() : [];
+        const myListsArr = (typeof getMyLists === 'function') ? getMyLists() : [];
+
+        const watched = watchedArr.length, favs = favsArr.length, wl = wlArr.length, hist = histArr.length, myListsCount = myListsArr.length;
+        const epsTracked = Object.values(s.eps).filter(v => v >= 120).length;
+        const epCount = Math.max(epsTracked, watched);
+        let total = s.total, estimated = false;
+        if (total < 60 && watched > 0) { total = watched * 24 * 60; estimated = true; }
+        const hours = total / 3600;
+
+        // Seviye hesabı
+        let ri = 0;
+        RANKS.forEach((r, i) => { if (hours >= r.min) ri = i; });
+        const cur = RANKS[ri], nxt = RANKS[ri + 1];
+        const prog = nxt ? Math.min(100, Math.max(0, ((hours - cur.min) / (nxt.min - cur.min)) * 100)) : 100;
+        const remHours = nxt ? Math.max(0.1, (nxt.min - hours)).toFixed(1).replace(/\.0$/, '') : 0;
+
+        // Seri & Aktif Günler
+        let streak = 0;
+        const dd = new Date();
+        if (!(s.days[dayKey(dd)] > 0)) dd.setDate(dd.getDate() - 1);
+        while (s.days[dayKey(dd)] > 0) { streak++; dd.setDate(dd.getDate() - 1); }
+
+        const dayValues = Object.values(s.days).filter(v => v > 0);
+        const activeDays = dayValues.length;
+        const bestDay = Math.max(0, ...Object.values(s.days));
+        const avgPerActiveDay = activeDays > 0 ? Math.round(s.total / activeDays) : 0;
+
+        // Seçili periyot (7 / 14 / 30 gün)
+        const shortDays = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+        const shortMonths = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+        const periodData = [];
+        for (let i = stxRange - 1; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dk = dayKey(d);
+            const val = s.days[dk] || 0;
+            const dateLbl = d.getDate() + ' ' + shortMonths[d.getMonth()];
+            const barLbl = stxRange === 7 ? shortDays[d.getDay()] : (stxRange === 14 ? String(d.getDate()).padStart(2, '0') + ' ' + shortMonths[d.getMonth()] : String(d.getDate()).padStart(2, '0'));
+            periodData.push({
+                label: barLbl,
+                fullDate: dateLbl + ' (' + shortDays[d.getDay()] + ')',
+                sec: val,
+                min: Math.round(val / 60),
+                today: i === 0
+            });
+        }
+        const pMax = Math.max(60, ...periodData.map(d => d.sec));
+        const pTotal = periodData.reduce((acc, d) => acc + d.sec, 0);
+        const pActive = periodData.filter(d => d.sec > 0).length;
+        const pAvg = Math.round(pTotal / stxRange);
+        const avgLinePct = pTotal > 0 ? Math.min(96, Math.max(6, (pAvg / pMax) * 100)) : 0;
+
+        // Son 7 gün toplamı (Haftalık Hedef için)
+        let last7Sec = 0;
+        for (let i = 0; i < 7; i++) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            last7Sec += (s.days[dayKey(d)] || 0);
+        }
+        const goalSec = stxGoalHours * 3600;
+        const goalPct = Math.min(100, Math.round((last7Sec / goalSec) * 100));
+
+        // 12 Haftalık (84 Günlük) Aktivite Matrisi (Pzt..Paz satırları, 12 hafta sütunu)
+        const today = new Date();
+        const todayDowMon = (today.getDay() + 6) % 7; // Pzt=0 .. Paz=6
+        const totalCells = 11 * 7 + (todayDowMon + 1);
+        const startDate = new Date(today);
+        startDate.setDate(today.getDate() - (totalCells - 1));
+
+        const weeks = [];
+        let active84 = 0;
+        for (let w = 0; w < 12; w++) {
+            const col = [];
+            let monthTag = '';
+            for (let dow = 0; dow < 7; dow++) {
+                const idx = w * 7 + dow;
+                const cellDate = new Date(startDate);
+                cellDate.setDate(startDate.getDate() + idx);
+                if (dow === 0 && (w === 0 || cellDate.getDate() <= 7)) {
+                    monthTag = shortMonths[cellDate.getMonth()];
+                }
+                const isFuture = cellDate > today && dayKey(cellDate) !== dayKey(today);
+                const dk = dayKey(cellDate);
+                const sec = isFuture ? 0 : (s.days[dk] || 0);
+                const mins = Math.round(sec / 60);
+                if (sec > 0) active84++;
+                let lv = 0;
+                if (mins > 0 && mins < 20) lv = 1;
+                else if (mins >= 20 && mins < 45) lv = 2;
+                else if (mins >= 45 && mins < 90) lv = 3;
+                else if (mins >= 90) lv = 4;
+                col.push({
+                    lv: isFuture ? -1 : lv,
+                    isToday: dk === dayKey(today),
+                    tip: `${cellDate.getDate()} ${shortMonths[cellDate.getMonth()]} · ${mins > 0 ? mins + ' dk izleme' : 'İzleme yok'}`
+                });
+            }
+            weeks.push({ month: monthTag, cells: col });
+        }
+        const consistencyPct = Math.round((active84 / 84) * 100);
+
+        // En Çok İzlenen Animeler (s.anime boşsa geçmişten zenginleştir)
+        let animeArr = Object.values(s.anime).filter(a => a && a.title).sort((a, b) => b.sec - a.sec).slice(0, 6);
+        let animeFromHistory = false;
+        if (!animeArr.length && histArr.length) {
+            animeFromHistory = true;
+            const seen = new Set();
+            histArr.forEach(h => {
+                const t = (h && h.title) ? String(h.title).trim() : '';
+                if (!t || seen.has(t) || animeArr.length >= 6) return;
+                seen.add(t);
+                animeArr.push({
+                    title: t,
+                    img: h.img || '',
+                    sec: 24 * 60,
+                    studio: h.lastWatchedLabel || ('Bölüm ' + ((h.eIdx || 0) + 1)),
+                    genres: []
+                });
+            });
+        }
+        const aMax = animeArr.length ? Math.max(1, animeArr[0].sec) : 1;
+        const aSum = animeArr.reduce((acc, a) => acc + a.sec, 0) || 1;
+
+        // Favori Türler
+        const gmap = {};
+        Object.entries(s.anime).forEach(([id, a]) => {
+            let gs = a.genres || [];
+            if ((!gs || !gs.length) && window._animeMeta && window._animeMeta[id]) {
+                gs = window._animeMeta[id].genres || [];
+            }
+            (gs || []).forEach(g => { gmap[g] = (gmap[g] || 0) + Math.max(60, a.sec || 0); });
+        });
+        if (!Object.keys(gmap).length && window._animeMeta) {
+            Object.values(window._animeMeta).forEach(m => {
+                (m.genres || []).forEach(g => { gmap[g] = (gmap[g] || 0) + 600; });
+            });
+        }
+        const genres = Object.entries(gmap).sort((a, b) => b[1] - a[1]).slice(0, 6);
+        const gMax = genres.length ? Math.max(1, genres[0][1]) : 1;
+        const gSum = genres.reduce((acc, g) => acc + g[1], 0) || 1;
+
+        const sinceDate = s.since ? new Date(s.since).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Bugün';
+
+        const host = document.getElementById('statsBody');
+        if (!host) return;
+
+        host.innerHTML = `
+        <div class="stx-shell${keepScroll ? ' is-switching' : ''}">
+            <!-- ÜST BAŞLIK -->
+            <header class="stx-head">
+                <div class="stx-head-left">
+                    <p class="cat-eyebrow">Kişisel Analiz</p>
+                    <h1 class="cat-title">İzleme İstatistikleri</h1>
+                    <p class="cat-count">İzleme alışkanlıkların, günlük tempon ve kütüphane dağılımın <span class="cat-count-src">Kayıt başlangıcı: <b>${esc(sinceDate)}</b></span></p>
+                </div>
+                <div class="stx-head-right">
+                    <div class="stx-periods" id="stxPeriods" role="tablist" aria-label="Zaman Aralığı">
+                        <span class="stx-periods-ink" id="stxPeriodInk"></span>
+                        <button type="button" class="stx-period-btn${stxRange === 7 ? ' active' : ''}" onclick="stxSetRange(7)">7 Gün</button>
+                        <button type="button" class="stx-period-btn${stxRange === 14 ? ' active' : ''}" onclick="stxSetRange(14)">14 Gün</button>
+                        <button type="button" class="stx-period-btn${stxRange === 30 ? ' active' : ''}" onclick="stxSetRange(30)">30 Gün</button>
+                    </div>
+                    <div class="stx-top-actions">
+                        <button type="button" class="stx-btn" onclick="stxExport()" title="İstatistik verilerini JSON olarak indir">
+                            <i class="fa-solid fa-arrow-down-to-bracket"></i><span>Dışa Aktar</span>
+                        </button>
+                        <button type="button" class="stx-btn" onclick="stxImport()" title="Yedeklenen JSON dosyasını geri yükle">
+                            <i class="fa-solid fa-arrow-up-from-bracket"></i><span>İçe Aktar</span>
+                        </button>
+                        <button type="button" class="stx-btn danger" onclick="if(confirm('Tüm izleme istatistiklerin ve kullanıcı verilerin sıfırlansın mı?')){resetAllUserData();}" title="Tüm verileri sıfırla">
+                            <i class="fa-regular fa-trash-can"></i><span>Sıfırla</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- SEVİYE & TOPLAM SÜRE ŞERİDİ -->
+            <section class="stx-level-strip">
+                <div class="stx-lvl-main">
+                    <div class="stx-lvl-badge">
+                        <span class="stx-lvl-kicker">SEVİYE</span>
+                        <strong class="stx-lvl-num">${cur.code}</strong>
+                    </div>
+                    <div class="stx-lvl-info">
+                        <div class="stx-lvl-topline">
+                            <div>
+                                <span class="stx-lvl-sub">${esc(cur.sub)}</span>
+                                <h2 class="stx-lvl-title">${esc(cur.name)}</h2>
+                            </div>
+                            <div class="stx-lvl-next">
+                                ${nxt
+                                    ? `<span>Sonraki: <b>${esc(nxt.name)}</b> (${remHours} sa kaldı)</span><strong>%${prog.toFixed(0)}</strong>`
+                                    : `<span>Maksimum kademeye ulaşıldı</span><strong>%100</strong>`}
+                            </div>
+                        </div>
+                        <div class="stx-lvl-bar"><span style="width:${prog.toFixed(1)}%"></span></div>
+                        <div class="stx-lvl-steps">
+                            ${RANKS.map((r, idx) => `
+                                <div class="stx-step${idx < ri ? ' is-done' : (idx === ri ? ' is-current' : '')}">
+                                    <span class="stx-step-code">${r.code}</span>
+                                    <span class="stx-step-name">${esc(r.name)}</span>
+                                    <small>${r.min}sa+</small>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+                <div class="stx-lvl-total">
+                    <span class="stx-total-kicker">${estimated ? 'TAHMİNİ TOPLAM SÜRE' : 'TOPLAM İZLEME SÜRESİ'}</span>
+                    <div class="stx-total-val">${fmtDur(total)}</div>
+                    <span class="stx-total-sub">${activeDays > 0 ? `Aktif günlerde ort. <b>${fmtDurText(avgPerActiveDay)}</b>` : 'Henüz günlük süre kaydı yok'}</span>
+                </div>
+            </section>
+
+            <!-- 4 ANA METRİK (HAIRLINE TABLO) -->
+            <section class="stx-kpis" aria-label="Temel Göstergeler">
+                <article class="stx-kpi">
+                    <div class="stx-kpi-head"><span>01</span><small>İZLENEN BÖLÜM</small></div>
+                    <div class="stx-kpi-val">${epCount}<em>bölüm</em></div>
+                    <p class="stx-kpi-foot">${epsTracked > 0 ? `${epsTracked} bölüm süre takipli tamamlandı` : `${watched} bölüm işaretlendi`}</p>
+                </article>
+                <article class="stx-kpi">
+                    <div class="stx-kpi-head"><span>02</span><small>GÜNCEL SERİ</small></div>
+                    <div class="stx-kpi-val">${streak}<em>gün</em></div>
+                    <p class="stx-kpi-foot">${streak > 0 ? 'Kesintisiz günlük izleme serisi aktif' : 'Seriyi başlatmak için bugün bir bölüm izle'}</p>
+                </article>
+                <article class="stx-kpi">
+                    <div class="stx-kpi-head"><span>03</span><small>AKTİF GÜN</small></div>
+                    <div class="stx-kpi-val">${activeDays}<em>gün</em></div>
+                    <p class="stx-kpi-foot">${activeDays > 0 ? `Toplam ${activeDays} farklı günde anime izlendi` : 'İzleme yaptığın günler burada sayılır'}</p>
+                </article>
+                <article class="stx-kpi">
+                    <div class="stx-kpi-head"><span>04</span><small>GÜNLÜK REKOR</small></div>
+                    <div class="stx-kpi-val">${fmtDur(bestDay)}</div>
+                    <p class="stx-kpi-foot">${bestDay > 0 ? 'Tek günde ulaşılan en yüksek izleme süresi' : 'Kişisel rekorun ilk izlemeyle kaydedilir'}</p>
+                </article>
+            </section>
+
+            <!-- ORTA ANALİZ GRİDİ: GÜNLÜK TEMPO & 12 HAFTALIK MATRİS -->
+            <section class="stx-main-grid">
+                <!-- SOL: GÜNLÜK İZLEME TEMPOSU -->
+                <article class="stx-panel">
+                    <div class="stx-panel-head">
+                        <div>
+                            <span class="stx-panel-kicker">ZAMAN SERİSİ</span>
+                            <h3 class="stx-panel-title">Son ${stxRange} Günlük Tempo</h3>
+                        </div>
+                        <div class="stx-panel-meta">
+                            <span>Toplam: <b>${fmtDurText(pTotal)}</b></span>
+                            <span class="sep">·</span>
+                            <span>Günlük Ort: <b>${fmtDurText(pAvg)}</b></span>
+                        </div>
+                    </div>
+
+                    <div class="stx-chart-wrap range-${stxRange}">
+                        <div class="stx-chart-guides">
+                            <span></span><span></span><span></span><span></span>
+                        </div>
+                        ${pTotal > 0 ? `<div class="stx-chart-avg" style="bottom:${avgLinePct.toFixed(1)}%" title="Günlük Ortalama: ${fmtDurText(pAvg)}"><span>Ort. ${Math.round(pAvg / 60)} dk</span></div>` : ''}
+                        <div class="stx-bars">
+                            ${periodData.map(d => {
+                                const hPct = d.sec > 0 ? Math.max(8, (d.sec / pMax) * 100) : 3;
+                                return `
+                                <div class="stx-bar-col${d.today ? ' is-today' : ''}${d.sec > 0 ? ' has-val' : ''}" data-tip="${esc(d.fullDate)} · ${d.min} dk">
+                                    <div class="stx-bar-track">
+                                        <div class="stx-bar-fill" style="height:${hPct.toFixed(1)}%"></div>
+                                    </div>
+                                    <span class="stx-bar-lbl">${esc(d.label)}</span>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- HAFTALIK HEDEF ÇUBUĞU -->
+                    <div class="stx-goal-box">
+                        <div class="stx-goal-top">
+                            <div class="stx-goal-title">
+                                <span>Haftalık İzleme Hedefi</span>
+                                <b>${fmtDurText(last7Sec)} / ${stxGoalHours} saat (%${goalPct})</b>
+                            </div>
+                            <div class="stx-goal-pills">
+                                ${[3, 6, 10, 15].map(g => `<button type="button" class="stx-goal-pill${stxGoalHours === g ? ' active' : ''}" onclick="stxSetGoal(${g})">${g}sa</button>`).join('')}
+                            </div>
+                        </div>
+                        <div class="stx-goal-bar"><span style="width:${goalPct}%"></span></div>
+                    </div>
+                </article>
+
+                <!-- SAĞ: 12 HAFTALIK SÜREKLİLİK MATRİSİ -->
+                <article class="stx-panel">
+                    <div class="stx-panel-head">
+                        <div>
+                            <span class="stx-panel-kicker">DEVAMLILIK HARİTASI</span>
+                            <h3 class="stx-panel-title">Son 12 Hafta (84 Gün)</h3>
+                        </div>
+                        <div class="stx-panel-meta">
+                            <span><b>${active84}</b> aktif gün</span>
+                            <span class="sep">·</span>
+                            <span><b>%${consistencyPct}</b> devamlılık</span>
+                        </div>
+                    </div>
+
+                    <div class="stx-heatmap-wrap">
+                        <div class="stx-hm-months">
+                            <span></span>
+                            ${weeks.map(w => `<span>${esc(w.month)}</span>`).join('')}
+                        </div>
+                        <div class="stx-hm-body">
+                            <div class="stx-hm-days">
+                                <span>Pzt</span>
+                                <span>Çar</span>
+                                <span>Cum</span>
+                                <span>Paz</span>
+                            </div>
+                            <div class="stx-hm-grid">
+                                ${weeks.map(w => `
+                                    <div class="stx-hm-col">
+                                        ${w.cells.map(c => c.lv < 0
+                                            ? `<span class="stx-hm-cell is-future"></span>`
+                                            : `<span class="stx-hm-cell lv-${c.lv}${c.isToday ? ' is-today' : ''}" data-tip="${esc(c.tip)}"></span>`
+                                        ).join('')}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="stx-hm-foot">
+                            <span class="stx-hm-note">${pActive} / ${stxRange} gün son periyotta aktif</span>
+                            <div class="stx-hm-legend">
+                                <span>Az</span>
+                                <i class="lv-0"></i><i class="lv-1"></i><i class="lv-2"></i><i class="lv-3"></i><i class="lv-4"></i>
+                                <span>Çok</span>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </section>
+
+            <!-- ALT KIRILIM: EN ÇOK İZLENENLER & TÜR / KÜTÜPHANE -->
+            <section class="stx-bottom-grid">
+                <!-- SOL: EN ÇOK İZLENEN ANİMELER -->
+                <article class="stx-panel">
+                    <div class="stx-panel-head">
+                        <div>
+                            <span class="stx-panel-kicker">SERİ SIRALAMASI</span>
+                            <h3 class="stx-panel-title">En Çok İzlenen Animeler</h3>
+                        </div>
+                        <div class="stx-panel-meta">
+                            <span>${animeFromHistory ? 'Son izleme geçmişinden' : `İlk ${animeArr.length} seri`}</span>
+                        </div>
+                    </div>
+
+                    ${animeArr.length ? `
+                    <div class="stx-top-list">
+                        ${animeArr.map((a, i) => {
+                            const pct = Math.max(4, Math.round((a.sec / aMax) * 100));
+                            const share = Math.max(1, Math.round((a.sec / aSum) * 100));
+                            const safeTitle = String(a.title || '').replace(/'/g, "\'");
+                            const sub = a.studio || ((a.genres && a.genres.length) ? a.genres.slice(0, 2).join(' · ') : 'Anime Serisi');
+                            return `
+                            <div class="stx-top-row" onclick="stxOpenAnime('${safeTitle}')" role="button" tabindex="0">
+                                <span class="stx-top-idx">${String(i + 1).padStart(2, '0')}</span>
+                                ${a.img ? `<img class="stx-top-poster" src="${esc(a.img)}" alt="" loading="lazy">` : `<div class="stx-top-poster is-empty"><i class="fa-solid fa-film"></i></div>`}
+                                <div class="stx-top-body">
+                                    <div class="stx-top-line">
+                                        <strong class="stx-top-name">${esc(a.title)}</strong>
+                                        <span class="stx-top-dur">${animeFromHistory ? esc(sub) : fmtDur(a.sec)} <em>%${share}</em></span>
+                                    </div>
+                                    <div class="stx-top-bar"><span style="width:${pct}%"></span></div>
+                                </div>
+                                <i class="fa-solid fa-arrow-up-right stx-top-go"></i>
+                            </div>`;
+                        }).join('')}
+                    </div>` : `
+                    <div class="stx-empty-box">
+                        <p>Henüz kaydedilmiş bir anime izleme verisi bulunmuyor.</p>
+                        <button type="button" class="stx-btn" onclick="showAnimeListView();setAnavActive('anime')">Kataloğa Göz At →</button>
+                    </div>`}
+                </article>
+
+                <!-- SAĞ: TÜR DAĞILIMI & KÜTÜPHANE ÖZETİ -->
+                <div class="stx-right-stack">
+                    <article class="stx-panel">
+                        <div class="stx-panel-head">
+                            <div>
+                                <span class="stx-panel-kicker">KATEGORİ ANALİZİ</span>
+                                <h3 class="stx-panel-title">Tür Dağılımı</h3>
+                            </div>
+                            <div class="stx-panel-meta">
+                                <span>${genres.length ? `${genres.length} aktif tür` : 'Veri bekleniyor'}</span>
+                            </div>
+                        </div>
+
+                        ${genres.length ? `
+                        <div class="stx-genre-list">
+                            ${genres.map((g, i) => {
+                                const pct = Math.max(6, Math.round((g[1] / gMax) * 100));
+                                const share = Math.max(1, Math.round((g[1] / gSum) * 100));
+                                return `
+                                <div class="stx-genre-row">
+                                    <span class="stx-genre-idx">${String(i + 1).padStart(2, '0')}</span>
+                                    <span class="stx-genre-name">${esc(g[0])}</span>
+                                    <div class="stx-genre-bar"><span style="width:${pct}%"></span></div>
+                                    <span class="stx-genre-val"><b>%${share}</b> · ${fmtDurText(g[1])}</span>
+                                </div>`;
+                            }).join('')}
+                        </div>` : `
+                        <div class="stx-empty-box compact">
+                            <p>İzlediğin animelerin tür dağılımı bölümleri izledikçe burada otomatik oluşturulur.</p>
+                        </div>`}
+                    </article>
+
+                    <!-- KÜTÜPHANE KISAYOL KARTLARI -->
+                    <section class="stx-lib-grid" aria-label="Kütüphane Özeti">
+                        <button type="button" class="stx-lib-card" onclick="showFavorites()">
+                            <span class="stx-lib-label">FAVORİLER</span>
+                            <div class="stx-lib-row"><strong>${favs}</strong><span>anime →</span></div>
+                        </button>
+                        <button type="button" class="stx-lib-card" onclick="showWatchlist()">
+                            <span class="stx-lib-label">İZLEME LİSTESİ</span>
+                            <div class="stx-lib-row"><strong>${wl}</strong><span>anime →</span></div>
+                        </button>
+                        <button type="button" class="stx-lib-card" onclick="showHistory()">
+                            <span class="stx-lib-label">İZLEME GEÇMİŞİ</span>
+                            <div class="stx-lib-row"><strong>${hist}</strong><span>kayıt →</span></div>
+                        </button>
+                        <button type="button" class="stx-lib-card" onclick="showMyLists()">
+                            <span class="stx-lib-label">ÖZEL LİSTELERİM</span>
+                            <div class="stx-lib-row"><strong>${myListsCount}</strong><span>liste →</span></div>
+                        </button>
+                    </section>
+                </div>
+            </section>
+        </div>`;
+
+        requestAnimationFrame(movePeriodInk);
+    };
+
+    window.addEventListener('resize', movePeriodInk);
+
     window.stxExport = function(){
-
         const blob = new Blob([JSON.stringify(load(), null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'anitr-istatistikler.json';
+        a.click();
+        if (typeof showToast === 'function') showToast('💾 İstatistik verileri dışa aktarıldı.');
+    };
 
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'anitr-istatistikler.json'; a.click();
-
+    window.stxImport = function(){
+        const inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = 'application/json,.json';
+        inp.onchange = (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const data = JSON.parse(ev.target.result);
+                    if (typeof data !== 'object' || data === null) throw new Error('Geçersiz dosya');
+                    const merged = Object.assign({ total: 0, days: {}, anime: {}, eps: {}, since: Date.now() }, data);
+                    save(merged);
+                    window.stxRender(true);
+                    if (typeof showToast === 'function') showToast('✅ İstatistik yedeği başarıyla yüklendi.');
+                } catch (_) {
+                    if (typeof showToast === 'function') showToast('❌ Geçersiz istatistik JSON dosyası.');
+                }
+            };
+            reader.readAsText(file);
+        };
+        inp.click();
     };
 
 })();
@@ -23514,10 +24833,16 @@ window.openUserProfile = async function(username) {
 
 
 
+        var pv = document.getElementById('profileView');
+        if (pv) pv.classList.add('is-visitor-view');
+        var eb = document.getElementById('prfPageEyebrow');
+        var mt = document.getElementById('prfPageMainTitle');
+        var st = document.getElementById('prfPageSubTitle');
+        if (eb) eb.textContent = 'TOPLULUK PROFİLİ / @' + String(username).toUpperCase();
+        if (mt) mt.textContent = (vp.username || username) + ' · Profil Vitrini';
+        if (st) st.textContent = 'Kullanıcının vitrin serileri, izleme istatistikleri ve başarımları.';
+        _openProfilePageView();
         switchPrf2Tab('overview');
-
-        document.getElementById('profileModal').classList.remove('hidden');
-
         _prfFetchKudosCount(username);
 
     } catch (e) {
@@ -24176,739 +25501,528 @@ window.anitrTakeScreenshot   = anitrTakeScreenshot;
 
    ═══════════════════════════════════════════════════════════════════ */
 
-var _anitrFiller = { key: '', ready: false, loading: false, failed: false, fillers: new Set(), recaps: new Set(), total: 0, malId: 0 };
-
-var _anitrFillerMode = 'all';          // all | canon | filler
-
+var _anitrFiller = { key: '', ready: false, loading: false, failed: false, fillers: new Set(), mixed: new Set(), recaps: new Set(), total: 0, malId: 0, source: '' };
+var _anitrFillerMode = 'all';          // all | canon | mixed | filler
 var _anitrFillerPrevIdx = -1;
-
 var _anitrFillerHandled = '';
 
-
-
 function anitrFillerEnabled() {
-
     return !(typeof appSettings !== 'undefined' && appSettings && appSettings.showFillers === false);
-
 }
-
 function _fillerSleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-
-
 function _fillerCacheGet(key) {
-
     try {
-
-        var all = JSON.parse(localStorage.getItem('anitr_filler_v1') || '{}');
-
+        var all = JSON.parse(localStorage.getItem('anitr_filler_v2') || '{}');
         var e = all[key];
-
         if (e && Date.now() - e.t < 3 * 86400000) return e;
-
     } catch (e) {}
-
     return null;
-
 }
-
 function _fillerCacheSet(key, val) {
-
     try {
-
-        var all = JSON.parse(localStorage.getItem('anitr_filler_v1') || '{}');
-
+        var all = JSON.parse(localStorage.getItem('anitr_filler_v2') || '{}');
         all[key] = val;
-
         var keys = Object.keys(all);
-
-        if (keys.length > 60) {
-
+        if (keys.length > 80) {
             keys.sort(function (a, b) { return all[a].t - all[b].t; });
-
             delete all[keys[0]];
-
         }
-
-        localStorage.setItem('anitr_filler_v1', JSON.stringify(all));
-
+        localStorage.setItem('anitr_filler_v2', JSON.stringify(all));
     } catch (e) {}
-
 }
-
-
 
 var _anitrFillerBackoffUntil = 0;
 
-
-
 async function _jikanGetJson(url, timeoutMs) {
-
-    var ms = timeoutMs || 5500;
-
+    var ms = timeoutMs || 9500;
     for (var a = 0; a < 2; a++) {
-
         var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-
         var timer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (_) {} }, ms) : null;
-
         try {
-
             var r = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
-
             if (timer) clearTimeout(timer);
-
             if (r.status === 429 && a === 0) { await _fillerSleep(1200); continue; }
-
             if (!r.ok) throw new Error('HTTP ' + r.status);
-
             return await r.json();
-
         } catch (err) {
-
             if (timer) clearTimeout(timer);
-
+            if (a === 0) { await _fillerSleep(500); continue; }
             throw err;
-
         }
-
     }
-
-    throw new Error('Jikan istek limiti');
-
+    throw new Error('Filler API istek limiti');
 }
 
-
+function _parseFillerResponseFlags(res) {
+    var fillers = [], mixed = [], recaps = [], maxFlagEp = 0;
+    var flagsObj = (res && res.flags) || {};
+    Object.keys(flagsObj).forEach(function (epStr) {
+        var n = parseInt(epStr, 10);
+        if (!n) return;
+        if (n > maxFlagEp) maxFlagEp = n;
+        var fl = flagsObj[epStr];
+        if (!fl) return;
+        if (fl.mixed || fl.kind === 'mixed') {
+            mixed.push(n);
+        } else if (fl.filler || fl.kind === 'filler') {
+            fillers.push(n);
+        } else if (fl.recap || fl.kind === 'recap') {
+            recaps.push(n);
+        }
+    });
+    return { fillers: fillers, mixed: mixed, recaps: recaps, maxFlagEp: maxFlagEp };
+}
 
 async function anitrFillerEnsure(title, seasonId) {
-
+    if (!title && typeof currentAnime !== 'undefined' && currentAnime && currentAnime.title) {
+        title = currentAnime.title;
+    }
     if (!anitrFillerEnabled() || !title) return;
-
     var sNum = parseInt(seasonId) || 1;
-
-    if (sNum > 30) sNum = 1;
-
+    if (sNum > 30 || sNum < 1) sNum = 1;
     var key = String(title).toLowerCase().trim() + '|' + sNum;
-
     if (_anitrFiller.key === key && (_anitrFiller.ready || _anitrFiller.loading)) return;
 
-
-
     var cached = _fillerCacheGet(key);
-
     if (!cached && Date.now() < _anitrFillerBackoffUntil) {
-
-        _anitrFiller = { key: key, ready: false, loading: false, failed: true, fillers: new Set(), recaps: new Set(), total: 0, malId: 0 };
-
+        _anitrFiller = { key: key, ready: false, loading: false, failed: true, fillers: new Set(), mixed: new Set(), recaps: new Set(), total: 0, malId: 0, source: '' };
         anitrFillerRender();
-
         return;
-
     }
 
-
-
-    _anitrFiller = { key: key, ready: false, loading: true, failed: false, fillers: new Set(), recaps: new Set(), total: 0, malId: 0 };
-
+    _anitrFiller = { key: key, ready: false, loading: true, failed: false, fillers: new Set(), mixed: new Set(), recaps: new Set(), total: 0, malId: 0, source: '' };
     anitrFillerRender();
-
-
 
     try {
-
-        var fillers, recaps, total, malId;
-
+        var fillers, mixed, recaps, total, malId, srcName;
         if (cached) {
-
-            fillers = cached.f; recaps = cached.r; total = cached.n; malId = cached.m;
-
+            fillers = cached.f || [];
+            mixed = cached.x || [];
+            recaps = cached.r || [];
+            total = cached.n || 0;
+            malId = cached.m || 0;
+            srcName = cached.s || '';
         } else {
-
             var q = sNum > 1 ? title + ' season ' + sNum : title;
-
-            var res = await _jikanGetJson('/api/filler?title=' + encodeURIComponent(q), 6500);
-
+            var res = await _jikanGetJson('/api/filler?title=' + encodeURIComponent(q), 10000);
             if (_anitrFiller.key !== key) return;
 
-            if (!res || !res.mal_id) {
-
-                if (res && res.unreachable) {
-
-                    _anitrFillerBackoffUntil = Date.now() + 180000;
-
-                }
-
-                _anitrFiller.loading = false;
-
-                _anitrFiller.failed = true;
-
-                anitrFillerRender();
-
-                return;
-
+            var parsed = _parseFillerResponseFlags(res);
+            // Eğer sNum > 1 ile sonuç boş döndüyse ana anime başlığıyla tekrar dene
+            if (sNum > 1 && (!res || !res.mal_id || (parsed.fillers.length === 0 && parsed.mixed.length === 0 && parsed.recaps.length === 0))) {
+                try {
+                    var baseRes = await _jikanGetJson('/api/filler?title=' + encodeURIComponent(title), 10000);
+                    if (_anitrFiller.key !== key) return;
+                    if (baseRes && baseRes.mal_id) {
+                        res = baseRes;
+                        parsed = _parseFillerResponseFlags(baseRes);
+                    }
+                } catch (_) {}
             }
 
+            if (!res || !res.mal_id) {
+                if (res && res.unreachable) {
+                    _anitrFillerBackoffUntil = Date.now() + 120000;
+                }
+                _anitrFiller.loading = false;
+                _anitrFiller.failed = true;
+                anitrFillerRender();
+                return;
+            }
             malId = res.mal_id;
-
-            fillers = []; recaps = [];
-
-            var maxFlagEp = 0;
-
-            var flagsObj = res.flags || {};
-
-            Object.keys(flagsObj).forEach(function (epStr) {
-
-                var n = parseInt(epStr, 10);
-
-                if (!n) return;
-
-                if (n > maxFlagEp) maxFlagEp = n;
-
-                var fl = flagsObj[epStr];
-
-                if (fl && fl.filler) fillers.push(n);
-
-                if (fl && fl.recap) recaps.push(n);
-
-            });
-
-            total = Math.max(maxFlagEp, (typeof currentEpisodes !== 'undefined' && Array.isArray(currentEpisodes)) ? currentEpisodes.length : 0);
-
-            _fillerCacheSet(key, { t: Date.now(), f: fillers, r: recaps, n: total, m: malId });
-
+            srcName = res.source || 'API';
+            fillers = parsed.fillers;
+            mixed = parsed.mixed;
+            recaps = parsed.recaps;
+            var epLen = (typeof currentEpisodes !== 'undefined' && Array.isArray(currentEpisodes)) ? currentEpisodes.length : 0;
+            total = Math.max(res.total || 0, parsed.maxFlagEp, epLen);
+            _fillerCacheSet(key, { t: Date.now(), f: fillers, x: mixed, r: recaps, n: total, m: malId, s: srcName });
         }
-
         if (_anitrFiller.key !== key) return;
-
         _anitrFiller.fillers = new Set(fillers);
-
+        _anitrFiller.mixed = new Set(mixed);
         _anitrFiller.recaps = new Set(recaps);
-
         _anitrFiller.total = total;
-
         _anitrFiller.malId = malId;
-
+        _anitrFiller.source = srcName;
         _anitrFiller.ready = true;
-
         _anitrFiller.loading = false;
-
     } catch (err) {
-
         if (_anitrFiller.key !== key) return;
-
-        _anitrFillerBackoffUntil = Date.now() + 180000;
-
+        _anitrFillerBackoffUntil = Date.now() + 60000;
         _anitrFiller.loading = false;
-
         _anitrFiller.failed = true;
-
     }
-
     anitrFillerRender();
-
     _fillerMaybeAutoSkip();
-
 }
-
-
 
 function _fillerEpNum(ep, idx) { return parseInt(ep && ep.Number) || (idx + 1); }
 
-
-
-function anitrFillerType(epNum) {
-
+function anitrFillerType(epNum, epObj) {
     var f = _anitrFiller;
-
-    if (!anitrFillerEnabled() || !f.ready) return null;
-
-    if (f.fillers.has(epNum)) return 'filler';
-
-    if (f.recaps.has(epNum)) return 'recap';
-
+    if (!anitrFillerEnabled()) return null;
+    if (epObj && epObj.Extra) {
+        var fk = String(epObj.Extra.fillerKind || epObj.Extra.filler_type || '').toLowerCase();
+        if (fk === 'mixed' || fk === 'half' || fk === 'yari_filler') return 'mixed';
+        if (fk === 'filler') return 'filler';
+        if (fk === 'recap') return 'recap';
+    }
+    if (!f.ready) return null;
+    if (f.mixed && f.mixed.has(epNum)) return 'mixed';
+    if (f.fillers && f.fillers.has(epNum)) return 'filler';
+    if (f.recaps && f.recaps.has(epNum)) return 'recap';
     if (f.total && epNum > f.total) return null;
-
     return 'canon';
-
 }
-
-
 
 function _fillerHidden(t) {
-
     if (_anitrFillerMode === 'canon') return t === 'filler' || t === 'recap';
-
-    if (_anitrFillerMode === 'filler') return t !== 'filler' && t !== 'recap';
-
+    if (_anitrFillerMode === 'mixed') return t !== 'mixed';
+    if (_anitrFillerMode === 'filler') return t !== 'filler' && t !== 'mixed' && t !== 'recap';
     return false;
-
 }
-
-
 
 function _fillerBadgeHTML(t, cls) {
-
-    return '<span class="' + cls + ' ' + t + '">' +
-
-        (t === 'filler' ? '<i class="fa-solid fa-hourglass-half"></i> Filler' : '<i class="fa-solid fa-rotate-left"></i> Özet') + '</span>';
-
+    if (t === 'filler') {
+        return '<span class="' + cls + ' filler" title="Filler Bölüm (Ana hikayeden bağımsız)"><i class="fa-solid fa-fire-flame-curved"></i> Filler</span>';
+    }
+    if (t === 'mixed') {
+        return '<span class="' + cls + ' mixed" title="Yarı Filler Bölüm (Canon + Filler karışımı)"><i class="fa-solid fa-circle-half-stroke"></i> Yarı Filler</span>';
+    }
+    if (t === 'recap') {
+        return '<span class="' + cls + ' recap" title="Özet Bölümü"><i class="fa-solid fa-rotate-left"></i> Özet</span>';
+    }
+    return '<span class="' + cls + ' canon" title="Canon Bölüm (Ana hikaye)"><i class="fa-solid fa-circle-check"></i> Canon</span>';
 }
-
-
 
 function anitrFillerSetMode(m) {
-
     _anitrFillerMode = m;
-
     anitrFillerRender();
-
 }
-
 function anitrFillerSetAutoSkip(on) {
-
     try { localStorage.setItem('anitr_filler_autoskip', on ? '1' : '0'); } catch (e) {}
-
     anitrFillerRender();
-
 }
-
 function _fillerAutoSkipOn() { return localStorage.getItem('anitr_filler_autoskip') === '1'; }
 
-
-
 function anitrFillerSkipToCanon() {
-
     var eps = currentEpisodes || [];
-
     for (var j = (typeof currentEIdx === 'number' ? currentEIdx : 0) + 1; j < eps.length; j++) {
-
-        var t = anitrFillerType(_fillerEpNum(eps[j], j));
-
+        var t = anitrFillerType(_fillerEpNum(eps[j], j), eps[j]);
         if (t !== 'filler' && t !== 'recap') {
-
             watchEpisode(currentAnime.id, currentAnime.slug, currentAnime.isMovie, eps[j], currentSIdx, j, currentAnime.title, currentAnime.synopsis, currentAnime.img);
-
             return true;
-
         }
-
     }
-
     if (typeof showToast === 'function') showToast('Sonraki canon bölüm bulunamadı.');
-
     return false;
-
 }
-
-
 
 function _fillerMaybeAutoSkip() {
-
     try {
-
         if (!anitrFillerEnabled() || !_anitrFiller.ready || !_fillerAutoSkipOn()) return;
-
         var wv = document.getElementById('watchView');
-
         if (!wv || wv.classList.contains('hidden')) return;
-
         var eps = currentEpisodes || [];
-
         var idx = currentEIdx;
-
         var ep = eps[idx];
-
         if (!ep) return;
-
-        var t = anitrFillerType(_fillerEpNum(ep, idx));
-
+        var t = anitrFillerType(_fillerEpNum(ep, idx), ep);
         var guardKey = _anitrFiller.key + '#' + idx;
-
         if (t !== 'filler' && t !== 'recap') return;
-
         if (_anitrFillerHandled === guardKey) return;
-
         _anitrFillerHandled = guardKey;
-
-        // Sadece "bir sonraki bölüme" ilerlerken otomatik atla (kullanıcı bilerek filler seçtiyse atlama)
-
         if (_anitrFillerPrevIdx >= 0 && idx === _anitrFillerPrevIdx + 1) {
-
-            if (typeof showToast === 'function') showToast('⏭️ Filler bölüm atlanıyor...');
-
+            if (typeof showToast === 'function') showToast('⏭️ Filler bölüm otomatik atlanıyor...');
             anitrFillerSkipToCanon();
-
         }
-
     } catch (e) {}
-
 }
-
-
 
 function anitrFillerOnWatch() {
-
     if (!anitrFillerEnabled()) { anitrFillerRender(); return; }
-
     var prev = _anitrFillerPrevIdx;
-
     var cur = (typeof currentEIdx === 'number') ? currentEIdx : -1;
-
     anitrFillerEnsure(currentAnime && currentAnime.title, currentSIdx);
-
     anitrFillerRender();
-
-    // _anitrFillerPrevIdx, _fillerMaybeAutoSkip içinde kullanılır; sonrasında güncellenir
-
     _anitrFillerPrevIdx = prev;
-
     _fillerMaybeAutoSkip();
-
     _anitrFillerPrevIdx = cur;
-
 }
-
-
 
 function _fillerCounts(eps) {
-
-    var cnt = { canon: 0, filler: 0, recap: 0 };
-
+    var cnt = { canon: 0, mixed: 0, filler: 0, recap: 0 };
     eps.forEach(function (ep, i) {
-
-        var t = anitrFillerType(_fillerEpNum(ep, i));
-
-        if (t) cnt[t]++;
-
+        var t = anitrFillerType(_fillerEpNum(ep, i), ep);
+        if (t && cnt[t] !== undefined) cnt[t]++;
     });
-
     return cnt;
-
 }
-
-
 
 function anitrFillerRender() {
-
     var on = anitrFillerEnabled();
-
     var detailBar = document.getElementById('fillerCtrlBar');
-
     var wbar = document.getElementById('watchFillerControlBar');
-
     var banner = document.getElementById('watchFillerAlertBanner');
-
     var cbadge = document.getElementById('watchEpisodeCanonBadge');
-
     var f = _anitrFiller;
 
-
-
-    // Kapalı ya da veri yoksa her şeyi temizle
-
-    var clearAll = !on;
-
-    if (clearAll) {
-
+    // Kapalıysa her şeyi temizle
+    if (!on) {
         if (detailBar) detailBar.remove();
-
         if (wbar) { wbar.innerHTML = ''; wbar.classList.add('hidden'); }
-
         if (banner) { banner.innerHTML = ''; banner.classList.add('hidden'); }
-
         if (cbadge) cbadge.classList.add('hidden');
-
-        document.querySelectorAll('.ep-thumb-badge-wrap.fl, .sep2-type-badge').forEach(function (n) { n.remove(); });
-
-        document.querySelectorAll('.is-filler-ep').forEach(function (n) { n.classList.remove('is-filler-ep'); });
-
+        document.querySelectorAll('.ep-thumb-badge-wrap.fl, .sep2-type-badge, .sep2-thumb-filler-tag').forEach(function (n) { n.remove(); });
+        document.querySelectorAll('.is-filler-ep, .is-mixed-ep, .is-recap-ep').forEach(function (n) {
+            n.classList.remove('is-filler-ep', 'is-mixed-ep', 'is-recap-ep');
+        });
         document.querySelectorAll('.fl-hidden').forEach(function (n) { n.classList.remove('fl-hidden'); });
-
         return;
-
     }
-
-
 
     var eps = currentEpisodes || [];
-
     var cnt = _fillerCounts(eps);
-
     var autoOn = _fillerAutoSkipOn();
 
-
-
     // ── Detay sayfası kontrol çubuğu ──
-
     var list = document.getElementById('episodesList');
-
     if (list && list.parentNode) {
-
         if (f.failed || (!f.loading && !f.ready)) {
-
             if (detailBar) detailBar.remove();
-
         } else {
-
             if (!detailBar) {
-
                 detailBar = document.createElement('div');
-
                 detailBar.id = 'fillerCtrlBar';
-
                 detailBar.className = 'filler-ctrl-bar';
-
                 list.parentNode.insertBefore(detailBar, list);
-
             }
-
             if (f.loading) {
-
-                detailBar.innerHTML = '<div class="filler-ctrl-inner"><div class="filler-ctrl-stats"><span class="filler-stat-chip recap"><i class="fa-solid fa-spinner fa-spin"></i> Filler bilgisi yükleniyor...</span></div></div>';
-
+                detailBar.innerHTML = '<div class="filler-ctrl-inner"><div class="filler-ctrl-stats"><span class="filler-stat-chip recap"><i class="fa-solid fa-spinner fa-spin"></i> Filler & Yarı Filler verisi API\'den çekiliyor...</span></div></div>';
             } else {
-
                 var pill = function (m, label) {
-
                     return '<button type="button" class="filler-filter-btn' + (_anitrFillerMode === m ? ' active' : '') + '" onclick="anitrFillerSetMode(\'' + m + '\')">' + label + '</button>';
-
                 };
-
                 detailBar.innerHTML =
-
                     '<div class="filler-ctrl-inner">' +
-
                     '<div class="filler-ctrl-stats">' +
-
                     '<span class="filler-stat-chip canon"><i class="fa-solid fa-circle-check"></i> ' + cnt.canon + ' Canon</span>' +
-
-                    '<span class="filler-stat-chip filler"><i class="fa-solid fa-hourglass-half"></i> ' + cnt.filler + ' Filler</span>' +
-
+                    '<span class="filler-stat-chip mixed"><i class="fa-solid fa-circle-half-stroke"></i> ' + cnt.mixed + ' Yarı Filler</span>' +
+                    '<span class="filler-stat-chip filler"><i class="fa-solid fa-fire-flame-curved"></i> ' + cnt.filler + ' Filler</span>' +
                     (cnt.recap ? '<span class="filler-stat-chip recap"><i class="fa-solid fa-rotate-left"></i> ' + cnt.recap + ' Özet</span>' : '') +
-
                     '</div>' +
-
                     '<div class="filler-ctrl-actions">' +
-
-                    '<div class="filler-filter-pills">' + pill('all', 'Tümü') + pill('canon', 'Sadece Canon') + pill('filler', 'Filler') + '</div>' +
-
+                    '<div class="filler-filter-pills">' +
+                    pill('all', 'Tümü') +
+                    pill('canon', 'Sadece Canon') +
+                    pill('mixed', 'Yarı Filler') +
+                    pill('filler', 'Filler') +
+                    '</div>' +
                     '<label class="filler-autoskip-toggle" title="Bir sonraki bölüme geçerken filler bölümleri otomatik atla">' +
-
                     '<input type="checkbox" ' + (autoOn ? 'checked' : '') + ' onchange="anitrFillerSetAutoSkip(this.checked)">' +
-
                     '<span class="filler-toggle-slider"></span>' +
-
                     '<span class="filler-toggle-text"><i class="fa-solid fa-forward"></i> Filler\'ı Otomatik Atla</span>' +
-
                     '</label></div></div>';
-
             }
-
         }
-
     }
-
-
 
     // ── Detay sayfası bölüm kartları ──
-
     document.querySelectorAll('#episodesList .episode-card').forEach(function (card) {
-
         var idx = parseInt(card.dataset.epIdx);
-
         var ep = eps[idx];
-
         if (!ep) return;
-
-        var t = anitrFillerType(_fillerEpNum(ep, idx));
-
+        var t = anitrFillerType(_fillerEpNum(ep, idx), ep);
         card.classList.toggle('is-filler-ep', t === 'filler');
-
+        card.classList.toggle('is-mixed-ep', t === 'mixed');
+        card.classList.toggle('is-recap-ep', t === 'recap');
         card.classList.toggle('fl-hidden', f.ready && _fillerHidden(t));
-
         var th = card.querySelector('.ep-card-thumb');
-
         if (!th) return;
-
         var old = th.querySelector('.ep-thumb-badge-wrap.fl');
-
         if (old) old.remove();
-
-        if (t === 'filler' || t === 'recap') {
-
+        if (t === 'filler' || t === 'mixed' || t === 'recap') {
             th.insertAdjacentHTML('beforeend', '<div class="ep-thumb-badge-wrap fl">' + _fillerBadgeHTML(t, 'ep-type-badge') + '</div>');
-
         }
-
     });
 
-
-
-    // ── İzleme sayfası yan liste ──
-
+    // ── İzleme sayfası sağ bölüm listesi (#watchEpisodesList .sep2-card) ──
     document.querySelectorAll('#watchEpisodesList .sep2-card').forEach(function (card, idx) {
-
         var ep = eps[idx];
-
         if (!ep) return;
-
-        var t = anitrFillerType(_fillerEpNum(ep, idx));
-
+        var t = anitrFillerType(_fillerEpNum(ep, idx), ep);
         card.classList.toggle('is-filler-ep', t === 'filler');
-
+        card.classList.toggle('is-mixed-ep', t === 'mixed');
+        card.classList.toggle('is-recap-ep', t === 'recap');
         card.classList.toggle('fl-hidden', f.ready && _fillerHidden(t) && idx !== currentEIdx);
 
+        // Sağ listedeki kartın bilgi satırına "Filler" / "Yarı Filler" / "Özet" rozetini ekle
         var row = card.querySelector('.sep2-badges-row');
-
         if (!row) {
-
             var b = card.querySelector('.sep2-info > .sep2-badge');
-
             if (b) {
-
                 row = document.createElement('div');
-
                 row.className = 'sep2-badges-row';
-
                 b.parentNode.insertBefore(row, b);
-
                 row.appendChild(b);
-
             }
-
         }
-
         if (row) {
-
             var o = row.querySelector('.sep2-type-badge');
-
             if (o) o.remove();
-
-            if (t === 'filler' || t === 'recap') row.insertAdjacentHTML('beforeend', _fillerBadgeHTML(t, 'sep2-type-badge'));
-
+            if (t === 'filler' || t === 'mixed' || t === 'recap') {
+                row.insertAdjacentHTML('beforeend', _fillerBadgeHTML(t, 'sep2-type-badge'));
+            }
         }
 
+        // Ayrıca küçük resim (thumbnail) üzerinde de net etiket göster
+        var thumbWrap = card.querySelector('.sep2-thumb-wrap');
+        if (thumbWrap) {
+            var oldTag = thumbWrap.querySelector('.sep2-thumb-filler-tag');
+            if (oldTag) oldTag.remove();
+            if (t === 'filler' || t === 'mixed' || t === 'recap') {
+                var tagLabel = t === 'filler' ? 'FILLER' : (t === 'mixed' ? 'YARI FILLER' : 'ÖZET');
+                thumbWrap.insertAdjacentHTML('beforeend', '<span class="sep2-thumb-filler-tag ' + t + '">' + tagLabel + '</span>');
+            }
+        }
     });
 
-
-
-    // ── İzleme sayfası yan kontrol çubuğu ──
-
+    // ── İzleme sayfası sağ üst kontrol çubuğu (#watchFillerControlBar) ──
     if (wbar) {
-
-        if (f.ready && eps.length) {
-
+        if (f.loading && eps.length) {
             wbar.classList.remove('hidden');
-
-            var wp = function (m, label) {
-
-                return '<button type="button" class="wf-pill' + (_anitrFillerMode === m ? ' active' : '') + '" onclick="anitrFillerSetMode(\'' + m + '\')">' + label + '</button>';
-
-            };
-
             wbar.innerHTML =
-
+                '<div class="watch-filler-loading">' +
+                '<i class="fa-solid fa-circle-notch fa-spin"></i>' +
+                '<span>Filler & Yarı Filler verisi API\'den çekiliyor...</span>' +
+                '</div>';
+        } else if (f.ready && eps.length) {
+            wbar.classList.remove('hidden');
+            var wp = function (m, label) {
+                return '<button type="button" class="wf-pill' + (_anitrFillerMode === m ? ' active' : '') + '" onclick="anitrFillerSetMode(\'' + m + '\')">' + label + '</button>';
+            };
+            wbar.innerHTML =
                 '<div class="watch-filler-row">' +
-
-                '<div class="watch-filler-pills">' + wp('all', 'Tümü') + wp('canon', 'Canon') + wp('filler', 'Filler') + '</div>' +
-
-                '<label class="wf-skip-label" title="Filler bölümleri otomatik atla"><input type="checkbox" ' + (autoOn ? 'checked' : '') + ' onchange="anitrFillerSetAutoSkip(this.checked)"> Atla</label>' +
-
+                '<div class="watch-filler-pills">' +
+                wp('all', 'Tümü') +
+                wp('canon', 'Canon') +
+                wp('mixed', 'Yarı Filler') +
+                wp('filler', 'Filler') +
                 '</div>' +
-
-                '<div class="watch-filler-summary"><span class="wf-sum canon">' + cnt.canon + ' canon</span><span class="wf-sum filler">' + cnt.filler + ' filler' + (cnt.recap ? ' · ' + cnt.recap + ' özet' : '') + '</span></div>';
-
+                '<label class="wf-skip-label" title="Filler bölümleri otomatik atla"><input type="checkbox" ' + (autoOn ? 'checked' : '') + ' onchange="anitrFillerSetAutoSkip(this.checked)"> Atla</label>' +
+                '</div>' +
+                '<div class="watch-filler-summary">' +
+                '<span class="wf-sum canon"><i class="fa-solid fa-circle-check"></i> ' + cnt.canon + ' Canon</span>' +
+                '<span class="wf-sum mixed"><i class="fa-solid fa-circle-half-stroke"></i> ' + cnt.mixed + ' Yarı Filler</span>' +
+                '<span class="wf-sum filler"><i class="fa-solid fa-fire-flame-curved"></i> ' + cnt.filler + ' Filler' + (cnt.recap ? ' · ' + cnt.recap + ' Özet' : '') + '</span>' +
+                '</div>';
         } else {
-
             wbar.innerHTML = '';
-
             wbar.classList.add('hidden');
-
         }
-
     }
 
-
-
-    // ── İzleme sayfası uyarı + rozet ──
-
+    // ── İzleme sayfası uyarı bandı + üst rozet ──
     var curIdx = (typeof currentEIdx === 'number') ? currentEIdx : -1;
-
     var curEp = eps[curIdx];
-
-    var ct = (curEp && f.ready) ? anitrFillerType(_fillerEpNum(curEp, curIdx)) : null;
-
+    var ct = (curEp && f.ready) ? anitrFillerType(_fillerEpNum(curEp, curIdx), curEp) : null;
     if (cbadge) {
-
         if (ct) {
-
             cbadge.className = 'wd2-badge-canon ' + ct;
-
             cbadge.innerHTML = ct === 'canon' ? '<i class="fa-solid fa-circle-check"></i> Canon'
-
-                : ct === 'filler' ? '<i class="fa-solid fa-hourglass-half"></i> Filler'
-
+                : ct === 'mixed' ? '<i class="fa-solid fa-circle-half-stroke"></i> Yarı Filler'
+                : ct === 'filler' ? '<i class="fa-solid fa-fire-flame-curved"></i> Filler'
                 : '<i class="fa-solid fa-rotate-left"></i> Özet';
-
         } else {
-
             cbadge.classList.add('hidden');
-
         }
-
     }
-
     if (banner) {
-
-        if (ct === 'filler' || ct === 'recap') {
-
-            banner.classList.remove('hidden');
-
+        if (ct === 'filler' || ct === 'mixed' || ct === 'recap') {
+            banner.className = 'watch-filler-alert ' + ct;
+            var titleTxt = ct === 'filler' ? 'Filler Bölüm'
+                : ct === 'mixed' ? 'Yarı Filler Bölüm'
+                : 'Özet Bölümü';
+            var descTxt = ct === 'filler' ? 'Bu bölüm ana hikayeyle doğrudan bağlantılı değildir.'
+                : ct === 'mixed' ? 'Bu bölüm hem ana hikaye (canon) hem de filler sahneler içeriyor.'
+                : 'Bu bölüm önceki bölümlerin özetidir.';
+            var iconCls = ct === 'mixed' ? 'fa-circle-half-stroke' : 'fa-triangle-exclamation';
             banner.innerHTML =
-
-                '<div class="wfa-left"><i class="fa-solid fa-triangle-exclamation"></i>' +
-
-                '<span><b>' + (ct === 'filler' ? 'Filler bölüm' : 'Özet bölümü') + '</b> — ' +
-
-                (ct === 'filler' ? 'ana hikayeyle doğrudan bağlantısı yok.' : 'önceki bölümlerin özeti.') + '</span></div>' +
-
+                '<div class="wfa-left"><i class="fa-solid ' + iconCls + '"></i>' +
+                '<span><b>' + titleTxt + '</b> — ' + descTxt + '</span></div>' +
                 '<div class="wfa-actions"><button type="button" class="wfa-skip-btn" onclick="anitrFillerSkipToCanon()"><i class="fa-solid fa-forward"></i> Sonraki Canon Bölüme Geç</button></div>';
-
         } else {
-
             banner.innerHTML = '';
-
             banner.classList.add('hidden');
-
         }
-
     }
-
 }
 
-
-
 window.anitrFillerRender = anitrFillerRender;
-
 window.anitrFillerSetMode = anitrFillerSetMode;
-
 window.anitrFillerSetAutoSkip = anitrFillerSetAutoSkip;
-
 window.anitrFillerSkipToCanon = anitrFillerSkipToCanon;
 
 
 
 
 
-// ═══ NAVBAR 2026 — drawer, aktif durum, scroll davranışı ═══
+// ═══ NAVBAR 2026 — drawer, aktif durum, kayan mürekkep & spotlight ═══
 
 (function () {
+    function moveAnavInk(immediate) {
+        const wrap = document.getElementById('anavLinks');
+        const ink = document.getElementById('anavInk');
+        if (!wrap || !ink) return;
+        const act = wrap.querySelector('.anav-link.active');
+        if (!act || !act.offsetWidth) {
+            ink.style.opacity = '0';
+            return;
+        }
+        if (immediate) ink.style.transition = 'none';
+        ink.style.opacity = '1';
+        ink.style.width = act.offsetWidth + 'px';
+        ink.style.transform = 'translateX(' + act.offsetLeft + 'px)';
+        if (immediate) { void ink.offsetWidth; ink.style.transition = ''; }
+    }
 
     window.setAnavActive = function (key) {
-
+        if (key === 'animes') key = 'anime';
         document.querySelectorAll('.anav-link').forEach(b => b.classList.toggle('active', b.dataset.key === key));
-
+        moveAnavInk(false);
     };
+
+    function initAnavInteractions() {
+        const nav = document.getElementById('anav');
+        const wrap = document.getElementById('anavLinks');
+        const hInk = document.getElementById('anavHoverInk');
+        if (nav) {
+            nav.addEventListener('pointermove', e => {
+                const r = nav.getBoundingClientRect();
+                nav.style.setProperty('--anav-mx', (e.clientX - r.left).toFixed(1) + 'px');
+                nav.style.setProperty('--anav-my', (e.clientY - r.top).toFixed(1) + 'px');
+            }, { passive: true });
+        }
+        if (wrap && hInk) {
+            wrap.querySelectorAll('.anav-link').forEach(btn => {
+                btn.addEventListener('pointerenter', () => {
+                    hInk.style.width = btn.offsetWidth + 'px';
+                    hInk.style.transform = 'translateX(' + btn.offsetLeft + 'px)';
+                    hInk.style.opacity = '1';
+                });
+            });
+            wrap.addEventListener('pointerleave', () => {
+                hInk.style.opacity = '0';
+            });
+            if ('ResizeObserver' in window) new ResizeObserver(() => moveAnavInk(true)).observe(wrap);
+        }
+        setTimeout(() => moveAnavInk(true), 40);
+        window.addEventListener('load', () => moveAnavInk(true));
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAnavInteractions);
+    else initAnavInteractions();
 
     window.openNavDrawer = function () {
 
@@ -24963,6 +26077,13 @@ window.anitrFillerSkipToCanon = anitrFillerSkipToCanon;
         if (y > 200 && y > last + 6) nav.classList.add('anav--hidden');
 
         else if (y < last - 6 || y <= 200) nav.classList.remove('anav--hidden');
+
+        const prog = document.getElementById('anavProgress');
+        if (prog) {
+            const maxS = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+            const ratio = Math.min(1, Math.max(0, y / maxS));
+            prog.style.transform = 'scaleX(' + ratio.toFixed(3) + ')';
+        }
 
         last = y;
 
@@ -25133,6 +26254,7 @@ function filterNewsCards(cat, btn) {
 }
 
 function showNewsView() {
+    _closeSocialPages();
     const _abv = document.getElementById('aboutView'); if (_abv) _abv.classList.add('hidden');
     if (typeof leaveW2GRoom === 'function') leaveW2GRoom();
     if (typeof clearProfileCurrentAnime === 'function') clearProfileCurrentAnime();
@@ -25157,63 +26279,267 @@ window.filterNewsCards = filterNewsCards;
 // ── ANITR HAKKINDA (ABOUT VIEW) 2026 ─────────────────────────────
 // ══════════════════════════════════════════════════════════════════
 
+const _ab2State = {
+    section: 'all', // 'all' | 'features' | 'preview' | 'shortcuts'
+    shot: 'home'    // 'home' | 'anime' | 'schedule' | 'news'
+};
+
+const _AB2_SHOTS = {
+    home:     { title: 'Ana Sayfa & Sinematik Vitrin', path: 'anitr.web / anasayfa', img: '/assets/showcase-home.png', desc: 'Canlı sezon trendleri, kaldığın yerden devam et şeridi ve hızlı erişim vitrini.', action: "showHomeView()" },
+    anime:    { title: 'Çoklu Kaynak Anime Kataloğu',  path: 'anitr.web / animeler', img: '/assets/showcase-anime.png', desc: 'Anizium, AnimeCiX, TürkAnime ve AniList kaynakları arasında anlık geçiş ve filtreleme.', action: "showAnimeListView();setAnavActive('anime')" },
+    schedule: { title: 'Canlı Haftalık Yayın Takvimi', path: 'anitr.web / takvim',   img: '/assets/showcase-schedule.png', desc: 'Saatlik gruplanmış yayın akışı, canlı geri sayım rozetleri ve bildirim takibi.', action: "showScheduleView();setAnavActive('schedule')" },
+    news:     { title: 'Güncel Anime Haberleri',       path: 'anitr.web / haberler', img: '/assets/showcase-news.png', desc: 'Anime dünyasından anlık çevrilen güncel duyurular ve sektör haberleri.', action: "showNewsView();setAnavActive('news')" }
+};
+
+function _moveAb2TabInk() {
+    const wrap = document.getElementById('ab2Tabs');
+    const ink = document.getElementById('ab2TabInk');
+    if (!wrap || !ink) return;
+    const act = wrap.querySelector('.lib-tab-btn.active');
+    if (!act || !act.offsetWidth) return;
+    ink.style.width = act.offsetWidth + 'px';
+    ink.style.transform = 'translateX(' + (act.offsetLeft - 3) + 'px)';
+}
+window.addEventListener('resize', _moveAb2TabInk);
+
 function showAboutView() {
+    if (typeof closeNavDrawer === 'function') { try { closeNavDrawer(); } catch (_) {} }
+    if (typeof closePgModal === 'function') { try { closePgModal(); } catch (_) {} }
+    _closeSocialPages();
     if (typeof leaveW2GRoom === 'function') leaveW2GRoom();
     if (typeof clearProfileCurrentAnime === 'function') clearProfileCurrentAnime();
-    
+    if (typeof setAmbientBackground === 'function') setAmbientBackground(null);
+
     const abv = document.getElementById('aboutView');
     if (abv) abv.classList.remove('hidden');
-    
+
     if (typeof homeView !== 'undefined' && homeView) homeView.classList.add('hidden');
     if (typeof animeListView !== 'undefined' && animeListView) animeListView.classList.add('hidden');
     if (typeof watchView !== 'undefined' && watchView) watchView.classList.add('hidden');
     if (typeof malView !== 'undefined' && malView) malView.classList.add('hidden');
-    
     const sv = document.getElementById('scheduleView'); if (sv) sv.classList.add('hidden');
     const nv = document.getElementById('newsView'); if (nv) nv.classList.add('hidden');
-    const hv = document.getElementById('historyView'); if (hv) hv.classList.add('hidden');
-    
+
     if (typeof setAnavActive === 'function') setAnavActive('about');
-    window.scrollTo(0, 0);
-    
-    // Run animations after layout settles
-    setTimeout(function() {
-      if (typeof initAboutAnimations === 'function') initAboutAnimations();
-    }, 60);
-    
+    renderAboutPage(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
     if (typeof vjsPlayer !== 'undefined' && vjsPlayer) {
         try { vjsPlayer.dispose(); } catch(e) {}
         vjsPlayer = null;
     }
 }
 
-function switchShowcaseTab(btnEl, imgSrc, urlText) {
-    if (!btnEl) return;
-    document.querySelectorAll('.about-tab').forEach(b => b.classList.remove('active'));
-    btnEl.classList.add('active');
-    
-    const imgEl = document.getElementById('aboutShowcaseImg');
-    const urlEl = document.getElementById('aboutMockupUrlText');
-    
-    if (imgEl && imgSrc) {
-        imgEl.style.opacity = '0';
-        imgEl.style.transform = 'scale(0.98)';
-        setTimeout(() => {
-            imgEl.src = imgSrc;
-            imgEl.style.opacity = '1';
-            imgEl.style.transform = 'scale(1)';
-        }, 150);
-    }
-    if (urlEl && urlText) {
-        urlEl.textContent = urlText;
-    }
+window.ab2SetSection = function(sec) {
+    _ab2State.section = sec;
+    renderAboutPage(true);
+};
+
+window.abSwitchShot = function(btnOrKey, maybeKey) {
+    const key = maybeKey || btnOrKey;
+    if (!_AB2_SHOTS[key]) return;
+    _ab2State.shot = key;
+    renderAboutPage(true);
+};
+
+function switchShowcaseTab(btnEl, imgSrc, urlText) {}
+function initAboutAnimations() {}
+
+function renderAboutPage(isSoft) {
+    const host = document.getElementById('aboutPageBody');
+    if (!host) return;
+
+    const watchedCount = (typeof getWatched === 'function') ? getWatched().length : 0;
+    const favCount     = (typeof getFavorites === 'function') ? getFavorites().length : 0;
+    const listCount    = (typeof getMyLists === 'function') ? getMyLists().length : 0;
+    const sec = _ab2State.section;
+    const curShot = _AB2_SHOTS[_ab2State.shot] || _AB2_SHOTS.home;
+
+    const modules = [
+        { code: '01', cat: 'KATALOG & KAYNAK', title: 'Çoklu Kaynak Mimarisi', desc: 'Anizium, AnimeCiX, TürkAnime ve AniList veritabanlarını tek arayüzde birleştirir. Bir kaynakta sorun olduğunda yedek kaynak anında devreye girer.', act: "showAnimeListView();setAnavActive('anime')", actLbl: 'Kataloğu Aç →' },
+        { code: '02', cat: 'YAYIN AKIŞI',      title: 'Canlı Yayın Takvimi',   desc: 'Haftanın her günü yayınlanan bölümleri saatlik düzende, canlı geri sayım rozetleri ve yayın bildirimleriyle takip et.', act: "showScheduleView();setAnavActive('schedule')", actLbl: 'Takvime Git →' },
+        { code: '03', cat: 'EŞZAMANLI İZLEME', title: 'Birlikte İzle (Watch2Gether)', desc: 'Supabase Realtime altyapısıyla arkadaşlarınla milisaniyelik senkronize video oynatma, canlı oda sohbeti ve anlık tepkiler.', act: "showOnlineRooms();setAnavActive('together')", actLbl: 'Odaları Gör →' },
+        { code: '04', cat: 'TOPLULUK',         title: 'Anitr Sosyal',          desc: 'İnceleme, öneri, anket paylaşımı, arkadaş listesi, çevrimiçi durum takibi ve gerçek zamanlı özel mesajlaşma merkezi.', act: "showFriendsModal();setAnavActive('community')", actLbl: 'Topluluğa Katıl →' },
+        { code: '05', cat: 'SİNEMA DENEYİMİ',  title: 'Ambilight & Gelişmiş Oynatıcı', desc: 'Videonun renklerini gerçek zamanlı örnekleyen Ambilight atmosfer ışığı, otomatik intro atlama, bölüm önizleme kareleri ve 4K keskinleştirme.', act: "showHomeView();setAnavActive('home')", actLbl: 'Ana Sayfa →' },
+        { code: '06', cat: 'KOLEKSİYON',       title: 'Kişisel Kütüphane & Özel Listeler', desc: 'Özel koleksiyon listeleri, favoriler, kaldığın dakikayı hatırlayan izleme geçmişi ve tek tıkla JSON yedekleme.', act: "showMyLists()", actLbl: 'Kütüphaneyi Aç →' },
+        { code: '07', cat: 'VERİ ANALİZİ',     title: 'Gerçek Zamanlı İstatistikler', desc: 'İzlediğin her saniyeyi kaydeden seviye sistemi, 7/14/30 günlük tempo grafikleri ve 12 haftalık devamlılık matrisi.', act: "showStats()", actLbl: 'İstatistikler →' },
+        { code: '08', cat: 'KEŞİF & ENTEGRASYON', title: 'Akıllı Keşif & MyAnimeList', desc: 'Şifresiz MyAnimeList profil senkronizasyonu, atmosfer/ruh hali filtreli öneri motoru ve benzer seri bulucu.', act: "showAIModal()", actLbl: 'Keşif Stüdyosu →' }
+    ];
+
+    const shortcuts = [
+        ['Space / K', 'Oynat veya Duraklat'],
+        ['F',         'Tam Ekran Modu'],
+        ['T',         'Sinema (Geniş Ekran) Modu'],
+        ['J / L',     '10 Saniye Geri / İleri Sar'],
+        ['M',         'Sesi Kapat / Aç'],
+        ['S',         'İntroyu Hızlı Atla (+85 sn)'],
+        ['/',         'Katalog veya Kütüphane İçi Arama'],
+        ['Ctrl + K',  'Genel Hızlı Arama Penceresi'],
+        ['Ctrl + H',  'İzleme Geçmişini Aç']
+    ];
+
+    host.innerHTML = `
+    <div class="lib-shell${isSoft ? ' is-switching' : ''}">
+        <header class="lib-head">
+            <div class="lib-head-left">
+                <p class="cat-eyebrow">Platform Rehberi &amp; Mimari · 2026</p>
+                <h1 class="cat-title">Anitr Hakkında</h1>
+                <p class="cat-count">Reklamsız, çoklu kaynaklı, gerçek zamanlı sosyal etkileşimli modern anime platformu</p>
+            </div>
+            <div class="lib-head-right">
+                <div class="lib-top-actions">
+                    <button type="button" class="lib-btn primary" onclick="showAnimeListView();setAnavActive('anime')"><i class="fa-solid fa-play"></i><span>Kataloğu Keşfet</span></button>
+                    <button type="button" class="lib-btn" onclick="showOnlineRooms();setAnavActive('together')"><i class="fa-solid fa-tv"></i><span>Birlikte İzle</span></button>
+                </div>
+            </div>
+        </header>
+
+        <section class="stx-kpis" aria-label="Platform Göstergeleri">
+            <article class="stx-kpi">
+                <div class="stx-kpi-head"><span>01</span><small>KAYNAK MOTORU</small></div>
+                <div class="stx-kpi-val">4<em>kaynak</em></div>
+                <p class="stx-kpi-foot">Anizium, AnimeCiX, TürkAnime ve AniList entegrasyonu</p>
+            </article>
+            <article class="stx-kpi">
+                <div class="stx-kpi-head"><span>02</span><small>REKLAM &amp; İZLEYİCİ</small></div>
+                <div class="stx-kpi-val">%0<em>reklam</em></div>
+                <p class="stx-kpi-foot">Açılır pencere veya video önü kesinti bulunmaz</p>
+            </article>
+            <article class="stx-kpi">
+                <div class="stx-kpi-head"><span>03</span><small>CANLI SENKRONİZASYON</small></div>
+                <div class="stx-kpi-val">W2G<em>odaları</em></div>
+                <p class="stx-kpi-foot">Supabase Realtime ile eşzamanlı oda ve sohbet</p>
+            </article>
+            <article class="stx-kpi">
+                <div class="stx-kpi-head"><span>04</span><small>SENİN ARŞİVİN</small></div>
+                <div class="stx-kpi-val">${watchedCount}<em>bölüm</em></div>
+                <p class="stx-kpi-foot">${favCount} favori anime · ${listCount} özel koleksiyon listesi</p>
+            </article>
+        </section>
+
+        <div class="lib-toolbar">
+            <div class="lib-tabs" id="ab2Tabs" role="tablist">
+                <span class="lib-tabs-ink" id="ab2TabInk"></span>
+                <button type="button" class="lib-tab-btn${sec === 'all' ? ' active' : ''}" onclick="ab2SetSection('all')"><span>Tüm Bölümler</span></button>
+                <button type="button" class="lib-tab-btn${sec === 'features' ? ' active' : ''}" onclick="ab2SetSection('features')"><span>Sistem Modülleri</span><b>8</b></button>
+                <button type="button" class="lib-tab-btn${sec === 'preview' ? ' active' : ''}" onclick="ab2SetSection('preview')"><span>Ekran Önizlemeleri</span><b>4</b></button>
+                <button type="button" class="lib-tab-btn${sec === 'shortcuts' ? ' active' : ''}" onclick="ab2SetSection('shortcuts')"><span>Kısayollar &amp; Mimari</span></button>
+            </div>
+        </div>
+
+        ${(sec === 'all' || sec === 'features') ? `
+        <section class="ab2-section">
+            <div class="ab2-sec-head">
+                <div>
+                    <span class="stx-panel-kicker">AKTİF PLATFORM ÖZELLİKLERİ</span>
+                    <h2 class="ab2-sec-title">Anitr İçerisinde Yer Alan Modüller</h2>
+                </div>
+                <span class="ab2-sec-note">Tüm özellikler ek eklenti gerektirmeden tarayıcıda çalışır</span>
+            </div>
+            <div class="ab2-mod-grid">
+                ${modules.map(m => `
+                    <article class="ab2-mod-card" onclick="${m.act}">
+                        <div class="ab2-mc-top">
+                            <span>${m.code}</span>
+                            <small>${m.cat}</small>
+                        </div>
+                        <h3 class="ab2-mc-title">${m.title}</h3>
+                        <p class="ab2-mc-desc">${m.desc}</p>
+                        <span class="ab2-mc-link">${m.actLbl}</span>
+                    </article>
+                `).join('')}
+            </div>
+        </section>` : ''}
+
+        ${(sec === 'all' || sec === 'preview') ? `
+        <section class="ab2-section">
+            <div class="ab2-sec-head">
+                <div>
+                    <span class="stx-panel-kicker">ARAYÜZ ÖNİZLEMESİ</span>
+                    <h2 class="ab2-sec-title">Uygulama İçi Ekran Görüntüleri</h2>
+                </div>
+                <div class="lib-subpills">
+                    <button type="button" class="${_ab2State.shot === 'home' ? 'active' : ''}" onclick="abSwitchShot('home')">Ana Sayfa</button>
+                    <button type="button" class="${_ab2State.shot === 'anime' ? 'active' : ''}" onclick="abSwitchShot('anime')">Katalog</button>
+                    <button type="button" class="${_ab2State.shot === 'schedule' ? 'active' : ''}" onclick="abSwitchShot('schedule')">Takvim</button>
+                    <button type="button" class="${_ab2State.shot === 'news' ? 'active' : ''}" onclick="abSwitchShot('news')">Haberler</button>
+                </div>
+            </div>
+            <div class="ab2-shot-viewer">
+                <div class="ab2-shot-bar">
+                    <div class="ab2-shot-meta">
+                        <span class="ab2-shot-path">${curShot.path}</span>
+                        <span class="ab2-shot-desc">${curShot.desc}</span>
+                    </div>
+                    <button type="button" class="lib-btn sm primary" onclick="${curShot.action}">Bu Sayfayı Canlı Aç →</button>
+                </div>
+                <div class="ab2-shot-canvas">
+                    <img id="ab-shots-img" src="${curShot.img}" alt="${curShot.title}" loading="lazy">
+                </div>
+            </div>
+        </section>` : ''}
+
+        ${(sec === 'all' || sec === 'shortcuts') ? `
+        <section class="stx-main-grid">
+            <article class="stx-panel">
+                <div class="stx-panel-head">
+                    <div>
+                        <span class="stx-panel-kicker">HIZLI KONTROL</span>
+                        <h3 class="stx-panel-title">Oynatıcı &amp; Arayüz Klavye Kısayolları</h3>
+                    </div>
+                    <div class="stx-panel-meta"><span>9 aktif kısayol</span></div>
+                </div>
+                <div class="ab2-sc-list">
+                    ${shortcuts.map(([k, d]) => `
+                        <div class="ab2-sc-row">
+                            <kbd>${k}</kbd>
+                            <span>${d}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </article>
+
+            <article class="stx-panel">
+                <div class="stx-panel-head">
+                    <div>
+                        <span class="stx-panel-kicker">TEKNİK MİMARİ</span>
+                        <h3 class="stx-panel-title">Neden Anitr Kullanmalısın?</h3>
+                    </div>
+                    <div class="stx-panel-meta"><span>Go + Modern Web</span></div>
+                </div>
+                <div class="ab2-arch-list">
+                    <div class="ab2-arch-item">
+                        <span>01</span>
+                        <div>
+                            <strong>Yüksek Hızlı Go Proxy &amp;HLS Akışı</strong>
+                            <p>Go tabanlı arka uç sunucusu, HLS (.m3u8) ve MP4 akışlarını CORS veya CDN engeline takılmadan doğrudan oynatıcıya aktarır.</p>
+                        </div>
+                    </div>
+                    <div class="ab2-arch-item">
+                        <span>02</span>
+                        <div>
+                            <strong>Gizlilik Odaklı Yerel Depolama + Bulut Senkron</strong>
+                            <p>İzleme geçmişin, saniye bazlı kaldığın yer ve istatistiklerin cihazında anında saklanır; isteğe bağlı profilinle senkronize edilir.</p>
+                        </div>
+                    </div>
+                    <div class="ab2-arch-item">
+                        <span>03</span>
+                        <div>
+                            <strong>Sade &amp; Odaklı Editoryal Arayüz</strong>
+                            <p>Göz yoran neon efektler veya karmaşık pencereler yerine tipografi odaklı, hızlı ve akıcı tam sayfa deneyimi sunar.</p>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </section>` : ''}
+    </div>`;
+
+    requestAnimationFrame(_moveAb2TabInk);
 }
 
-// Global Exports
 window.showAboutView = showAboutView;
 window.switchShowcaseTab = switchShowcaseTab;
 
-// Hash Router Listener
 function handleAnitrHash() {
     const hash = (window.location.hash || '').toLowerCase();
     if (hash === '#about' || hash === '#hakkinda') {
@@ -25224,6 +26550,28 @@ function handleAnitrHash() {
         if (typeof showScheduleView === 'function') showScheduleView();
     } else if (hash === '#news' || hash === '#haberler') {
         if (typeof showNewsView === 'function') showNewsView();
+    } else if (hash === '#community' || hash === '#topluluk' || hash === '#social') {
+        if (typeof showFriendsModal === 'function') showFriendsModal();
+    } else if (hash === '#together' || hash === '#birlikte' || hash === '#w2g') {
+        if (typeof showOnlineRooms === 'function') showOnlineRooms();
+    } else if (hash === '#stats' || hash === '#istatistikler') {
+        if (typeof showStats === 'function') showStats();
+    } else if (hash === '#lists' || hash === '#listelerim') {
+        if (typeof showMyLists === 'function') showMyLists();
+    } else if (hash === '#favorites' || hash === '#favoriler') {
+        if (typeof showFavorites === 'function') showFavorites();
+    } else if (hash === '#history' || hash === '#gecmis') {
+        if (typeof showHistory === 'function') showHistory();
+    } else if (hash === '#watchlist' || hash === '#izlemelistesi') {
+        if (typeof showWatchlist === 'function') showWatchlist();
+    } else if (hash === '#downloads' || hash === '#indirilenler') {
+        if (typeof showDownloadsModal === 'function') showDownloadsModal();
+    } else if (hash === '#ai' || hash === '#kesif' || hash === '#asistan') {
+        if (typeof showAIModal === 'function') showAIModal();
+    } else if (hash === '#mal' || hash === '#myanimelist') {
+        if (typeof showMALView === 'function') showMALView();
+    } else if (hash === '#profile' || hash === '#profil') {
+        if (typeof showProfileModal === 'function') showProfileModal();
     }
 }
 window.addEventListener('hashchange', handleAnitrHash);
@@ -25231,47 +26579,123 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(handleAnitrHash, 100);
 });
 
-// ── About: screenshot switcher ──
-function abSwitchShot(btn, key) {
-  document.querySelectorAll('#aboutView .ab-stab').forEach(function(b){ b.classList.remove('active'); });
-  btn.classList.add('active');
-  var paths = { home: 'anasayfa', anime: 'animeler', schedule: 'takvim', news: 'haberler' };
-  var imgs  = {
-    home:     '/assets/showcase-home.png',
-    anime:    '/assets/showcase-anime.png',
-    schedule: '/assets/showcase-schedule.png',
-    news:     '/assets/showcase-news.png'
-  };
-  var el = document.getElementById('ab-shots-img');
-  var pl = document.getElementById('ab-shots-path');
-  if (el) { el.style.opacity = '0'; setTimeout(function(){ el.src = imgs[key]; el.style.opacity = '1'; }, 230); }
-  if (pl) { pl.textContent = paths[key]; }
-}
 
-// ── About: IntersectionObserver reveal + counters ──
-function initAboutAnimations() {
-  // Reset all afu elements first
-  document.querySelectorAll('#aboutView .afu').forEach(function(el) {
-    el.classList.remove('in-view');
-  });
-  var els = document.querySelectorAll('#aboutView .afu');
-  var obs = new IntersectionObserver(function(entries) {
-    entries.forEach(function(e) {
-      if (e.isIntersecting) { e.target.classList.add('in-view'); obs.unobserve(e.target); }
+// ── Katalog: kart yoğunluğu ──
+function setCatalogDensity(mode) {
+    var g = document.getElementById('animeListGrid');
+    if (!g) return;
+    g.classList.toggle('is-dense', mode === 'dense');
+    document.querySelectorAll('#animeListView .cat-density button').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.mode === mode);
     });
-  }, { threshold: 0, rootMargin: '60px 0px 60px 0px' });
-  els.forEach(function(el) { obs.observe(el); });
-
-  document.querySelectorAll('#aboutView [data-count]').forEach(function(el) {
-    var target = parseInt(el.getAttribute('data-count'), 10);
-    var dur = 1200, startTime = null;
-    function step(ts) {
-      if (!startTime) startTime = ts;
-      var prog = Math.min((ts - startTime) / dur, 1);
-      var ease = 1 - Math.pow(1 - prog, 3);
-      el.textContent = Math.round(target * ease);
-      if (prog < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-  });
+    try { localStorage.setItem('anitr_cat_density', mode); } catch (e) {}
 }
+
+(function catalogEnhance() {
+    function init() {
+        // kayıtlı yoğunluk
+        var saved = 'comfy';
+        try { saved = localStorage.getItem('anitr_cat_density') || 'comfy'; } catch (e) {}
+        setCatalogDensity(saved);
+
+        // kaynak seçici: kayan gösterge
+        var w = document.getElementById('catSources');
+        var ink = document.getElementById('catSourceInk');
+        function move() {
+            if (!w || !ink) return;
+            var a = w.querySelector('.catalog-source-btn.active');
+            if (!a || !a.offsetWidth) return;
+            if (!ink.dataset.ready) ink.style.transition = 'none';
+            ink.style.width = a.offsetWidth + 'px';
+            ink.style.transform = 'translateX(' + a.offsetLeft + 'px)';
+            if (!ink.dataset.ready) { void ink.offsetWidth; ink.style.transition = ''; ink.dataset.ready = '1'; }
+        }
+        if (w) {
+            new MutationObserver(move).observe(w, { subtree: true, attributes: true, attributeFilter: ['class'] });
+            if ('ResizeObserver' in window) new ResizeObserver(move).observe(w);
+            move();
+        }
+
+        // sonsuz kaydırma
+        var btn = document.getElementById('loadMoreAnimeBtn');
+        if (btn && 'IntersectionObserver' in window) {
+            new IntersectionObserver(function (es) {
+                es.forEach(function (e) {
+                    if (e.isIntersecting && !btn.classList.contains('hidden') && typeof loadMoreAnime === 'function') loadMoreAnime();
+                });
+            }, { rootMargin: '500px' }).observe(btn);
+        }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+
+    // "/" ile katalog aramasına odaklan
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+        var v = document.getElementById('animeListView');
+        if (!v || v.classList.contains('hidden')) return;
+        var t = e.target;
+        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+        e.preventDefault();
+        var i = document.getElementById('catalogSearchInput');
+        if (i) i.focus();
+    });
+})();
+
+
+// ── AniHub Katalog Kartı Açıcı & Detay Sayfası Kaynak Değiştirici ──
+window.openAniHubCatalogItem = function(slug) {
+    var m = (window._anihubCatalogCache && window._anihubCatalogCache[slug]) || null;
+    currentSource = 'AniHub';
+    currentSourceKey = 'AniHub';
+    currentSourceHistoryKey = 'anitr_history_AniHub';
+    currentSourcePositionsKey = 'anitr_positions_AniHub';
+    if (m) {
+        loadDetails(m.numericId || '', m.slug || slug, m.contentType === 'movie', m.title || slug, m.description || '', m.poster || '');
+    } else {
+        loadDetails('', slug, false, slug, '', '');
+    }
+};
+
+window.switchDetailSource = async function(newSrc) {
+    if (!newSrc || !currentAnime || !currentAnime.title) return;
+    showLoader();
+    try {
+        var res = await fetchAPI('/search?q=' + encodeURIComponent(currentAnime.title) + '&source=' + encodeURIComponent(newSrc));
+        if (!Array.isArray(res) || !res.length) {
+            hideLoader();
+            if (newSrc.toLowerCase().indexOf('anizium') !== -1) {
+                try {
+                    var st = await fetch(API_BASE + '/anizium-status').then(function(r) { return r.json(); });
+                    if (st && st.ip_banned) {
+                        showToast('🛡️ ' + (st.reason || 'Anizium Cloudflare IP engeli aktif.'), 5000);
+                        return;
+                    }
+                } catch (_) {}
+            }
+            showToast('Bu anime ' + newSrc + ' kaynağında bulunamadı.');
+            return;
+        }
+        var hit = res[0];
+        currentSource = newSrc;
+        currentSourceKey = newSrc.replace(/\s+/g, '_');
+        currentSourceHistoryKey = 'anitr_history_' + currentSourceKey;
+        currentSourcePositionsKey = 'anitr_positions_' + currentSourceKey;
+        hideLoader();
+        showToast('Kaynak değiştirildi: ' + newSrc);
+        loadDetails(
+            hit.ID || hit.id || '',
+            hit.Slug || hit.slug || '',
+            !!(hit.IsMovie || hit.isMovie || hit.TitleType === 'movie'),
+            currentAnime.title || hit.Title || hit.title,
+            currentAnime.synopsis || hit.Synopsis || hit.synopsis || '',
+            currentAnime.img || hit.ImageURL || hit.Img || ''
+        );
+    } catch (e) {
+        hideLoader();
+        showToast('Kaynak değiştirilirken hata oluştu.');
+    }
+};
+
+window.addEventListener('resize', function() {
+    if (typeof _movePrfTabInk === 'function') _movePrfTabInk();
+});

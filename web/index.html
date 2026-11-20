@@ -9,6 +9,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Anitr - Anime Platformu</title>
+    <link rel="icon" type="image/png" href="/assets/anitr-logo.png">
+    <link rel="shortcut icon" type="image/png" href="/assets/anitr-logo.png">
+    <link rel="apple-touch-icon" href="/assets/anitr-logo.png">
 
     <meta name="description" content="Anitr Web - Ücretsiz anime izleme platformu. Binlerce anime, altyazılı ve dublajlı.">
 
@@ -26,11 +29,12 @@
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/videojs-contrib-quality-levels@4.1.0/dist/videojs-contrib-quality-levels.min.css" onerror="this.remove()">
 
-    <link rel="stylesheet" href="style.css?v=10.0.0">
+    <link rel="stylesheet" href="style.css?v=10.6.0">
 
-    <link rel="stylesheet" href="social.css?v=9.9.5">
+    <link rel="stylesheet" href="social.css?v=10.6.0">
 
     <link rel="stylesheet" href="search.css?v=8.7.0">
+    <link rel="stylesheet" href="pages.css?v=10.6.0">
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 
@@ -122,7 +126,9 @@
 
 
 
-        <nav class="anav-links" aria-label="Ana menü">
+        <nav class="anav-links" id="anavLinks" aria-label="Ana menü">
+            <span class="anav-hover-ink" id="anavHoverInk"></span>
+            <span class="anav-ink" id="anavInk"></span>
 
             <button type="button" class="anav-link active" data-key="home" onclick="loadHome();setAnavActive('home')">Ana Sayfa</button>
 
@@ -273,6 +279,7 @@
             </button>
 
         </div>
+        <span class="anav-progress" id="anavProgress"></span>
 
     </header>
 
@@ -718,396 +725,90 @@
 
     <!-- ???? ANIME LIST VIEW ???? -->
 
-    <main id="animeListView" class="hidden">
+    <main id="animeListView" class="hidden cat-page">
 
-        <!-- ???? KATALOG HEADER ???? -->
-
-        <div class="catalog-header">
-
-            <div class="catalog-header-top">
-
-                <div class="catalog-header-title">
-
-                    <i class="fa-solid fa-layer-group"></i>
-
-                    <div>
-
-                        <h1>Tüm Animeler</h1>
-
-                        <p id="animeListCounter">Katalog yükleniyor...</p>
-
-                    </div>
-
-                </div>
-
-                <!-- Arama Kutusu -->
-
-                <div class="catalog-search-wrap">
-
-                    <i class="fa-solid fa-search catalog-search-icon"></i>
-
-                    <input type="text" id="catalogSearchInput" class="catalog-search-input"
-
-                           placeholder="Katalogda anime ara..."
-
-                           oninput="onCatalogSearch(this.value)"
-
-                           onkeydown="if(event.key==='Escape'){this.value='';onCatalogSearch('')}">
-
-                    <button class="catalog-search-clear hidden" id="catalogSearchClear"
-
-                            onclick="document.getElementById('catalogSearchInput').value='';onCatalogSearch('')">
-
-                        <i class="fa-solid fa-xmark"></i>
-
-                    </button>
-
-                </div>
-
+        <header class="cat-head">
+            <div class="cat-head-text">
+                <p class="cat-eyebrow">Katalog</p>
+                <h1 class="cat-title">Animeler</h1>
+                <p class="cat-count" id="animeListCounter">Katalog yükleniyor...</p>
             </div>
-
-
-
-            <!-- Kaynak Seçici + Filtreler -->
-
-            <div class="catalog-filters">
-
-                <div class="catalog-source-group">
-
-                    <button class="catalog-source-btn active" data-source="anizium" onclick="setCatalogSource('anizium')">
-
-                        <i class="fa-solid fa-tv"></i>
-
-                        <span>Anizium</span>
-
-                        <small>Dublaj &amp; 4K</small>
-
-                    </button>
-
-                    <button class="catalog-source-btn" data-source="animecix" onclick="setCatalogSource('animecix')">
-
-                        <i class="fa-solid fa-play-circle"></i>
-
-                        <span>AnimeciX</span>
-
-                        <small>3.100+ Anime</small>
-
-                    </button>
-
-                    <button class="catalog-source-btn" data-source="anilist" onclick="setCatalogSource('anilist')">
-
-                        <i class="fa-solid fa-globe"></i>
-
-                        <span>AniList</span>
-
-                        <small>Global DB</small>
-
-                    </button>
-
-                </div>
-
-
-
-                <!-- AniList filtreleri -->
-
-                <div id="catalogExtraFilters" class="catalog-extra-filters hidden">
-
-                    <select id="genreFilter" class="cfl-select">
-
-                        <option value="">Tüm Türler</option>
-
-                    </select>
-
-                    <select id="yearFilter" class="cfl-select">
-
-                        <option value="">Tüm Yıllar</option>
-
-                    </select>
-
-                    <select id="statusFilter" class="cfl-select">
-
-                        <option value="">Tüm Durumlar</option>
-
-                        <option value="ongoing">Devam Eden</option>
-
-                        <option value="completed">Tamamlanan</option>
-
-                    </select>
-
-                    <select id="sortFilter" class="cfl-select">
-
-                        <option value="POPULARITY_DESC">En Popüler</option>
-
-                        <option value="SCORE_DESC">En Yüksek Puan</option>
-
-                        <option value="TRENDING_DESC">Trend</option>
-
-                        <option value="START_DATE_DESC">En Yeni</option>
-
-                    </select>
-
-                    <button class="cfl-apply-btn" onclick="applyFilters()"><i class="fa-solid fa-filter"></i> Filtrele</button>
-
-                    <button class="cfl-reset-btn" onclick="clearFilters()"><i class="fa-solid fa-rotate-left"></i></button>
-
-                </div>
-
-                <!-- Gizli eski select (uyumluluk) -->
-
-                <select id="catalogSourceFilter" style="display:none">
-
-                    <option value="anizium" selected>Anizium</option>
-
-                    <option value="animecix">AnimeciX</option>
-
-                    <option value="anilist">AniList</option>
-
-                </select>
-
+            <div class="cat-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input type="text" id="catalogSearchInput" class="catalog-search-input" placeholder="Katalogda ara" autocomplete="off"
+                       oninput="onCatalogSearch(this.value)"
+                       onkeydown="if(event.key==='Escape'){this.value='';onCatalogSearch('');this.blur()}">
+                <kbd class="cat-kbd">/</kbd>
+                <button type="button" class="catalog-search-clear hidden" id="catalogSearchClear" aria-label="Aramayı temizle"
+                        onclick="document.getElementById('catalogSearchInput').value='';onCatalogSearch('')">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
+        </header>
 
+        <div class="cat-toolbar">
+            <div class="cat-sources" id="catSources" role="tablist" aria-label="Kaynak">
+                <span class="cat-sources-ink" id="catSourceInk"></span>
+                <button type="button" class="catalog-source-btn active" data-source="anilist" title="Global veritabanı" onclick="setCatalogSource('anilist')"><span>AniList</span></button>
+                <button type="button" class="catalog-source-btn" data-source="animecix" title="3.100+ anime" onclick="setCatalogSource('animecix')"><span>AnimeciX</span></button>
+                <button type="button" class="catalog-source-btn" data-source="anihub" title="anihub.com.tr Full HD Arşiv" onclick="setCatalogSource('anihub')"><span>AniHub</span></button>
+                <button type="button" class="catalog-source-btn" data-source="anizium" title="Dublaj &amp; 4K" onclick="setCatalogSource('anizium')"><span>Anizium</span></button>
+            </div>
+            <div class="cat-density" role="group" aria-label="Kart boyutu">
+                <button type="button" data-mode="comfy" class="active" title="Geniş kartlar" onclick="setCatalogDensity('comfy')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+                </button>
+                <button type="button" data-mode="dense" title="Sıkı kartlar" onclick="setCatalogDensity('dense')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="3" width="5" height="5" rx="1"/><rect x="9.5" y="3" width="5" height="5" rx="1"/><rect x="16.5" y="3" width="5" height="5" rx="1"/><rect x="2.5" y="10" width="5" height="5" rx="1"/><rect x="9.5" y="10" width="5" height="5" rx="1"/><rect x="16.5" y="10" width="5" height="5" rx="1"/><rect x="2.5" y="17" width="5" height="4" rx="1"/><rect x="9.5" y="17" width="5" height="4" rx="1"/><rect x="16.5" y="17" width="5" height="4" rx="1"/></svg>
+                </button>
+            </div>
         </div>
 
+        <!-- AniList filtreleri -->
+        <div id="catalogExtraFilters" class="cat-filters hidden">
+            <select id="genreFilter" class="cat-select"><option value="">Tüm Türler</option></select>
+            <select id="yearFilter" class="cat-select"><option value="">Tüm Yıllar</option></select>
+            <select id="statusFilter" class="cat-select">
+                <option value="">Tüm Durumlar</option>
+                <option value="ongoing">Devam Eden</option>
+                <option value="completed">Tamamlanan</option>
+            </select>
+            <select id="sortFilter" class="cat-select">
+                <option value="POPULARITY_DESC">En Popüler</option>
+                <option value="SCORE_DESC">En Yüksek Puan</option>
+                <option value="TRENDING_DESC">Trend</option>
+                <option value="START_DATE_DESC">En Yeni</option>
+            </select>
+            <button type="button" class="cat-btn" onclick="applyFilters()">Filtrele</button>
+            <button type="button" class="cat-btn cat-btn-ghost" onclick="clearFilters()">Sıfırla</button>
+        </div>
 
+        <!-- Gizli eski select (uyumluluk) -->
+        <select id="catalogSourceFilter" style="display:none">
+            <option value="anilist" selected>AniList</option>
+            <option value="animecix">AnimeciX</option>
+            <option value="anihub">AniHub</option>
+            <option value="anizium">Anizium</option>
+        </select>
 
-        <!-- Grid -->
-
-        <div id="animeListGrid" class="anime-grid catalog-grid"></div>
-
-
+        <div id="animeListGrid" class="anime-grid catalog-grid cat-grid"></div>
 
         <div id="animeListLoader" class="hidden catalog-loader">
-
             <div class="spinner"></div>
-
-            <span>Animeler yükleniyor...</span>
-
+            <span>Yükleniyor</span>
         </div>
 
-
-
-        <div style="text-align:center; padding:2rem;">
-
-            <button id="loadMoreAnimeBtn" class="btn-primary hidden" onclick="loadMoreAnime()"
-
-                    style="padding:0.75rem 2.5rem; font-size:1rem; border-radius:999px; gap:8px; display:inline-flex; align-items:center;">
-
-                <i class="fa-solid fa-plus"></i> Daha Fazla Yükle
-
-            </button>
-
+        <div class="cat-more-wrap">
+            <button type="button" id="loadMoreAnimeBtn" class="cat-more hidden" onclick="loadMoreAnime()">Daha fazla göster</button>
         </div>
-
     </main>
 
 
 
     <!-- â????â???? MYANIMELIST VIEW â????â???? -->
 
-    <main id="malView" class="hidden mal-hub-page">
-
-        <div class="mal-hub-shell">
-
-            <!-- Top Header Bar -->
-
-            <div class="mal-hub-topbar">
-
-                <div class="mal-hub-brand">
-
-                    <div class="mal-hub-logo">
-
-                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8.273 7.247v8.423l-2.103-.003v-5.216l-2.03 2.404-1.989-2.458-.02 5.285H.001L0 7.247h2.203l1.865 2.545 2.015-2.546 2.19.001zm8.628 2.069l.025 6.335h-2.365l-.008-2.871h-2.8c.07.499.21 1.266.417 1.779.155.381.298.751.583 1.128l-1.705 1.125c-.349-.636-.622-1.337-.878-2.082a9.296 9.296 0 0 1-.507-2.179c-.085-.75-.097-1.471.107-2.212a3.908 3.908 0 0 1 1.161-1.866c.313-.293.749-.5 1.1-.687.351-.187.743-.264 1.107-.359a7.405 7.405 0 0 1 1.191-.183c.398-.034 1.107-.066 2.39-.028l.545 1.749H14.51c-.593.008-.878.001-1.341.209a2.236 2.236 0 0 0-1.278 1.92l2.663.033.038-1.81h2.309zm3.992-2.099v6.627l3.107.032-.43 1.775h-4.807V7.187l2.13.03z"/></svg>
-
-                    </div>
-
-                    <div>
-
-                        <span class="mal-hub-kicker">MYANIMELIST ENTEGRASYONU</span>
-
-                        <h2 class="mal-hub-title">Profil, İzleme Süresi &amp; Kütüphane</h2>
-
-                    </div>
-
-                </div>
-
-
-
-                <div class="mal-hub-connect-inline">
-
-                    <div id="malAuthStatus" class="mal-auth-pill"></div>
-
-                    <div class="mal-quick-switch-form">
-
-                        <i class="fa-solid fa-user-astronaut"></i>
-
-                        <input type="text" id="malQuickUserInput" placeholder="MAL kullanıcı adı..." onkeypress="if(event.key==='Enter') connectMALDirect()">
-
-                        <button type="button" class="mal-connect-btn" onclick="connectMALDirect()">
-
-                            <i class="fa-solid fa-arrows-rotate"></i><span>Başla / Yenile</span>
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- Empty State when no MAL user connected -->
-
-            <div id="malNoUser" class="mal-empty-hero" style="display:none;">
-
-                <div class="mal-empty-glow"></div>
-
-                <div class="mal-empty-icon">
-
-                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8.273 7.247v8.423l-2.103-.003v-5.216l-2.03 2.404-1.989-2.458-.02 5.285H.001L0 7.247h2.203l1.865 2.545 2.015-2.546 2.19.001zm8.628 2.069l.025 6.335h-2.365l-.008-2.871h-2.8c.07.499.21 1.266.417 1.779.155.381.298.751.583 1.128l-1.705 1.125c-.349-.636-.622-1.337-.878-2.082a9.296 9.296 0 0 1-.507-2.179c-.085-.75-.097-1.471.107-2.212a3.908 3.908 0 0 1 1.161-1.866c.313-.293.749-.5 1.1-.687.351-.187.743-.264 1.107-.359a7.405 7.405 0 0 1 1.191-.183c.398-.034 1.107-.066 2.39-.028l.545 1.749H14.51c-.593.008-.878.001-1.341.209a2.236 2.236 0 0 0-1.278 1.92l2.663.033.038-1.81h2.309zm3.992-2.099v6.627l3.107.032-.43 1.775h-4.807V7.187l2.13.03z"/></svg>
-
-                </div>
-
-                <h3>MyAnimeList Profilini Başla</h3>
-
-                <p>?ifre gerekmez! Sadece MyAnimeList kullanıcı adını girerek <b>toplam anime izleme süreni</b>, <b>ortalama puanını</b>, <b>favori karakterlerini</b> ve <b>tüm anime listeni</b> anında görüntüle.</p>
-
-                <div class="mal-empty-input-row">
-
-                    <input type="text" id="malEmptyUserInput" placeholder="?rn: Xinil veya kendi MAL kullanıcı adın..." onkeypress="if(event.key==='Enter') connectMALDirect(this.value)">
-
-                    <button type="button" class="btn-primary" onclick="connectMALDirect(document.getElementById('malEmptyUserInput').value)">
-
-                        <i class="fa-solid fa-bolt"></i> Profili Getir
-
-                    </button>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- Connected Content Area -->
-
-            <div id="malContent" class="hidden">
-
-                <!-- Profile & Watch Time Dashboard -->
-
-                <div id="malProfileDashboard" class="mal-profile-dashboard"></div>
-
-
-
-                <!-- Favorites Showcase -->
-
-                <div id="malFavoritesShowcase" class="mal-favorites-showcase hidden"></div>
-
-
-
-                <!-- Tabs & Filter Toolbar -->
-
-                <div class="mal-list-toolbar" id="malTabs">
-
-                    <div class="mal-status-tabs">
-
-                        <button class="mal-tab-btn active" id="tabWatching" onclick="switchMALTab('watching')">
-
-                            <span class="mal-dot watching"></span>
-
-                            <span>İzleniyor</span>
-
-                            <b id="malCountWatching" class="mal-tab-badge">0</b>
-
-                        </button>
-
-                        <button class="mal-tab-btn" id="tabCompleted" onclick="switchMALTab('completed')">
-
-                            <span class="mal-dot completed"></span>
-
-                            <span>Tamamlandı</span>
-
-                            <b id="malCountCompleted" class="mal-tab-badge">0</b>
-
-                        </button>
-
-                        <button class="mal-tab-btn" id="tabPlantowatch" onclick="switchMALTab('plantowatch')">
-
-                            <span class="mal-dot ptw"></span>
-
-                            <span>Planlanan</span>
-
-                            <b id="malCountPlantowatch" class="mal-tab-badge">0</b>
-
-                        </button>
-
-                        <button class="mal-tab-btn" id="tabOnhold" onclick="switchMALTab('onhold')">
-
-                            <span class="mal-dot onhold"></span>
-
-                            <span>Beklemede</span>
-
-                            <b id="malCountOnhold" class="mal-tab-badge">0</b>
-
-                        </button>
-
-                        <button class="mal-tab-btn" id="tabDropped" onclick="switchMALTab('dropped')">
-
-                            <span class="mal-dot dropped"></span>
-
-                            <span>Bırakıldı</span>
-
-                            <b id="malCountDropped" class="mal-tab-badge">0</b>
-
-                        </button>
-
-                        <button class="mal-tab-btn mal-tab-recs" id="tabRecs" onclick="switchMALTab('recs')">
-
-                            <i class="fa-solid fa-wand-magic-sparkles"></i>
-
-                            <span>Sana ?zel ?neriler</span>
-
-                        </button>
-
-                    </div>
-
-
-
-                    <div class="mal-list-controls">
-
-                        <div class="mal-search-field">
-
-                            <i class="fa-solid fa-magnifying-glass"></i>
-
-                            <input type="text" id="malListSearchInput" placeholder="Listede anime ara..." oninput="renderMALFilteredGrid()">
-
-                        </div>
-
-                        <select id="malListSortSelect" class="mal-sort-select" onchange="renderMALFilteredGrid()">
-
-                            <option value="default">Varsayılan Sıra</option>
-
-                            <option value="score_desc">Puana Göre (Yüksek → Düşük)</option>
-
-                            <option value="ep_desc">İzlenen Bölüme Göre</option>
-
-                            <option value="title_asc">İsme Göre (A â??? Z)</option>
-
-                        </select>
-
-                    </div>
-
-                </div>
-
-
-
-                <!-- Anime Cards Grid -->
-
-                <div id="malListGrid" class="mal-cards-grid"></div>
-
-            </div>
-
-        </div>
-
+    <main id="malView" class="hidden mal-page" aria-label="MyAnimeList Entegrasyonu">
+        <div id="malPageBody" class="mal-wrap"></div>
     </main>
 
 
@@ -1190,226 +891,622 @@
 
 
 
-    <main id="historyView" class="hidden" style="padding: 2rem;">
-
-        <h2 class="section-title"><lord-icon src="https://cdn.lordicon.com/kbtmbyzy.json" trigger="hover" colors="primary:#ffffff" style="width:24px;height:24px; vertical-align: middle;"></lord-icon> İzleme Geçmişi</h2>
-
-        <div id="historyContent">
-
-            <!-- Geçmiş verileri buraya eklenecek -->
-
-        </div>
-
+    <!-- ════ LIBRARY VIEW (LİSTELERİM · FAVORİLER · GEÇMİŞ · İZLEME LİSTESİ) ════ -->
+    <main id="historyView" class="hidden lib-page" aria-label="Kişisel Kütüphane">
+        <div id="libraryBody" class="lib-wrap"></div>
+        <div id="historyContent" class="hidden"></div>
     </main>
 
 
 
 
+    <!-- ════ STATS VIEW (İZLEME İSTATİSTİKLERİ) ════ -->
+    <main id="statsView" class="hidden stx-page" aria-label="İzleme İstatistikleri">
+        <div id="statsBody" class="stx-wrap"></div>
+    </main>
+
     <!-- ════ ABOUT VIEW (ANİTR HAKKINDA) ════ -->
-    <main id="aboutView" class="hidden ab-root">
+    <!-- ════ DOWNLOADS VIEW (İNDİRİLENLER) ════ -->
+    <main id="downloadsView" class="hidden dl-page" aria-label="İndirilenler">
+        <div id="downloadsPageBody" class="dl-wrap"></div>
+    </main>
 
-  <!-- HERO -->
-  <section class="ab-hero">
-    <div class="ab-hero-inner">
-      <p class="ab-eyebrow afu">ANITR WEB &nbsp;&middot;&nbsp; 2026 BETA</p>
-      <h1 class="ab-h1 afu" style="--d:0.08s">
-        Reklams&#305;z.<br>
-        <span class="ab-h1-accent">H&#305;zl&#305;.</span> Anime.
-      </h1>
-      <p class="ab-lead afu" style="--d:0.18s">
-        T&#252;rkiye'nin en temiz anime deneyimi &mdash; &#231;oklu kaynak, canl&#305; takvim,<br class="ab-br">
-        birlikte izleme odalar&#305; ve yapay zeka &ouml;nerileriyle.
-      </p>
-      <div class="ab-cta-row afu" style="--d:0.26s">
-        <button class="ab-btn-primary" onclick="showAnimeListView();setAnavActive('anime')">Anime Ke&#351;fet</button>
-        <button class="ab-btn-ghost" onclick="showMALView();setAnavActive('mal')">Birlikte &#304;zle</button>
-      </div>
-    </div>
-    <div class="ab-hero-line"></div>
-  </section>
+    <!-- ════ AI / SMART DISCOVERY VIEW (AKILLI KEŞİF STÜDYOSU) ════ -->
+    <main id="aiView" class="hidden dsc-page" aria-label="Akıllı Keşif Stüdyosu">
+        <div id="aiPageBody" class="dsc-wrap"></div>
+    </main>
 
-  <!-- STATS -->
-  <section class="ab-stats">
-    <div class="ab-stats-grid">
-      <div class="ab-stat afu" style="--d:0.1s">
-        <div class="ab-stat-row"><span class="ab-stat-num" data-count="3">0</span><span class="ab-stat-unit">+</span></div>
-        <span class="ab-stat-label">Kaynak</span>
-      </div>
-      <div class="ab-stat afu" style="--d:0.18s">
-        <div class="ab-stat-row"><span class="ab-stat-inf">&#8734;</span></div>
-        <span class="ab-stat-label">W2G Odas&#305;</span>
-      </div>
-      <div class="ab-stat afu" style="--d:0.26s">
-        <div class="ab-stat-row ab-stat-icon">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-        </div>
-        <span class="ab-stat-label">Reklam Yok</span>
-      </div>
-      <div class="ab-stat afu" style="--d:0.34s">
-        <div class="ab-stat-row ab-stat-icon">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-        </div>
-        <span class="ab-stat-label">AI &#214;neri</span>
-      </div>
-    </div>
-  </section>
+    <!-- ════ ABOUT VIEW (ANİTR HAKKINDA) ════ -->
+    <main id="aboutView" class="hidden ab2-page" aria-label="Anitr Hakkında">
+        <div id="aboutPageBody" class="ab2-wrap"></div>
+    </main>
 
-  <!-- FEATURES -->
-  <section class="ab-features">
+    <!-- ════ PROFILE VIEW (KULLANICI PROFİLİ & VİTRİN SAYFASI) ════ -->
+    <main id="profileView" class="hidden prf-page" aria-label="Kullanıcı Profili">
+        <div class="prf-wrap">
 
-    <div class="ab-feat afu" style="--d:0.05s">
-      <div class="ab-feat-meta">
-        <span class="ab-feat-num">01</span>
-        <span class="ab-feat-tag">Topluluk</span>
-      </div>
-      <div class="ab-feat-content">
-        <div class="ab-feat-text">
-          <h2 class="ab-feat-title">Birlikte &#304;zle<br><em>W2G Odalar&#305;</em></h2>
-          <p class="ab-feat-desc">Arkada&#351;lar&#305;nla ger&#231;ek zamanl&#305; senkronize izle. Sesli sohbet, emoji tepkileri ve &#246;zel oda linkleriyle sosyal anime deneyimi.</p>
-        </div>
-        <div class="ab-feat-visual">
-          <div class="ab-feat-card">
-            <div class="ab-feat-card-top">
-              <span class="ab-feat-dot ab-dot-red"></span><span class="ab-feat-dot ab-dot-yellow"></span><span class="ab-feat-dot ab-dot-green"></span>
-              <span class="ab-feat-card-label">W2G Odas&#305; &middot; 3 ki&#351;i</span>
+            <!-- Editorial Page Header -->
+            <header class="cat-head prf-page-head">
+                <div class="cat-head-text">
+                    <p class="cat-eyebrow" id="prfPageEyebrow">KULLANICI PROFİLİ / OTAKU KİMLİĞİ</p>
+                    <h1 class="cat-title" id="prfPageMainTitle">Profil &amp; Koleksiyon Vitrini</h1>
+                    <p class="cat-sub" id="prfPageSubTitle">Kişisel izleme kimliğin, vitrin serilerin, başarımların ve hesap tercihlerin.</p>
+                </div>
+                <div class="cat-head-right">
+                    <p class="cat-count"><b id="prfTopLevelDisp">Seviye 1</b><span class="cat-count-src" id="prfTopTierDisp">Çırak Otaku</span></p>
+                    <div class="prf-head-actions">
+                        <button type="button" class="prf-top-btn prf2-owner-only" id="prf2PreviewModeBtn" onclick="prfToggleVisitorPreview()" title="Ziyaretçi görünümüyle önizle">
+                            <i class="fa-regular fa-eye"></i><span>Önizle</span>
+                        </button>
+                        <button type="button" class="prf-top-btn" onclick="prfDownloadIdCard()" title="Otaku Kimlik Kartını PNG İndir">
+                            <i class="fa-solid fa-id-card"></i><span>Kimlik Kartı</span>
+                        </button>
+                        <button type="button" class="prf-top-btn" onclick="prfShareProfile()" title="Profil bağlantısını ve özetini kopyala">
+                            <i class="fa-solid fa-share-nodes"></i><span>Paylaş</span>
+                        </button>
+                        <button type="button" class="prf-top-btn prf-top-btn-primary prf2-owner-only" onclick="saveProfile()">
+                            <i class="fa-solid fa-check"></i><span>Profili Kaydet</span>
+                        </button>
+                        <button type="button" class="prf-top-btn prf-visitor-only" onclick="showProfileModal()">
+                            <i class="fa-solid fa-arrow-left"></i><span>Kendi Profilime Dön</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="prf2-shell" id="prf2Shell" data-accent="violet">
+
+                <!-- Hidden Sync Inputs -->
+                <input type="file" id="profileBannerInput" accept="image/*" style="display:none">
+                <input type="file" id="profileAvatarInput" accept="image/*" style="display:none">
+                <input type="file" id="prf2ImportJsonInput" accept=".json,application/json" style="display:none">
+                <input type="hidden" id="profileNameColor" value="#ffffff">
+                <input type="hidden" id="profileFavGenre" value="">
+
+                <!-- EDITORIAL COVER & IDENTITY CARD -->
+                <section class="prf-identity-surface">
+                    <div class="prf2-hero" id="profileBannerWrapper">
+                        <div class="prf2-banner-bg" id="prf2BannerBg" data-preset="nebula"></div>
+                        <img id="profileBanner" class="prf2-banner-img" src="" alt="Banner" onerror="this.style.display='none'">
+                        <div class="prf2-banner-fade"></div>
+
+                        <div class="prf2-hero-toolbar">
+                            <div class="prf2-hero-left-pills">
+                                <span class="prf2-presence-pill" id="prf2PresencePill">
+                                    <span class="prf2-presence-dot"></span>
+                                    <span id="prf2PresenceText">Çevrimiçi</span>
+                                </span>
+                                <button type="button" class="prf2-kudos-pill" id="prf2KudosBtn" onclick="prfGiveKudos()" title="Profil Alkışı">
+                                    <i class="fa-solid fa-hands-clapping"></i>
+                                    <span id="prf2KudosCount">0</span>
+                                    <small>Alkış</small>
+                                </button>
+                            </div>
+                            <div class="prf2-hero-actions">
+                                <label for="profileBannerInput" class="prf2-glass-btn prf2-owner-only" title="Kapak Görseli Yükle">
+                                    <i class="fa-regular fa-image"></i><span>Kapak Görseli</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="prf2-identity-bar">
+                        <div class="prf2-avatar-zone">
+                            <div class="prf2-avatar-ring" id="profileAvatarWrapper" data-frame="minimal">
+                                <img id="profileAvatar" src="https://api.dicebear.com/8.x/adventurer/svg?seed=anitr" alt="Avatar">
+                                <label for="profileAvatarInput" class="prf2-avatar-cam prf2-owner-only" title="Avatar Değiştir">
+                                    <i class="fa-solid fa-camera"></i>
+                                </label>
+                            </div>
+                            <div class="prf2-mood-bubble" id="prf2MoodBubble" onclick="prfFocusMoodInput()" title="Durumu Düzenle">
+                                <span id="prf2MoodEmoji">·</span>
+                                <span id="prf2MoodText">Anime maratonunda</span>
+                            </div>
+                        </div>
+
+                        <div class="prf2-identity-main">
+                            <div class="prf2-name-line">
+                                <input type="text" id="profileUsername" class="prf2-name-input" placeholder="Görünen adın..." maxlength="28">
+                                <span id="prf2VisitorName" class="prf2-visitor-name hidden">Kullanıcı</span>
+                                <span class="prf2-rank-chip" id="prf2RankChip">
+                                    <span id="prf2RankLabel">Gece İzleyicisi</span>
+                                </span>
+                                <span class="prf2-cloud-tag" id="prf2CloudTag">@misafir</span>
+                            </div>
+
+                            <p class="prf2-bio-preview" id="prf2BioPreview">Henüz bir biyografi eklenmedi.</p>
+
+                            <div class="prf2-quick-chips" id="prf2HeaderChips"></div>
+                        </div>
+
+                        <!-- Editorial Level & XP Module -->
+                        <div class="prf2-xp-box">
+                            <div class="prf2-xp-top">
+                                <div class="prf2-lvl-badge">
+                                    <span class="lvl-lbl">SEVİYE</span>
+                                    <strong id="prf2LevelNum">1</strong>
+                                </div>
+                                <div class="prf2-xp-meta">
+                                    <span id="prf2TierName">Çırak Otaku</span>
+                                    <small id="prf2XpText">0 / 250 XP</small>
+                                </div>
+                            </div>
+                            <div class="prf2-xp-track">
+                                <div class="prf2-xp-fill" id="prf2XpFill" style="width:8%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visitor Friend / Message Action Row -->
+                    <div id="prf2VisitorActions" class="prf2-visitor-actions hidden"></div>
+                </section>
+
+                <!-- 4-COLUMN HAIRLINE KPI STRIP -->
+                <div class="prf2-kpi-grid" id="prf2KpiGrid">
+                    <div class="prf2-kpi-card">
+                        <span class="prf-kpi-idx">01 / BÖLÜM</span>
+                        <strong id="prf2StatEpisodes">0</strong>
+                        <span>İzlenen Bölüm</span>
+                    </div>
+                    <div class="prf2-kpi-card">
+                        <span class="prf-kpi-idx">02 / SÜRE</span>
+                        <strong id="prf2StatHours">0 sa</strong>
+                        <span id="prf2StatDaysSub">Toplam İzleme</span>
+                    </div>
+                    <div class="prf2-kpi-card">
+                        <span class="prf-kpi-idx">03 / SERİ</span>
+                        <strong id="prf2StatStreak">1 Gün</strong>
+                        <span id="prf2StatBestStreak">Aktif Seri</span>
+                    </div>
+                    <div class="prf2-kpi-card">
+                        <span class="prf-kpi-idx">04 / ARŞİV</span>
+                        <strong id="prf2StatFavs">0</strong>
+                        <span id="prf2StatListSub">Favori &amp; Liste</span>
+                    </div>
+                </div>
+
+                <!-- SLIDING INK NAVIGATION TABS -->
+                <div class="lib-toolbar prf-toolbar">
+                    <div class="prf2-tabs" id="prf2TabsBar" role="tablist">
+                        <span class="prf-tabs-ink" id="prfTabsInk"></span>
+                        <button type="button" class="prf2-tab active" data-ptab="overview" onclick="switchPrf2Tab('overview', this)">
+                            <span>Genel Bakış &amp; Vitrin</span>
+                        </button>
+                        <button type="button" class="prf2-tab" data-ptab="achievements" onclick="switchPrf2Tab('achievements', this)">
+                            <span>Başarımlar &amp; Hedef</span>
+                            <em id="prf2AchTabCount" class="prf2-tab-pill">0/12</em>
+                        </button>
+                        <button type="button" class="prf2-tab prf2-owner-only" data-ptab="appearance" onclick="switchPrf2Tab('appearance', this)">
+                            <span>Görünüm &amp; Kapak</span>
+                        </button>
+                        <button type="button" class="prf2-tab prf2-owner-only" data-ptab="identity" onclick="switchPrf2Tab('identity', this)">
+                            <span>Kimlik &amp; Bağlantılar</span>
+                        </button>
+                        <button type="button" class="prf2-tab prf2-owner-only" data-ptab="privacy" onclick="switchPrf2Tab('privacy', this)">
+                            <span>Gizlilik &amp; Veri</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB CONTENT AREA -->
+                <div class="prf2-content" id="prf2Content">
+
+                    <!-- TAB 1: GENEL BAKIŞ & VİTRİN -->
+                    <section class="prf2-pane active" data-ppane="overview">
+
+                        <!-- 4-Slot Anime Showcase (Vitrin) -->
+                        <div class="prf2-card" id="prf2ShowcaseSection">
+                            <div class="prf2-card-head">
+                                <div>
+                                    <span class="prf-sec-eyebrow">01 / SEÇKİ VİTRİNİ</span>
+                                    <h4>Favori 4 Anime Vitrinim</h4>
+                                    <p>Seni en iyi yansıtan 4 seriyi profil vitrinine sabitle</p>
+                                </div>
+                            </div>
+                            <div class="prf2-showcase-grid" id="prf2ShowcaseGrid"></div>
+
+                            <!-- Inline Picker Drawer for Showcase Slot -->
+                            <div id="prf2ShowcasePicker" class="prf2-picker-drawer hidden">
+                                <div class="prf2-picker-head">
+                                    <span id="prf2PickerTitle">Vitrin Slotu İçin Anime Seç</span>
+                                    <button type="button" onclick="prfCloseShowcasePicker()"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                                <div class="prf2-picker-search">
+                                    <input type="text" id="prf2ShowcaseSearchInp" placeholder="Favorilerinden seç veya herhangi bir anime ara (örn: Attack on Titan, Bleach)..." oninput="prfSearchShowcaseAnime(this.value)">
+                                </div>
+                                <div id="prf2ShowcaseResults" class="prf2-picker-results"></div>
+                            </div>
+                        </div>
+
+                        <!-- Two-Column Row: Favorite Character & Quote + Live Watching / Recent Activity -->
+                        <div class="prf2-overview-split">
+                            <div class="prf2-card" id="prf2CharSection">
+                                <div class="prf2-card-head">
+                                    <div>
+                                        <span class="prf-sec-eyebrow">02 / KARAKTER &amp; REPLİK</span>
+                                        <h4>Favori Karakter &amp; Alıntı</h4>
+                                        <p>İkonik karakterin ve unutulmaz sözün</p>
+                                    </div>
+                                    <button type="button" class="prf2-mini-btn prf2-owner-only" onclick="prfToggleCharPicker()">
+                                        <i class="fa-solid fa-magnifying-glass"></i> Karakter Seç
+                                    </button>
+                                </div>
+                                <div id="prf2FavCharCard" class="prf2-char-display"></div>
+
+                                <div id="prf2CharPicker" class="prf2-picker-drawer hidden">
+                                    <div class="prf2-picker-head">
+                                        <span>Anime Karakteri Ara (AniList)</span>
+                                        <button type="button" onclick="prfToggleCharPicker(false)"><i class="fa-solid fa-xmark"></i></button>
+                                    </div>
+                                    <div class="prf2-picker-search">
+                                        <input type="text" id="prf2CharSearchInp" placeholder="Karakter adı yaz (örn: Satoru Gojo, Luffy, Frieren, Levi)..." oninput="prfSearchCharacter(this.value)">
+                                    </div>
+                                    <div id="prf2CharResults" class="prf2-picker-results"></div>
+                                </div>
+
+                                <div class="prf2-quote-box prf2-owner-only">
+                                    <label>Favori Anime Repliğin / Sözün</label>
+                                    <input type="text" id="prf2FavQuoteInp" class="prf2-input" maxlength="160" placeholder="Örn: &quot;İnsanların hayalleri asla sona ermez!&quot; — Marshall D. Teach">
+                                </div>
+                            </div>
+
+                            <div class="prf2-card">
+                                <div class="prf2-card-head">
+                                    <div>
+                                        <span class="prf-sec-eyebrow">03 / AKTİVİTE AKIŞI</span>
+                                        <h4>Canlı Durum &amp; Son İzlenenler</h4>
+                                        <p>Şu an oynatılan bölüm ve yakın izleme geçmişi</p>
+                                    </div>
+                                </div>
+                                <div id="profileCurrentWatching" class="prf2-now-watching"></div>
+                                <div class="prf2-recent-list" id="prf2RecentTimeline"></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- TAB 2: BAŞARIMLAR & HEDEF -->
+                    <section class="prf2-pane" data-ppane="achievements">
+                        <div class="prf2-overview-split">
+                            <!-- Weekly Watch Goal -->
+                            <div class="prf2-card">
+                                <div class="prf2-card-head">
+                                    <div>
+                                        <span class="prf-sec-eyebrow">01 / HAFTALIK TEMPO</span>
+                                        <h4>Haftalık İzleme Hedefi</h4>
+                                        <p>Son 7 gündeki bölüm temponu takip et</p>
+                                    </div>
+                                </div>
+                                <div class="prf2-goal-wrap">
+                                    <div class="prf2-goal-ring" id="prf2GoalRing" style="--pct:0">
+                                        <div class="prf2-goal-ring-inner">
+                                            <strong id="prf2GoalDone">0</strong>
+                                            <span id="prf2GoalTargetLbl">/ 10 Bölüm</span>
+                                        </div>
+                                    </div>
+                                    <div class="prf2-goal-controls">
+                                        <p id="prf2GoalStatusMsg">Bu haftaki hedefine ulaşmak için izlemeye devam et.</p>
+                                        <div class="prf2-goal-pills prf2-owner-only" id="prf2GoalPills">
+                                            <button type="button" data-goal="5" onclick="prfSetWeeklyGoal(5)">5 Bölüm</button>
+                                            <button type="button" data-goal="10" onclick="prfSetWeeklyGoal(10)">10 Bölüm</button>
+                                            <button type="button" data-goal="15" onclick="prfSetWeeklyGoal(15)">15 Bölüm</button>
+                                            <button type="button" data-goal="25" onclick="prfSetWeeklyGoal(25)">25 Bölüm</button>
+                                            <button type="button" data-goal="40" onclick="prfSetWeeklyGoal(40)">40 Bölüm</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Archive Distribution Bars -->
+                            <div class="prf2-card">
+                                <div class="prf2-card-head">
+                                    <div>
+                                        <span class="prf-sec-eyebrow">02 / KOLEKSİYON ÖZETİ</span>
+                                        <h4>Arşiv &amp; Koleksiyon Dağılımı</h4>
+                                        <p>Kütüphanendeki tüm içeriklerin dağılımı</p>
+                                    </div>
+                                </div>
+                                <div id="prf2DistBars" class="prf2-dist-bars"></div>
+                            </div>
+                        </div>
+
+                        <!-- 12 Unlockable Achievements Grid -->
+                        <div class="prf2-card">
+                            <div class="prf2-card-head">
+                                <div>
+                                    <span class="prf-sec-eyebrow">03 / KİLİT TAŞLARI</span>
+                                    <h4>Başarım &amp; Kilometre Taşları</h4>
+                                    <p>İzledikçe, koleksiyon yaptıkça ve profilini tamamladıkça otomatik açılır</p>
+                                </div>
+                            </div>
+                            <div id="prf2AchievementsGrid" class="prf2-ach-grid"></div>
+                        </div>
+                    </section>
+
+                    <!-- TAB 3: GÖRÜNÜM & KAPAK -->
+                    <section class="prf2-pane" data-ppane="appearance">
+                        <div class="prf2-overview-split">
+                            <div class="prf2-card">
+                                <div class="prf2-card-head">
+                                    <div>
+                                        <span class="prf-sec-eyebrow">01 / VURGU TONU</span>
+                                        <h4>Profil Vurgu Rengi</h4>
+                                        <p>Profil sayfasının birincil vurgu tonu</p>
+                                    </div>
+                                </div>
+                                <div class="prf2-accent-grid" id="prf2AccentGrid"></div>
+                            </div>
+
+                            <div class="prf2-card">
+                                <div class="prf2-card-head">
+                                    <div>
+                                        <span class="prf-sec-eyebrow">02 / TİPOGRAFİ TONU</span>
+                                        <h4>Kullanıcı Adı Rengi</h4>
+                                        <p>Görünen adın için renk tercihi</p>
+                                    </div>
+                                </div>
+                                <div class="prf2-color-swatches" id="prf2NameSwatches"></div>
+                                <div class="prf2-grad-chips" id="prf2NameGradChips"></div>
+                            </div>
+                        </div>
+
+                        <div class="prf2-card">
+                            <div class="prf2-card-head">
+                                <div>
+                                    <span class="prf-sec-eyebrow">03 / AVATAR ÇERÇEVESİ</span>
+                                    <h4>Avatar Kenarlık Stili</h4>
+                                    <p>Profil fotoğrafı için kenarlık görünümü</p>
+                                </div>
+                            </div>
+                            <div class="prf2-frame-grid" id="prf2FrameGrid"></div>
+                        </div>
+
+                        <div class="prf2-overview-split">
+                            <div class="prf2-card">
+                                <div class="prf2-card-head">
+                                    <div>
+                                        <span class="prf-sec-eyebrow">04 / PROFİL FOTOĞRAFI</span>
+                                        <h4>Avatar Seçimi</h4>
+                                        <p>Cihazdan yükle, URL yapıştır veya hazır karakterlerden seç</p>
+                                    </div>
+                                    <div style="display:flex;gap:6px;">
+                                        <button type="button" class="prf2-mini-btn" onclick="prfRandomizeAvatar()">
+                                            <i class="fa-solid fa-shuffle"></i> Rastgele
+                                        </button>
+                                        <label for="profileAvatarInput" class="prf2-mini-btn" style="cursor:pointer;">
+                                            <i class="fa-solid fa-upload"></i> Dosya Seç
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="prf2-preset-avatars" id="prf2PresetAvatars"></div>
+                                <input type="url" id="prf2AvatarUrlInp" class="prf2-input" placeholder="Veya özel avatar görsel URL'si yapıştır (https://...)" oninput="prfApplyAvatarUrl(this.value)">
+                            </div>
+
+                            <div class="prf2-card">
+                                <div class="prf2-card-head">
+                                    <div>
+                                        <span class="prf-sec-eyebrow">05 / KAPAK GÖRSELİ</span>
+                                        <h4>Profil Kapak Görseli</h4>
+                                        <p>Hazır yüzey tonlarından seç veya kendi görselini yükle</p>
+                                    </div>
+                                    <div style="display:flex;gap:6px;">
+                                        <label for="profileBannerInput" class="prf2-mini-btn" style="cursor:pointer;">
+                                            <i class="fa-solid fa-upload"></i> Yükle
+                                        </label>
+                                        <button type="button" class="prf2-mini-btn" onclick="prfClearCustomBanner()">
+                                            <i class="fa-solid fa-rotate-left"></i> Sıfırla
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="prf2-banner-presets" id="prf2BannerPresets"></div>
+                                <input type="url" id="prf2BannerUrlInp" class="prf2-input" placeholder="Veya özel kapak URL'si yapıştır (https://...)" oninput="prfApplyBannerUrl(this.value)">
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- TAB 4: KİMLİK & BAĞLANTILAR -->
+                    <section class="prf2-pane" data-ppane="identity">
+                        <div class="prf2-overview-split">
+                            <div class="prf2-card">
+                                <div class="prf2-card-head">
+                                    <div>
+                                        <span class="prf-sec-eyebrow">01 / DURUM &amp; UNVAN</span>
+                                        <h4>Durum Notu &amp; Unvan</h4>
+                                        <p>Profil başlığında görünen durum mesajın ve unvanın</p>
+                                    </div>
+                                </div>
+                                <div class="prf2-mood-editor">
+                                    <input type="text" id="prf2StatusEmojiInp" class="prf2-emoji-inp" maxlength="4" value="·" oninput="prfSyncMoodPreview()">
+                                    <input type="text" id="prf2StatusTextInp" class="prf2-input" maxlength="48" placeholder="Şu an ne yapıyorsun? (örn: Gece maratonunda...)" oninput="prfSyncMoodPreview()">
+                                </div>
+                                <div class="prf2-mood-presets" id="prf2MoodPresets"></div>
+
+                                <div class="prf2-field-sep">
+                                    <label class="prf2-lbl">Kullanıcı Unvanı</label>
+                                    <input type="text" id="prf2CustomTitleInp" class="prf2-input" maxlength="32" placeholder="Özel unvan yaz veya aşağıdan seç..." oninput="prfSyncTitlePreview(this.value)">
+                                    <div class="prf2-title-presets" id="prf2TitlePresets"></div>
+                                </div>
+                            </div>
+
+                            <div class="prf2-card">
+                                <div class="prf2-card-head">
+                                    <div>
+                                        <span class="prf-sec-eyebrow">02 / BİYOGRAFİ &amp; TERCİH</span>
+                                        <h4>Hakkımda &amp; İzleme Tarzı</h4>
+                                        <p>Kendini, anime zevkini ve izleme alışkanlığını anlat</p>
+                                    </div>
+                                    <small id="prf2BioCount" class="prf2-char-counter">0 / 280</small>
+                                </div>
+                                <textarea id="profileBio" class="prf2-textarea" maxlength="280" rows="4" placeholder="Kendini kısaca tanıt, favori serilerinden bahset..." oninput="prfSyncBioPreview()"></textarea>
+
+                                <div class="prf2-pref-row">
+                                    <div>
+                                        <label class="prf2-lbl">İzleme Tercihi</label>
+                                        <div class="prf2-seg" id="prf2AudioPrefSeg">
+                                            <button type="button" data-val="sub" onclick="prfSelectWatchPref('sub')">Altyazı</button>
+                                            <button type="button" data-val="dub" onclick="prfSelectWatchPref('dub')">Dublaj</button>
+                                            <button type="button" data-val="both" onclick="prfSelectWatchPref('both')">İkisi de</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="prf2-lbl">Favori Vakit</label>
+                                        <div class="prf2-seg" id="prf2TimePrefSeg">
+                                            <button type="button" data-val="night" onclick="prfSelectTimePref('night')">Gece</button>
+                                            <button type="button" data-val="day" onclick="prfSelectTimePref('day')">Gündüz</button>
+                                            <button type="button" data-val="weekend" onclick="prfSelectTimePref('weekend')">Hafta Sonu</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Multi-Select Favorite Genres -->
+                        <div class="prf2-card">
+                            <div class="prf2-card-head">
+                                <div>
+                                    <span class="prf-sec-eyebrow">03 / FAVORİ TÜRLER</span>
+                                    <h4>Favori Anime Türlerin (En Fazla 5 Seçim)</h4>
+                                    <p>Seçtiğin türler profil başlığında etiket olarak gösterilir</p>
+                                </div>
+                            </div>
+                            <div class="prf2-genre-chips" id="prf2GenreChips"></div>
+                        </div>
+
+                        <!-- Social Links Grid -->
+                        <div class="prf2-card">
+                            <div class="prf2-card-head">
+                                <div>
+                                    <span class="prf-sec-eyebrow">04 / DIŞ BAĞLANTILAR</span>
+                                    <h4>Sosyal Bağlantılar &amp; Anime Profilleri</h4>
+                                    <p>Arkadaşlarının sana ulaşabileceği veya listelerini görebileceği adresler</p>
+                                </div>
+                            </div>
+                            <div class="prf2-social-grid">
+                                <div class="prf2-social-field">
+                                    <label><i class="fa-brands fa-discord"></i> Discord</label>
+                                    <input type="text" id="profileDiscord" class="prf2-input" placeholder="kullaniciadi">
+                                </div>
+                                <div class="prf2-social-field">
+                                    <label><i class="fa-solid fa-database"></i> MyAnimeList Kullanıcı Adı</label>
+                                    <input type="text" id="prf2MalUser" class="prf2-input" placeholder="mal_kullanici">
+                                </div>
+                                <div class="prf2-social-field">
+                                    <label><i class="fa-solid fa-layer-group"></i> AniList Kullanıcı Adı</label>
+                                    <input type="text" id="prf2AnilistUser" class="prf2-input" placeholder="anilist_kullanici">
+                                </div>
+                                <div class="prf2-social-field">
+                                    <label><i class="fa-solid fa-globe"></i> Sosyal / Web Linki</label>
+                                    <input type="text" id="prf2SocialLink" class="prf2-input" placeholder="https://x.com/... veya kişisel site">
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- TAB 5: GİZLİLİK & VERİ -->
+                    <section class="prf2-pane" data-ppane="privacy">
+                        <div class="prf2-overview-split">
+                            <div class="prf2-card">
+                                <div class="prf2-card-head">
+                                    <div>
+                                        <span class="prf-sec-eyebrow">01 / GÖRÜNÜRLÜK İZİNLERİ</span>
+                                        <h4>Gizlilik Kontrolleri</h4>
+                                        <p>Diğer kullanıcıların profilinde görebileceği bilgileri yönet</p>
+                                    </div>
+                                </div>
+
+                                <div class="prf2-switch-list">
+                                    <div class="prf2-switch-item">
+                                        <div>
+                                            <strong>İzlediğim Animeler &amp; İstatistikler</strong>
+                                            <small>Seviye, bölüm sayısı ve izleme süren diğer kullanıcılara görünsün</small>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="profileShowWatchedAnime" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+
+                                    <div class="prf2-switch-item">
+                                        <div>
+                                            <strong>Anlık İzleme Durumu</strong>
+                                            <small>Bir bölüm izlerken Topluluk ve profilinde canlı gösterilsin</small>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="profileShowCurrentWatching" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+
+                                    <div class="prf2-switch-item">
+                                        <div>
+                                            <strong>Vitrin &amp; Favori Karakter Gösterimi</strong>
+                                            <small>4'lü anime vitrinin ve favori karakterin ziyaretçilere açık olsun</small>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="prf2ShowShowcase" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="prf2-card">
+                                <div class="prf2-card-head">
+                                    <div>
+                                        <span class="prf-sec-eyebrow">02 / YEDEKLEME &amp; KİMLİK KARTI</span>
+                                        <h4>Bulut Hesabı &amp; Veri Yedekleme</h4>
+                                        <p>Verilerini JSON olarak yedekle veya paylaşılabilir PNG kart oluştur</p>
+                                    </div>
+                                </div>
+
+                                <div id="prf2AccountStatusBox" class="prf2-account-box"></div>
+
+                                <div class="prf2-data-actions">
+                                    <button type="button" class="prf2-tool-btn" onclick="prfExportAllData()">
+                                        <i class="fa-solid fa-file-arrow-down"></i>
+                                        <div>
+                                            <strong>Tüm Verileri Yedekle (.json)</strong>
+                                            <small>Profil, izleme geçmişi, kaldığın dakikalar ve listeler</small>
+                                        </div>
+                                    </button>
+                                    <button type="button" class="prf2-tool-btn" onclick="document.getElementById('prf2ImportJsonInput').click()">
+                                        <i class="fa-solid fa-file-arrow-up"></i>
+                                        <div>
+                                            <strong>Yedekten Geri Yükle</strong>
+                                            <small>Daha önce indirdiğin Anitr yedeğini içe aktar</small>
+                                        </div>
+                                    </button>
+                                    <button type="button" class="prf2-tool-btn" onclick="prfDownloadIdCard()">
+                                        <i class="fa-solid fa-id-card"></i>
+                                        <div>
+                                            <strong>PNG Otaku Kimlik Kartı Oluştur</strong>
+                                            <small>İstatistiklerini içeren paylaşılabilir görsel kart indir</small>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                </div>
+
+                <!-- EDITORIAL FOOTER BAR (Owner Mode) -->
+                <div class="prf2-footer prf2-owner-only" id="prf2FooterBar">
+                    <div class="prf2-footer-hint">
+                        <i class="fa-solid fa-check"></i>
+                        <span id="prf2SyncHint">Değişiklikler hem cihaza hem bulut profiline kaydedilir</span>
+                    </div>
+                    <div class="prf2-footer-btns">
+                        <button type="button" class="prf2-btn-ghost" onclick="closeProfileModal()">Ana Sayfaya Dön</button>
+                        <button type="button" class="prf2-btn-save prf-save-btn" onclick="saveProfile()">
+                            <i class="fa-solid fa-floppy-disk"></i> Profili Kaydet
+                        </button>
+                    </div>
+                </div>
+
             </div>
-            <div class="ab-feat-card-body">
-              <div class="ab-sync-line">
-                <div class="ab-sync-bar"><div class="ab-sync-fill" style="width:62%"></div></div>
-                <span class="ab-sync-time">18:42 / 24:00</span>
-              </div>
-              <div class="ab-users">
-                <div class="ab-user-chip">Voxy</div>
-                <div class="ab-user-chip">Zeki</div>
-                <div class="ab-user-chip">Aylin</div>
-              </div>
-            </div>
-          </div>
         </div>
-      </div>
-    </div>
+    </main>
 
-    <div class="ab-feat ab-feat-rev afu" style="--d:0.05s">
-      <div class="ab-feat-meta">
-        <span class="ab-feat-num">02</span>
-        <span class="ab-feat-tag">G&#246;rsel</span>
-      </div>
-      <div class="ab-feat-content">
-        <div class="ab-feat-visual">
-          <div class="ab-feat-card ab-ambi-card">
-            <div class="ab-ambi-glow"></div>
-            <div class="ab-feat-card-top">
-              <span class="ab-feat-dot ab-dot-red"></span><span class="ab-feat-dot ab-dot-yellow"></span><span class="ab-feat-dot ab-dot-green"></span>
-              <span class="ab-feat-card-label">Ambilight Aktif</span>
-            </div>
-            <div class="ab-ambi-screen">
-              <div class="ab-ambi-bars">
-                <div class="ab-ambi-bar" style="--h:60%;--c:#8b5cf6"></div>
-                <div class="ab-ambi-bar" style="--h:80%;--c:#06b6d4"></div>
-                <div class="ab-ambi-bar" style="--h:45%;--c:#f43f5e"></div>
-                <div class="ab-ambi-bar" style="--h:90%;--c:#a78bfa"></div>
-                <div class="ab-ambi-bar" style="--h:55%;--c:#38bdf8"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="ab-feat-text">
-          <h2 class="ab-feat-title">Ambilight<br><em>Atmosfer I&#351;&#305;&#287;&#305;</em></h2>
-          <p class="ab-feat-desc">Video i&#231;eri&#287;ine g&#246;re arka plan dinamik renk al&#305;r. Karanl&#305;k odada sinema atmosferi yarat&#305;r.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="ab-feat afu" style="--d:0.05s">
-      <div class="ab-feat-meta">
-        <span class="ab-feat-num">03</span>
-        <span class="ab-feat-tag">&#199;eviri</span>
-      </div>
-      <div class="ab-feat-content">
-        <div class="ab-feat-text">
-          <h2 class="ab-feat-title">&#199;eviri Se&#231;ici<br><em>Tercih Senin</em></h2>
-          <p class="ab-feat-desc">AnimeCiX'ten farkl&#305; fansub ekiplerini kar&#351;&#305;la&#351;t&#305;r, en iyi &#231;eviriyi se&#231;. Puan ve yorum bilgileriyle karar ver.</p>
-        </div>
-        <div class="ab-feat-visual">
-          <div class="ab-feat-card">
-            <div class="ab-feat-card-top">
-              <span class="ab-feat-dot ab-dot-red"></span><span class="ab-feat-dot ab-dot-yellow"></span><span class="ab-feat-dot ab-dot-green"></span>
-              <span class="ab-feat-card-label">&#199;eviri Se&#231;ici</span>
-            </div>
-            <div class="ab-feat-card-body">
-              <div class="ab-trans-list">
-                <div class="ab-trans-item ab-trans-active"><span class="ab-trans-name">SeiCode</span><span class="ab-trans-score">9.6</span></div>
-                <div class="ab-trans-item"><span class="ab-trans-name">Nino &#199;eviri</span><span class="ab-trans-score">9.6</span></div>
-                <div class="ab-trans-item"><span class="ab-trans-name">YukiSubs</span><span class="ab-trans-score">9.2</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="ab-feat ab-feat-rev afu" style="--d:0.05s">
-      <div class="ab-feat-meta">
-        <span class="ab-feat-num">04</span>
-        <span class="ab-feat-tag">&#304;zleme</span>
-      </div>
-      <div class="ab-feat-content">
-        <div class="ab-feat-visual">
-          <div class="ab-feat-card">
-            <div class="ab-feat-card-top">
-              <span class="ab-feat-dot ab-dot-red"></span><span class="ab-feat-dot ab-dot-yellow"></span><span class="ab-feat-dot ab-dot-green"></span>
-              <span class="ab-feat-card-label">&#199;oklu Kaynak</span>
-            </div>
-            <div class="ab-feat-card-body">
-              <div class="ab-source-list">
-                <div class="ab-source-item"><span class="ab-source-dot" style="background:#8b5cf6"></span><span>AnimeCiX</span><span class="ab-source-badge">HD</span></div>
-                <div class="ab-source-item"><span class="ab-source-dot" style="background:#06b6d4"></span><span>Turkanime</span><span class="ab-source-badge">1080p</span></div>
-                <div class="ab-source-item"><span class="ab-source-dot" style="background:#f59e0b"></span><span>Serinova</span><span class="ab-source-badge">720p</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="ab-feat-text">
-          <h2 class="ab-feat-title">&#199;oklu Kaynak<br><em>Hep Yedek Var</em></h2>
-          <p class="ab-feat-desc">AnimeCiX, Turkanime, Serinova &mdash; tek t&#305;kla kaynak de&#287;i&#351;tir. Biri &#231;al&#305;&#351;m&#305;yorsa di&#287;eri hemen devreye girer.</p>
-        </div>
-      </div>
-    </div>
-
-  </section>
-
-  <!-- SCREENSHOTS -->
-  <section class="ab-shots afu" style="--d:0.05s">
-    <div class="ab-shots-header">
-      <h2 class="ab-shots-title">Ekran G&#246;r&#252;nt&#252;leri</h2>
-      <div class="ab-shots-tabs">
-        <button class="ab-stab active" onclick="abSwitchShot(this,'home')">Ana Sayfa</button>
-        <button class="ab-stab" onclick="abSwitchShot(this,'anime')">Katalog</button>
-        <button class="ab-stab" onclick="abSwitchShot(this,'schedule')">Takvim</button>
-        <button class="ab-stab" onclick="abSwitchShot(this,'news')">Haberler</button>
-      </div>
-    </div>
-    <div class="ab-shots-frame">
-      <div class="ab-shots-chrome">
-        <span class="ab-feat-dot ab-dot-red"></span>
-        <span class="ab-feat-dot ab-dot-yellow"></span>
-        <span class="ab-feat-dot ab-dot-green"></span>
-        <span class="ab-shots-url">anitr.web / <span id="ab-shots-path">anasayfa</span></span>
-      </div>
-      <div class="ab-shots-img-wrap">
-        <img id="ab-shots-img" src="/assets/showcase-home.png" alt="Ekran goruntüsü">
-      </div>
-    </div>
-  </section>
-
-  <!-- CLOSING -->
-  <section class="ab-close afu" style="--d:0.05s">
-    <p class="ab-close-label">Haz&#305;r m&#305;s&#305;n?</p>
-    <h2 class="ab-close-title">Anime zaman&#305;.</h2>
-    <button class="ab-btn-primary ab-btn-lg" onclick="showAnimeListView();setAnavActive('anime')">Katalo&#287;a Git &nbsp;&rarr;</button>
-  </section>
-
-</main>
 
 
     <!-- â????â???? WATCH VIEW â????â???? -->
@@ -2405,6 +2502,7 @@
                             <select id="settingDefaultSource" class="stg-select" onchange="saveSettings()">
 
                                 <option value="AnimeciX">AnimeciX</option>
+                                <option value="AniHub">AniHub</option>
 
                                 <option value="Anizium">Anizium</option>
 
@@ -2700,7 +2798,7 @@
 
             </div>
 
-            <div id="statsBody" class="settings-body"></div>
+            <div id="statsModalLegacyBody" class="settings-body"></div>
 
         </div>
 
@@ -2712,1137 +2810,7 @@
 
     <!-- â????â???? DETAILED PROFILE MODAL â????â???? -->
 
-    <div id="profileModal" class="modal hidden" onclick="if(event.target===this) closeProfileModal()">
-
-        <div class="prf2-shell" id="prf2Shell" data-accent="violet" onclick="event.stopPropagation()">
-
-
-
-            <!-- Hidden Legacy Sync Inputs -->
-
-            <input type="file" id="profileBannerInput" accept="image/*" style="display:none">
-
-            <input type="file" id="profileAvatarInput" accept="image/*" style="display:none">
-
-            <input type="file" id="prf2ImportJsonInput" accept=".json,application/json" style="display:none">
-
-            <input type="hidden" id="profileNameColor" value="#ffffff">
-
-            <input type="hidden" id="profileFavGenre" value="">
-
-
-
-            <!-- ??? CINEMATIC HERO BANNER ??? -->
-
-            <div class="prf2-hero" id="profileBannerWrapper">
-
-                <div class="prf2-banner-bg" id="prf2BannerBg" data-preset="nebula"></div>
-
-                <img id="profileBanner" class="prf2-banner-img" src="" alt="Banner" onerror="this.style.display='none'">
-
-                <div class="prf2-banner-orbs" aria-hidden="true">
-
-                    <span class="orb orb-1"></span>
-
-                    <span class="orb orb-2"></span>
-
-                    <span class="orb orb-3"></span>
-
-                </div>
-
-                <div class="prf2-banner-fade"></div>
-
-
-
-                <!-- Top Floating Toolbar -->
-
-                <div class="prf2-hero-toolbar">
-
-                    <div class="prf2-hero-left-pills">
-
-                        <span class="prf2-presence-pill" id="prf2PresencePill">
-
-                            <span class="prf2-presence-dot"></span>
-
-                            <span id="prf2PresenceText">Çevrimiçi</span>
-
-                        </span>
-
-                        <button type="button" class="prf2-kudos-pill" id="prf2KudosBtn" onclick="prfGiveKudos()" title="Alkış / Beğeni">
-
-                            <i class="fa-solid fa-hands-clapping"></i>
-
-                            <span id="prf2KudosCount">0</span>
-
-                            <small>Alkış</small>
-
-                        </button>
-
-                    </div>
-
-                    <div class="prf2-hero-actions">
-
-                        <button type="button" class="prf2-glass-btn prf2-owner-only" id="prf2PreviewModeBtn" onclick="prfToggleVisitorPreview()" title="Ziyaretçi Gözüyle önizle">
-
-                            <i class="fa-regular fa-eye"></i><span>?nizle</span>
-
-                        </button>
-
-                        <button type="button" class="prf2-glass-btn" onclick="prfDownloadIdCard()" title="Otaku Kimlik Kartını PNG İndir">
-
-                            <i class="fa-solid fa-id-badge"></i><span>Kimlik Kartı</span>
-
-                        </button>
-
-                        <button type="button" class="prf2-glass-btn" onclick="prfShareProfile()" title="Profil ?zeti Kopyala">
-
-                            <i class="fa-solid fa-share-nodes"></i>
-
-                        </button>
-
-                        <label for="profileBannerInput" class="prf2-glass-btn prf2-owner-only" title="Banner Görseli Yükle">
-
-                            <i class="fa-regular fa-image"></i>
-
-                        </label>
-
-                        <button type="button" class="prf2-glass-btn prf2-close" onclick="closeProfileModal()" aria-label="Kapat">
-
-                            <i class="fa-solid fa-xmark"></i>
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- ??? IDENTITY & LEVEL HEADER ??? -->
-
-            <div class="prf2-identity-bar">
-
-                <div class="prf2-avatar-zone">
-
-                    <div class="prf2-avatar-ring" id="profileAvatarWrapper" data-frame="aurora">
-
-                        <img id="profileAvatar" src="https://api.dicebear.com/8.x/adventurer/svg?seed=anitr" alt="Avatar">
-
-                        <label for="profileAvatarInput" class="prf2-avatar-cam prf2-owner-only" title="Avatar Değiştir">
-
-                            <i class="fa-solid fa-camera"></i>
-
-                        </label>
-
-                    </div>
-
-                    <div class="prf2-mood-bubble" id="prf2MoodBubble" onclick="prfFocusMoodInput()" title="Durumu Düzenle">
-
-                        <span id="prf2MoodEmoji">??</span>
-
-                        <span id="prf2MoodText">Anime maratonunda</span>
-
-                    </div>
-
-                </div>
-
-
-
-                <div class="prf2-identity-main">
-
-                    <div class="prf2-name-line">
-
-                        <input type="text" id="profileUsername" class="prf2-name-input" placeholder="Görünen adın..." maxlength="28">
-
-                        <span id="prf2VisitorName" class="prf2-visitor-name hidden">Kullanıcı</span>
-
-                        <span class="prf2-rank-chip" id="prf2RankChip">
-
-                            <i class="fa-solid fa-wand-magic-sparkles"></i>
-
-                            <span id="prf2RankLabel">Gece İzleyicisi</span>
-
-                        </span>
-
-                        <span class="prf2-cloud-tag" id="prf2CloudTag">@misafir</span>
-
-                    </div>
-
-
-
-                    <p class="prf2-bio-preview" id="prf2BioPreview">Henüz bir biyografi eklenmedi.</p>
-
-
-
-                    <div class="prf2-quick-chips" id="prf2HeaderChips"></div>
-
-                </div>
-
-
-
-                <!-- XP & Level Card -->
-
-                <div class="prf2-xp-box">
-
-                    <div class="prf2-xp-top">
-
-                        <div class="prf2-lvl-badge">
-
-                            <span class="lvl-lbl">SEVİYE</span>
-
-                            <strong id="prf2LevelNum">1</strong>
-
-                        </div>
-
-                        <div class="prf2-xp-meta">
-
-                            <span id="prf2TierName">?ırak Otaku</span>
-
-                            <small id="prf2XpText">0 / 250 XP</small>
-
-                        </div>
-
-                    </div>
-
-                    <div class="prf2-xp-track">
-
-                        <div class="prf2-xp-fill" id="prf2XpFill" style="width:8%"></div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- Visitor Friend / Message Action Row (Shown when viewing someone else's profile) -->
-
-            <div id="prf2VisitorActions" class="prf2-visitor-actions hidden"></div>
-
-
-
-            <!-- ??? ANIMATED NAVIGATION TABS ??? -->
-
-            <div class="prf2-tabs" id="prf2TabsBar" role="tablist">
-
-                <button type="button" class="prf2-tab active" data-ptab="overview" onclick="switchPrf2Tab('overview', this)">
-
-                    <i class="fa-solid fa-sparkles"></i><span>Vitrin &amp; ?zet</span>
-
-                </button>
-
-                <button type="button" class="prf2-tab" data-ptab="achievements" onclick="switchPrf2Tab('achievements', this)">
-
-                    <i class="fa-solid fa-trophy"></i><span>Başarımlar</span>
-
-                    <em id="prf2AchTabCount" class="prf2-tab-pill">0/12</em>
-
-                </button>
-
-                <button type="button" class="prf2-tab prf2-owner-only" data-ptab="appearance" onclick="switchPrf2Tab('appearance', this)">
-
-                    <i class="fa-solid fa-palette"></i><span>Görünüm Stüdyosu</span>
-
-                </button>
-
-                <button type="button" class="prf2-tab prf2-owner-only" data-ptab="identity" onclick="switchPrf2Tab('identity', this)">
-
-                    <i class="fa-solid fa-user-pen"></i><span>Kimlik &amp; Sosyal</span>
-
-                </button>
-
-                <button type="button" class="prf2-tab prf2-owner-only" data-ptab="privacy" onclick="switchPrf2Tab('privacy', this)">
-
-                    <i class="fa-solid fa-shield-halved"></i><span>Gizlilik &amp; Veri</span>
-
-                </button>
-
-            </div>
-
-
-
-            <!-- ??? SCROLLABLE TAB CONTENT AREA ??? -->
-
-            <div class="prf2-content" id="prf2Content">
-
-
-
-                <!-- ???????? TAB 1: VİTRİN & ?ZET ???????? -->
-
-                <section class="prf2-pane active" data-ppane="overview">
-
-                    <!-- 4 Animated KPI Stat Cards -->
-
-                    <div class="prf2-kpi-grid" id="prf2KpiGrid">
-
-                        <div class="prf2-kpi-card">
-
-                            <div class="prf2-kpi-ico kpi-violet"><i class="fa-solid fa-film"></i></div>
-
-                            <div>
-
-                                <strong id="prf2StatEpisodes">0</strong>
-
-                                <span>İzlenen Bölüm</span>
-
-                            </div>
-
-                        </div>
-
-                        <div class="prf2-kpi-card">
-
-                            <div class="prf2-kpi-ico kpi-cyan"><i class="fa-solid fa-clock"></i></div>
-
-                            <div>
-
-                                <strong id="prf2StatHours">0 sa</strong>
-
-                                <span id="prf2StatDaysSub">Toplam İzleme</span>
-
-                            </div>
-
-                        </div>
-
-                        <div class="prf2-kpi-card">
-
-                            <div class="prf2-kpi-ico kpi-amber"><i class="fa-solid fa-fire-flame-curved"></i></div>
-
-                            <div>
-
-                                <strong id="prf2StatStreak">1 Gün</strong>
-
-                                <span id="prf2StatBestStreak">Aktif Seri</span>
-
-                            </div>
-
-                        </div>
-
-                        <div class="prf2-kpi-card">
-
-                            <div class="prf2-kpi-ico kpi-rose"><i class="fa-solid fa-heart"></i></div>
-
-                            <div>
-
-                                <strong id="prf2StatFavs">0</strong>
-
-                                <span id="prf2StatListSub">Favori &amp; Liste</span>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-
-                    <!-- 4-Slot Anime Showcase (Vitrin) -->
-
-                    <div class="prf2-card" id="prf2ShowcaseSection">
-
-                        <div class="prf2-card-head">
-
-                            <div>
-
-                                <h4><i class="fa-solid fa-gem"></i> Favori 4 Anime Vitrinim</h4>
-
-                                <p>Seni en iyi yansıtan 4 başyapıtı vitrinine sabitle</p>
-
-                            </div>
-
-                        </div>
-
-                        <div class="prf2-showcase-grid" id="prf2ShowcaseGrid"></div>
-
-
-
-                        <!-- Inline Picker Drawer for Showcase Slot -->
-
-                        <div id="prf2ShowcasePicker" class="prf2-picker-drawer hidden">
-
-                            <div class="prf2-picker-head">
-
-                                <span id="prf2PickerTitle"><i class="fa-solid fa-magnifying-glass"></i> Vitrin Slotu İçin Anime Seç</span>
-
-                                <button type="button" onclick="prfCloseShowcasePicker()"><i class="fa-solid fa-xmark"></i></button>
-
-                            </div>
-
-                            <div class="prf2-picker-search">
-
-                                <input type="text" id="prf2ShowcaseSearchInp" placeholder="Favorilerinden seç veya herhangi bir anime ara (örn: Attack on Titan, Bleach)..." oninput="prfSearchShowcaseAnime(this.value)">
-
-                            </div>
-
-                            <div id="prf2ShowcaseResults" class="prf2-picker-results"></div>
-
-                        </div>
-
-                    </div>
-
-
-
-                    <!-- Two-Column Row: Favorite Character & Quote + Live Watching / Recent Activity -->
-
-                    <div class="prf2-overview-split">
-
-                        <div class="prf2-card" id="prf2CharSection">
-
-                            <div class="prf2-card-head">
-
-                                <div>
-
-                                    <h4><i class="fa-solid fa-crown"></i> Favori Karakter &amp; Replik</h4>
-
-                                    <p>İkonik karakterin ve unutulmaz sözün</p>
-
-                                </div>
-
-                                <button type="button" class="prf2-mini-btn prf2-owner-only" onclick="prfToggleCharPicker()">
-
-                                    <i class="fa-solid fa-wand-sparkles"></i> Karakter Seç
-
-                                </button>
-
-                            </div>
-
-                            <div id="prf2FavCharCard" class="prf2-char-display"></div>
-
-
-
-                            <div id="prf2CharPicker" class="prf2-picker-drawer hidden">
-
-                                <div class="prf2-picker-head">
-
-                                    <span><i class="fa-solid fa-user-astronaut"></i> Anime Karakteri Ara (AniList)</span>
-
-                                    <button type="button" onclick="prfToggleCharPicker(false)"><i class="fa-solid fa-xmark"></i></button>
-
-                                </div>
-
-                                <div class="prf2-picker-search">
-
-                                    <input type="text" id="prf2CharSearchInp" placeholder="Karakter adı yaz (örn: Satoru Gojo, Luffy, Frieren, Levi)..." oninput="prfSearchCharacter(this.value)">
-
-                                </div>
-
-                                <div id="prf2CharResults" class="prf2-picker-results"></div>
-
-                            </div>
-
-
-
-                            <div class="prf2-quote-box prf2-owner-only">
-
-                                <label>Favori Anime Repliğin / Sözün</label>
-
-                                <input type="text" id="prf2FavQuoteInp" class="prf2-input" maxlength="160" placeholder="?rn: &quot;İnsanların hayalleri asla sona ermez!&quot; ?? Marshall D. Teach">
-
-                            </div>
-
-                        </div>
-
-
-
-                        <div class="prf2-card">
-
-                            <div class="prf2-card-head">
-
-                                <div>
-
-                                    <h4><i class="fa-solid fa-bolt"></i> Canlı Durum &amp; Son Aktivite</h4>
-
-                                    <p>?u an izlenen ve yakın geçmiş</p>
-
-                                </div>
-
-                            </div>
-
-                            <div id="profileCurrentWatching" class="prf2-now-watching"></div>
-
-                            <div class="prf2-recent-list" id="prf2RecentTimeline"></div>
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-
-                <!-- ???????? TAB 2: BAŞARIMLAR & HEDEF ???????? -->
-
-                <section class="prf2-pane" data-ppane="achievements">
-
-                    <div class="prf2-overview-split">
-
-                        <!-- Weekly Watch Goal -->
-
-                        <div class="prf2-card">
-
-                            <div class="prf2-card-head">
-
-                                <div>
-
-                                    <h4><i class="fa-solid fa-bullseye"></i> Haftalık İzleme Hedefi</h4>
-
-                                    <p>Son 7 gündeki bölüm temponu takip et</p>
-
-                                </div>
-
-                            </div>
-
-                            <div class="prf2-goal-wrap">
-
-                                <div class="prf2-goal-ring" id="prf2GoalRing" style="--pct:0">
-
-                                    <div class="prf2-goal-ring-inner">
-
-                                        <strong id="prf2GoalDone">0</strong>
-
-                                        <span id="prf2GoalTargetLbl">/ 10 Bölüm</span>
-
-                                    </div>
-
-                                </div>
-
-                                <div class="prf2-goal-controls">
-
-                                    <p id="prf2GoalStatusMsg">Bu haftaki hedefine ulaşmak için izlemeye devam et!</p>
-
-                                    <div class="prf2-goal-pills prf2-owner-only" id="prf2GoalPills">
-
-                                        <button type="button" data-goal="5" onclick="prfSetWeeklyGoal(5)">5 Bölüm</button>
-
-                                        <button type="button" data-goal="10" onclick="prfSetWeeklyGoal(10)">10 Bölüm</button>
-
-                                        <button type="button" data-goal="15" onclick="prfSetWeeklyGoal(15)">15 Bölüm</button>
-
-                                        <button type="button" data-goal="25" onclick="prfSetWeeklyGoal(25)">25 Bölüm</button>
-
-                                        <button type="button" data-goal="40" onclick="prfSetWeeklyGoal(40)">40 Bölüm</button>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-
-
-                        <!-- Archive Distribution Bars -->
-
-                        <div class="prf2-card">
-
-                            <div class="prf2-card-head">
-
-                                <div>
-
-                                    <h4><i class="fa-solid fa-chart-simple"></i> Arşiv &amp; Koleksiyon Dağılımı</h4>
-
-                                    <p>Kütüphanendeki tüm içeriklerin özeti</p>
-
-                                </div>
-
-                            </div>
-
-                            <div id="prf2DistBars" class="prf2-dist-bars"></div>
-
-                        </div>
-
-                    </div>
-
-
-
-                    <!-- 12 Unlockable Achievements Grid -->
-
-                    <div class="prf2-card">
-
-                        <div class="prf2-card-head">
-
-                            <div>
-
-                                <h4><i class="fa-solid fa-medal"></i> Otaku Başarım Rozetleri</h4>
-
-                                <p>İzledikçe, koleksiyon yaptıkça ve profilini geliştirdikçe otomatik açılır</p>
-
-                            </div>
-
-                        </div>
-
-                        <div id="prf2AchievementsGrid" class="prf2-ach-grid"></div>
-
-                    </div>
-
-                </section>
-
-
-
-                <!-- ???????? TAB 3: GÖRÜNÜM STÜDYOSU ???????? -->
-
-                <section class="prf2-pane" data-ppane="appearance">
-
-                    <!-- Profile Accent Theme & Name Colors -->
-
-                    <div class="prf2-overview-split">
-
-                        <div class="prf2-card">
-
-                            <div class="prf2-card-head">
-
-                                <div>
-
-                                    <h4><i class="fa-solid fa-wand-magic-sparkles"></i> Profil Vurgu Teması</h4>
-
-                                    <p>Profil kartının ışıklandırma ve vurgu rengi</p>
-
-                                </div>
-
-                            </div>
-
-                            <div class="prf2-accent-grid" id="prf2AccentGrid"></div>
-
-                        </div>
-
-
-
-                        <div class="prf2-card">
-
-                            <div class="prf2-card-head">
-
-                                <div>
-
-                                    <h4><i class="fa-solid fa-paintbrush"></i> Kullanıcı Adı Rengi &amp; Efekt</h4>
-
-                                    <p>Düz renk veya animasyonlu gradyan isim stili</p>
-
-                                </div>
-
-                            </div>
-
-                            <div class="prf2-color-swatches" id="prf2NameSwatches"></div>
-
-                            <div class="prf2-grad-chips" id="prf2NameGradChips"></div>
-
-                        </div>
-
-                    </div>
-
-
-
-                    <!-- Animated Avatar Aura Frames -->
-
-                    <div class="prf2-card">
-
-                        <div class="prf2-card-head">
-
-                            <div>
-
-                                <h4><i class="fa-solid fa-circle-nodes"></i> Animasyonlu Avatar ?erçeveleri (Aura)</h4>
-
-                                <p>Avatarının etrafında dönen veya parlayan özel efekt seç</p>
-
-                            </div>
-
-                        </div>
-
-                        <div class="prf2-frame-grid" id="prf2FrameGrid"></div>
-
-                    </div>
-
-
-
-                    <!-- Avatar Generator & Custom Upload -->
-
-                    <div class="prf2-overview-split">
-
-                        <div class="prf2-card">
-
-                            <div class="prf2-card-head">
-
-                                <div>
-
-                                    <h4><i class="fa-solid fa-face-smile-wink"></i> Avatar Stüdyosu</h4>
-
-                                    <p>Bilgisayardan yükle, URL yapıştır veya tek tıkla üret</p>
-
-                                </div>
-
-                                <div style="display:flex;gap:6px;">
-
-                                    <button type="button" class="prf2-mini-btn" onclick="prfRandomizeAvatar()">
-
-                                        <i class="fa-solid fa-dice"></i> Rastgele
-
-                                    </button>
-
-                                    <label for="profileAvatarInput" class="prf2-mini-btn" style="cursor:pointer;">
-
-                                        <i class="fa-solid fa-upload"></i> Dosya Seç
-
-                                    </label>
-
-                                </div>
-
-                            </div>
-
-                            <div class="prf2-preset-avatars" id="prf2PresetAvatars"></div>
-
-                            <input type="url" id="prf2AvatarUrlInp" class="prf2-input" placeholder="Veya özel avatar görsel URL'si yapıştır (https://...)" oninput="prfApplyAvatarUrl(this.value)">
-
-                        </div>
-
-
-
-                        <div class="prf2-card">
-
-                            <div class="prf2-card-head">
-
-                                <div>
-
-                                    <h4><i class="fa-solid fa-panorama"></i> Sinematik Banner Galerisi</h4>
-
-                                    <p>Hazır atmosferlerden seç veya kendi görselini yükle</p>
-
-                                </div>
-
-                                <div style="display:flex;gap:6px;">
-
-                                    <label for="profileBannerInput" class="prf2-mini-btn" style="cursor:pointer;">
-
-                                        <i class="fa-solid fa-upload"></i> Yükle
-
-                                    </label>
-
-                                    <button type="button" class="prf2-mini-btn" onclick="prfClearCustomBanner()">
-
-                                        <i class="fa-solid fa-rotate-left"></i> Sıfırla
-
-                                    </button>
-
-                                </div>
-
-                            </div>
-
-                            <div class="prf2-banner-presets" id="prf2BannerPresets"></div>
-
-                            <input type="url" id="prf2BannerUrlInp" class="prf2-input" placeholder="Veya özel banner URL'si yapıştır (https://...)" oninput="prfApplyBannerUrl(this.value)">
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-
-                <!-- ???????? TAB 4: KİMLİK & SOSYAL ???????? -->
-
-                <section class="prf2-pane" data-ppane="identity">
-
-                    <div class="prf2-overview-split">
-
-                        <!-- Custom Mood & Rank Title -->
-
-                        <div class="prf2-card">
-
-                            <div class="prf2-card-head">
-
-                                <div>
-
-                                    <h4><i class="fa-solid fa-comment-dots"></i> Anlık Durum Balonu &amp; Unvan</h4>
-
-                                    <p>Avatarının yanında görünen durum mesajın ve rütben</p>
-
-                                </div>
-
-                            </div>
-
-                            <div class="prf2-mood-editor">
-
-                                <input type="text" id="prf2StatusEmojiInp" class="prf2-emoji-inp" maxlength="4" value="??" oninput="prfSyncMoodPreview()">
-
-                                <input type="text" id="prf2StatusTextInp" class="prf2-input" maxlength="48" placeholder="?u an ne yapıyorsun? (örn: Gece maratonunda...)" oninput="prfSyncMoodPreview()">
-
-                            </div>
-
-                            <div class="prf2-mood-presets" id="prf2MoodPresets"></div>
-
-
-
-                            <div class="prf2-field-sep">
-
-                                <label class="prf2-lbl"><i class="fa-solid fa-award"></i> Otaku Unvanı / Rütbesi</label>
-
-                                <input type="text" id="prf2CustomTitleInp" class="prf2-input" maxlength="32" placeholder="Özel unvan yaz veya aşağıdan seç..." oninput="prfSyncTitlePreview(this.value)">
-
-                                <div class="prf2-title-presets" id="prf2TitlePresets"></div>
-
-                            </div>
-
-                        </div>
-
-
-
-                        <!-- Bio & Watch Style Preferences -->
-
-                        <div class="prf2-card">
-
-                            <div class="prf2-card-head">
-
-                                <div>
-
-                                    <h4><i class="fa-solid fa-feather-pointed"></i> Hakkımda (Bio) &amp; İzleme Tarzı</h4>
-
-                                    <p>Kendini, anime zevkini ve izleme alışkanlığını anlat</p>
-
-                                </div>
-
-                                <small id="prf2BioCount" class="prf2-char-counter">0 / 280</small>
-
-                            </div>
-
-                            <textarea id="profileBio" class="prf2-textarea" maxlength="280" rows="4" placeholder="Kendini kısaca tanıt, favori serilerinden bahset..." oninput="prfSyncBioPreview()"></textarea>
-
-
-
-                            <div class="prf2-pref-row">
-
-                                <div>
-
-                                    <label class="prf2-lbl">İzleme Tercihi</label>
-
-                                    <div class="prf2-seg" id="prf2AudioPrefSeg">
-
-                                        <button type="button" data-val="sub" onclick="prfSelectWatchPref('sub')">?????? Altyazı</button>
-
-                                        <button type="button" data-val="dub" onclick="prfSelectWatchPref('dub')">???? Dublaj</button>
-
-                                        <button type="button" data-val="both" onclick="prfSelectWatchPref('both')">? İkisi de</button>
-
-                                    </div>
-
-                                </div>
-
-                                <div>
-
-                                    <label class="prf2-lbl">Favori Vakit</label>
-
-                                    <div class="prf2-seg" id="prf2TimePrefSeg">
-
-                                        <button type="button" data-val="night" onclick="prfSelectTimePref('night')">???? Gece</button>
-
-                                        <button type="button" data-val="day" onclick="prfSelectTimePref('day')">??? Gündüz</button>
-
-                                        <button type="button" data-val="weekend" onclick="prfSelectTimePref('weekend')">?? Maraton</button>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-
-                    <!-- Multi-Select Favorite Genres -->
-
-                    <div class="prf2-card">
-
-                        <div class="prf2-card-head">
-
-                            <div>
-
-                                <h4><i class="fa-solid fa-tags"></i> Favori Anime Türlerin (En Fazla 5 Seçim)</h4>
-
-                                <p>Seçtiğin türler profil başlığında rozet olarak sergilenir</p>
-
-                            </div>
-
-                        </div>
-
-                        <div class="prf2-genre-chips" id="prf2GenreChips"></div>
-
-                    </div>
-
-
-
-                    <!-- Social Links Grid -->
-
-                    <div class="prf2-card">
-
-                        <div class="prf2-card-head">
-
-                            <div>
-
-                                <h4><i class="fa-solid fa-link"></i> Sosyal Başlantılar &amp; Anime Profilleri</h4>
-
-                                <p>Arkadaşlarının sana ulaşabileceği veya listelerini görebileceği adresler</p>
-
-                            </div>
-
-                        </div>
-
-                        <div class="prf2-social-grid">
-
-                            <div class="prf2-social-field">
-
-                                <label><i class="fa-brands fa-discord" style="color:#5865F2"></i> Discord</label>
-
-                                <input type="text" id="profileDiscord" class="prf2-input" placeholder="kullaniciadi">
-
-                            </div>
-
-                            <div class="prf2-social-field">
-
-                                <label><i class="fa-solid fa-chart-pie" style="color:#2e51a2"></i> MyAnimeList Kullanıcı Adı</label>
-
-                                <input type="text" id="prf2MalUser" class="prf2-input" placeholder="mal_kullanici">
-
-                            </div>
-
-                            <div class="prf2-social-field">
-
-                                <label><i class="fa-solid fa-layer-group" style="color:#02a9ff"></i> AniList Kullanıcı Adı</label>
-
-                                <input type="text" id="prf2AnilistUser" class="prf2-input" placeholder="anilist_kullanici">
-
-                            </div>
-
-                            <div class="prf2-social-field">
-
-                                <label><i class="fa-solid fa-globe" style="color:#34d399"></i> Sosyal / Web Linki</label>
-
-                                <input type="text" id="prf2SocialLink" class="prf2-input" placeholder="https://x.com/... veya instagram">
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-
-                <!-- ???????? TAB 5: GİZLİLİK & VERİ ???????? -->
-
-                <section class="prf2-pane" data-ppane="privacy">
-
-                    <div class="prf2-overview-split">
-
-                        <!-- Cloud Account Box + Privacy Switches -->
-
-                        <div class="prf2-card">
-
-                            <div class="prf2-card-head">
-
-                                <div>
-
-                                    <h4><i class="fa-solid fa-user-shield"></i> Gizlilik Kontrolleri</h4>
-
-                                    <p>Diğer kullanıcıların profilinde görebileceği bilgileri yönet</p>
-
-                                </div>
-
-                            </div>
-
-
-
-                            <div class="prf2-switch-list">
-
-                                <div class="prf2-switch-item">
-
-                                    <div>
-
-                                        <strong>İzlediğim Animeler &amp; İstatistikler</strong>
-
-                                        <small>Seviye, bölüm sayısı ve izleme süren diğer kullanıcılara görünsün</small>
-
-                                    </div>
-
-                                    <label class="switch">
-
-                                        <input type="checkbox" id="profileShowWatchedAnime" checked>
-
-                                        <span class="slider"></span>
-
-                                    </label>
-
-                                </div>
-
-
-
-                                <div class="prf2-switch-item">
-
-                                    <div>
-
-                                        <strong>Anlık İzleme Durumu (Live Presence)</strong>
-
-                                        <small>Bir bölüm izlerken Topluluk ve profilinde canlı gösterilsin</small>
-
-                                    </div>
-
-                                    <label class="switch">
-
-                                        <input type="checkbox" id="profileShowCurrentWatching" checked>
-
-                                        <span class="slider"></span>
-
-                                    </label>
-
-                                </div>
-
-
-
-                                <div class="prf2-switch-item">
-
-                                    <div>
-
-                                        <strong>Vitrin &amp; Favori Karakter Gösterimi</strong>
-
-                                        <small>4'lü anime vitrinin ve favori karakterin ziyaretçilere açık olsun</small>
-
-                                    </div>
-
-                                    <label class="switch">
-
-                                        <input type="checkbox" id="prf2ShowShowcase" checked>
-
-                                        <span class="slider"></span>
-
-                                    </label>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-
-
-                        <!-- Account, Backup & ID Card Tools -->
-
-                        <div class="prf2-card">
-
-                            <div class="prf2-card-head">
-
-                                <div>
-
-                                    <h4><i class="fa-solid fa-cloud-arrow-up"></i> Bulut Hesabı &amp; Veri Yedekleme</h4>
-
-                                    <p>Verilerini JSON olarak yedekle veya başka cihaza taşı</p>
-
-                                </div>
-
-                            </div>
-
-
-
-                            <div id="prf2AccountStatusBox" class="prf2-account-box"></div>
-
-
-
-                            <div class="prf2-data-actions">
-
-                                <button type="button" class="prf2-tool-btn" onclick="prfExportAllData()">
-
-                                    <i class="fa-solid fa-file-arrow-down"></i>
-
-                                    <div>
-
-                                        <strong>Tüm Verileri Yedekle (.json)</strong>
-
-                                        <small>Profil, izleme geçmişi, kaldığın dakikalar ve listeler</small>
-
-                                    </div>
-
-                                </button>
-
-                                <button type="button" class="prf2-tool-btn" onclick="document.getElementById('prf2ImportJsonInput').click()">
-
-                                    <i class="fa-solid fa-file-arrow-up"></i>
-
-                                    <div>
-
-                                        <strong>Yedekten Geri Yükle</strong>
-
-                                        <small>Daha önce indirdiğin Anitr yedeğini içe aktar</small>
-
-                                    </div>
-
-                                </button>
-
-                                <button type="button" class="prf2-tool-btn" onclick="prfDownloadIdCard()">
-
-                                    <i class="fa-solid fa-id-card"></i>
-
-                                    <div>
-
-                                        <strong>PNG Otaku Kimlik Kartı Oluştur</strong>
-
-                                        <small>İstatistiklerini içeren paylaşılabilir görsel kart indir</small>
-
-                                    </div>
-
-                                </button>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-
-            </div>
-
-
-
-            <!-- ??? STICKY FOOTER BAR (Owner Mode) ??? -->
-
-            <div class="prf2-footer prf2-owner-only" id="prf2FooterBar">
-
-                <div class="prf2-footer-hint">
-
-                    <i class="fa-solid fa-circle-check"></i>
-
-                    <span id="prf2SyncHint">Değişiklikler hem cihaza hem bulut profiline kaydedilir</span>
-
-                </div>
-
-                <div class="prf2-footer-btns">
-
-                    <button type="button" class="prf2-btn-ghost" onclick="closeProfileModal()">Vazgeç</button>
-
-                    <button type="button" class="prf2-btn-save prf-save-btn" onclick="saveProfile()">
-
-                        <i class="fa-solid fa-floppy-disk"></i> Profili Kaydet
-
-                    </button>
-
-                </div>
-
-            </div>
-
-
-
-        </div>
-
-    </div>
-
-
-
-
+    <div id="profileModal" class="modal hidden" aria-hidden="true"></div>
 
     <!-- â????â???? DOWNLOAD MODAL â????â???? -->
 
@@ -4074,7 +3042,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<script src="app.js?v=10.0.0"></script>
+<script src="app.js?v=10.6.0"></script>
 
 <!-- â????â???? MODERN ANITR SOSYAL HUB MODAL â????â???? -->
 
@@ -6006,7 +4974,7 @@
 
 
 
-    <script src="social.js?v=9.9.5"></script>
+    <script src="social.js?v=10.6.0"></script>
 
 </body>
 

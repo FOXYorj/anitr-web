@@ -87,7 +87,7 @@ func Login(usernameOrEmail, password string) ([]AniziumProfile, string, error) {
 	cfToken := generateCfToken()
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "Mozilla/5.0")
+	req.Header.Set("User-Agent", BrowserUserAgent)
 	req.Header.Set("Cf-Control", cfToken)
 	req.Header.Set("device", "browser")
 	req.Header.Set("language", "tr")
@@ -129,7 +129,7 @@ func Login(usernameOrEmail, password string) ([]AniziumProfile, string, error) {
 	}
 	
 	reqGet.Header.Set("Accept", "application/json")
-	reqGet.Header.Set("User-Agent", "Mozilla/5.0")
+	reqGet.Header.Set("User-Agent", BrowserUserAgent)
 	reqGet.Header.Set("Cf-Control", generateCfToken())
 	reqGet.Header.Set("device", "browser")
 	reqGet.Header.Set("language", "tr")
@@ -211,7 +211,10 @@ func GetPlanFromUserGet(sessionToken string) string {
 		return "standart"
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "Mozilla/5.0")
+	req.Header.Set("User-Agent", BrowserUserAgent)
+	WaitRateLimit()
+	req.Header.Set("Referer", "https://anizium.co/")
+	req.Header.Set("Origin", "https://anizium.co")
 	req.Header.Set("Cf-Control", generateCfToken())
 	req.Header.Set("device", "browser")
 	req.Header.Set("language", "tr")
@@ -257,7 +260,10 @@ func GetSubtitleLink(cfg *AniziumConfig, animeID int, seasonNum, episodeNum int,
 		return "", err
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "Mozilla/5.0")
+	req.Header.Set("User-Agent", BrowserUserAgent)
+	WaitRateLimit()
+	req.Header.Set("Referer", "https://anizium.co/")
+	req.Header.Set("Origin", "https://anizium.co")
 	req.Header.Set("Cf-Control", generateCfToken())
 	req.Header.Set("device", "browser")
 	req.Header.Set("language", "tr")
@@ -392,7 +398,7 @@ func getSubtitleNamesViaAPI(cfg *AniziumConfig, episodeID string, seasonNum, epi
 		if err != nil {
 			continue
 		}
-		req.Header.Set("User-Agent", "Mozilla/5.0")
+		req.Header.Set("User-Agent", BrowserUserAgent)
 		req.Header.Set("Accept", "application/json")
 		req.Header.Set("Referer", "https://anizium.com/")
 		if cfg.Token != "" {
@@ -434,7 +440,7 @@ func FetchSubtitleVTT(animeID int, name string, seasonNum, episodeNum int) (stri
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0")
+	req.Header.Set("User-Agent", BrowserUserAgent)
 	req.Header.Set("Referer", "https://anizium.com/")
 
 	resp, err := client.Do(req)
@@ -549,6 +555,9 @@ type AnimeOpeningTime struct {
 // sonraki bölüm bilgisi (next_episode_data) döner.
 // Bu fonksiyon GetWatchData içinde CDN probe'un yerini almaktadır.
 func FetchVideoGroups(cfg *AniziumConfig, animeID, seasonNum, episodeNum int) ([]AnimeVideoSource, []AnimeSubtitle, *AnimeNextEpisode, *AnimeOpeningTime, *AnimeOpeningTime, error) {
+	if blocked, reason := IsBlocked(); blocked {
+		return nil, nil, nil, nil, nil, fmt.Errorf("%s", reason)
+	}
 	plan := cfg.Plan
 	if plan == "" {
 		plan = "standart"
@@ -558,13 +567,15 @@ func FetchVideoGroups(cfg *AniziumConfig, animeID, seasonNum, episodeNum int) ([
 		animeID, plan, seasonNum, episodeNum,
 	)
 
-	client := &http.Client{Timeout: 15 * time.Second}
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "Mozilla/5.0")
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+	req.Header.Set("User-Agent", BrowserUserAgent)
+	WaitRateLimit()
+	req.Header.Set("Referer", "https://anizium.co/")
+	req.Header.Set("Origin", "https://anizium.co")
 	req.Header.Set("Cf-Control", generateCfToken())
 	req.Header.Set("device", "browser")
 	req.Header.Set("language", "tr")
@@ -573,12 +584,17 @@ func FetchVideoGroups(cfg *AniziumConfig, animeID, seasonNum, episodeNum int) ([
 	req.Header.Set("user-session", cfg.Token)
 	req.Header.Set("user", cfg.UserID)
 
-	resp, err := client.Do(req)
+	resp, err := SharedHTTPClient.Do(req)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4*1024*1024))
+
+	if RecordHTTPBlock(resp.StatusCode, body) {
+		_, reason := IsBlocked()
+		return nil, nil, nil, nil, nil, fmt.Errorf("%s", reason)
+	}
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -709,7 +725,7 @@ func DownloadVTT(link string) (string, error) {
 	}
 	
 	// Anizium altyazı sunucusu için gerekli başlıklar
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+	req.Header.Set("User-Agent", BrowserUserAgent)
 	req.Header.Set("Referer", "https://anizium.com/")
 	req.Header.Set("Origin", "https://anizium.com")
 
